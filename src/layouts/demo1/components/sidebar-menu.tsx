@@ -1,9 +1,10 @@
 'use client';
 
-import { JSX, useCallback } from 'react';
+import { JSX, useCallback, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MENU_SIDEBAR } from '@/config/menu.config';
+import { MENU_SUPERVISOR, MENU_MENTOR, MENU_MENTEE } from '@/config/menu.config';
 import { MenuConfig, MenuItem } from '@/config/types';
+import { useAuth } from '@/auth/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
   AccordionMenu,
@@ -19,6 +20,21 @@ import { Badge } from '@/components/ui/badge';
 
 export function SidebarMenu() {
   const { pathname } = useLocation();
+  const { role } = useAuth();
+
+  // Select menu based on user role
+  const menuConfig = useMemo(() => {
+    switch (role) {
+      case 'supervisor':
+        return MENU_SUPERVISOR;
+      case 'mentor':
+        return MENU_MENTOR;
+      case 'mentee':
+        return MENU_MENTEE;
+      default:
+        return [];
+    }
+  }, [role]);
 
   // Memoize matchPath to prevent unnecessary re-renders
   const matchPath = useCallback(
@@ -218,7 +234,7 @@ export function SidebarMenu() {
         collapsible
         classNames={classNames}
       >
-        {buildMenu(MENU_SIDEBAR)}
+        {buildMenu(menuConfig)}
       </AccordionMenu>
     </div>
   );

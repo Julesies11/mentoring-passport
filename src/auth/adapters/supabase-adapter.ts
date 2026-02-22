@@ -206,7 +206,7 @@ export const SupabaseAdapter = {
   },
 
   /**
-   * Get user profile from user metadata
+   * Get user profile from mp_profiles table
    */
   async getUserProfile(): Promise<UserModel> {
     const {
@@ -216,28 +216,45 @@ export const SupabaseAdapter = {
 
     if (error || !user) throw new Error(error?.message || 'User not found');
 
-    // Get user metadata and transform to UserModel format
+    // Fetch profile data from mp_profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('mp_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      throw new Error(profileError?.message || 'Profile not found');
+    }
+
+    // Get user metadata for backward compatibility
     const metadata = user.user_metadata || {};
 
-    // Format data to maintain compatibility with existing UI
+    // Format data combining auth.users and mp_profiles
     return {
       id: user.id,
-      email: user.email || '',
+      profile_id: user.id,
+      email: user.email || profile.email || '',
       email_verified: user.email_confirmed_at !== null,
-      username: metadata.username || '',
+      username: metadata.username || user.email?.split('@')[0] || '',
       first_name: metadata.first_name || '',
       last_name: metadata.last_name || '',
-      fullname:
-        metadata.fullname ||
-        `${metadata.first_name || ''} ${metadata.last_name || ''}`.trim(),
+      fullname: metadata.fullname || profile.full_name || '',
+      full_name: profile.full_name || '',
       occupation: metadata.occupation || '',
       company_name: metadata.company_name || '',
-      companyName: metadata.company_name || '', // For backward compatibility
-      phone: metadata.phone || '',
+      phone: profile.phone || metadata.phone || '',
       roles: metadata.roles || [],
-      pic: metadata.pic || '',
+      pic: profile.avatar_url || metadata.pic || '',
       language: metadata.language || 'en',
-      is_admin: metadata.is_admin || false,
+      is_admin: profile.role === 'supervisor',
+      
+      // Mentoring Passport specific fields from mp_profiles
+      role: profile.role,
+      avatar_url: profile.avatar_url,
+      department: profile.department,
+      bio: profile.bio,
+      status: profile.status,
     };
   },
 

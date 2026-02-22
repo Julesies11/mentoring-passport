@@ -6,12 +6,14 @@ import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollPosition } from '@/hooks/use-scroll-position';
+import { useNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { Breadcrumb } from './breadcrumb';
 
 export function Header() {
   const mobileMode = useIsMobile();
+  const { unreadCount } = useNotifications();
 
   const scrollPosition = useScrollPosition();
   const headerSticky: boolean = scrollPosition > 0;
@@ -47,9 +49,14 @@ export function Header() {
                 variant="ghost"
                 mode="icon"
                 shape="circle"
-                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
+                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary relative"
               >
                 <Bell className="size-4.5!" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Button>
             }
           />

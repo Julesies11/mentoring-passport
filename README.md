@@ -1,77 +1,113 @@
-# Metronic 9 | All-in-One Tailwind based HTML/React/Next.js Template for Modern Web Applications
+# Mentoring Passport
 
-## Getting Started
+A comprehensive mentoring program management system built with React, Supabase, and Metronic UI.
 
-Refer to the [Metronic Vite Documentation](https://docs.keenthemes.com/metronic-react)
-for comprehensive guidance on setting up and getting started your project with Metronic.
+## Overview
 
-## ReUI Components
+Mentoring Passport is a web application designed to facilitate and track mentoring relationships in professional settings. It provides role-based dashboards for supervisors, mentors, and mentees, with features for task tracking, evidence submission, meeting management, and real-time notifications.
 
-Metronic now leverages [ReUI](https://reui.io), our open-source React component library.
+## Tech Stack
 
-Star the [ReUI on GitHub](https://github.com/keenthemes/reui) to help us grow the project and stay updated on new features!
+- **Frontend**: React 19, TypeScript, Vite
+- **UI Framework**: Metronic v9.4.0 (demo1), Tailwind CSS 4.x
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage)
+- **State Management**: TanStack React Query
+- **Routing**: React Router DOM
+- **Icons**: Lucide React
 
-## Login with Supabase Auth
+## Features
 
-This project uses Supabase for authentication. Follow these steps to set up and test the login functionality:
+### ✅ Implemented
 
-### Prerequisites
+#### Authentication & Authorization
+- Supabase email/password authentication
+- Role-based access control (Supervisor, Mentor, Mentee)
+- User profiles stored in `mp_profiles` table
+- Quick test login for development
+
+#### Role-Based Navigation
+- **Supervisor**: Dashboard, Participants, Pairs, Evidence Review, Archive
+- **Mentor**: Dashboard, My Mentees, Meetings, Tasks, Evidence, Notes
+- **Mentee**: Dashboard, My Mentor, Meetings, Checklist, Evidence, Notes
+- Responsive sidebar (desktop) and bottom navigation bar (mobile)
+
+#### Universal Notifications System
+- Database-driven notifications with automatic triggers
+- Real-time updates via Supabase Realtime
+- Notification types: evidence uploaded/reviewed, notes added, meetings created, pairs created, tasks completed
+- Unread count badge on notification bell
+- Mark as read/delete functionality
+
+#### Database Schema
+All tables use `mp_` prefix:
+- `mp_profiles` - User profiles with roles
+- `mp_pairs` - Mentor-mentee pairings
+- `mp_tasks` - Standard task list (16 tasks)
+- `mp_evidence_types` - Lookup table for evidence types
+- `mp_pair_tasks` - Task completion tracking per pair
+- `mp_evidence` - Evidence submissions with approval workflow
+- `mp_meetings` - Meeting scheduling
+- `mp_notes` - Shared and private notes
+- `mp_notifications` - Universal notification system
+
+### 🚧 To Be Implemented
+
+- Participant management (CRUD)
+- Pair creation and management
+- Task completion workflow
+- Evidence upload and review
+- Meeting scheduling
+- Notes creation and sharing
+- Progress tracking and reporting
+- Archive functionality
+
+## Prerequisites
 
 - Node.js 16.x or higher
-- Npm or Yarn
-- Tailwind CSS 4.x
-- React 19.x
-- A Supabase account and project
+- npm or Yarn
+- Supabase account and project
 
-### Installation
+## Installation
 
-To set up the project dependencies, including those required for React 19, use the `--force` flag to resolve any dependency conflicts:
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd mentoring-passport
+   ```
 
-```bash
-npm install --force
-```
+2. **Install dependencies**
+   ```bash
+   npm install --force
+   ```
+   *Note: `--force` flag is required for React 19 compatibility*
 
-### Environment Setup
+3. **Configure environment variables**
+   
+   Update `.env` with your Supabase credentials:
+   ```
+   VITE_APP_NAME=mentoring-passport
+   VITE_APP_VERSION=1.0.0
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
 
-1. Make sure your `.env` file is configured with Supabase credentials:
+4. **Run database migrations**
+   
+   In Supabase SQL Editor, run:
+   - `supabase/migrations/001_schema.sql`
+   - `supabase/migrations/002_notification_triggers.sql`
 
-```
+5. **Create test user**
+   
+   In Supabase SQL Editor, run:
+   - `supabase/create-test-user.sql`
+   
+   This creates:
+   - Email: `admin@test.com`
+   - Password: `Admin123!`
+   - Role: Supervisor
 
-VITE_SUPABASE_URL=https://your-project-url.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-for-admin-functions
-
-```
-
-### Creating a Demo User
-
-For testing purposes, you can create a demo user with:
-
-```bash
-npm run create-demo-user
-```
-
-This will create a user with the following credentials:
-
-- Email: demo@kt.com
-- Password: demo123
-
-### Login Features
-
-The login implementation includes:
-
-- Email/Password authentication
-- Google OAuth integration
-- Password reset flow
-- Error handling
-- Token management
-- Protected routes
-
-### Setting Up the Demo Layout
-
-Follow the [Metronic Vite Documentation](https://docs.keenthemes.com/metronic-vite/guides/layouts) to configure and use the demo layout of your choice.
-
-### Development
+## Development
 
 Start the development server:
 
@@ -79,17 +115,88 @@ Start the development server:
 npm run dev
 ```
 
-Visit `http://localhost:5173/auth/signin` to test the login functionality.
+Visit `http://localhost:5174/auth/signin`
 
-### Testing Login
+## Testing
 
-You can test login using:
+### Quick Login
+Click the **"🚀 Quick Test Login"** button on the sign-in page to instantly log in as the test supervisor.
 
-1. The demo account credentials
-2. Register a new account (when implemented)
-3. Google Sign-in (requires proper OAuth setup in Supabase)
+### Test Accounts
+- **Supervisor**: admin@test.com / Admin123!
 
-### Reporting Issues
+### Testing Notifications
+Notifications are automatically created when:
+- Evidence is uploaded
+- Evidence is approved/rejected
+- Notes are added (non-private)
+- Meetings are created
+- Pairs are created
+- Tasks are completed
 
-If you encounter any issues or have suggestions for improvement, please contact us at [support@keenthemes.com](mailto:support@keenthemes.com).
-Include a detailed description of the issue or suggestion, and we will work to address it in the next stable release.
+## Project Structure
+
+```
+src/
+├── auth/                    # Authentication system
+│   ├── adapters/           # Supabase adapter
+│   ├── context/            # Auth context with role helpers
+│   ├── providers/          # Auth provider
+│   └── require-role.tsx    # Role-based route guard
+├── components/
+│   └── notifications/      # Notification components
+├── config/
+│   └── menu.config.tsx     # Role-based menu configurations
+├── hooks/
+│   └── use-notifications.ts # Notifications hook with real-time
+├── layouts/
+│   └── demo1/              # Main layout with sidebar/bottom nav
+├── lib/
+│   └── api/
+│       └── notifications.ts # Notifications API service
+├── pages/
+│   ├── supervisor/         # Supervisor pages
+│   ├── mentor/             # Mentor pages
+│   └── mentee/             # Mentee pages
+└── routing/
+    └── app-routing-setup.tsx # Role-based routing
+
+supabase/
+├── migrations/
+│   ├── 001_schema.sql      # Database schema
+│   └── 002_notification_triggers.sql # Notification triggers
+└── create-test-user.sql    # Test user creation
+```
+
+## Database Schema Highlights
+
+### User Roles
+- `supervisor` - Manages participants, pairs, and reviews evidence
+- `mentor` - Guides mentees through tasks
+- `mentee` - Completes tasks with mentor support
+
+### Task Evidence Types
+- N/A
+- Photo evidence
+- Screenshot of mandatory training required
+- Mentee and Mentor to keep a copy themselves
+- Mentee and Mentor to keep their own notes
+- Mentee and Mentor to keep their own notes / reflection
+
+### Standard Tasks (16 total)
+1. Initial contact
+2. Mentoring meeting 1 (with agreement, skill sharing, goal setting)
+3. Food/drink meeting
+4. Sport/outdoor activity meeting
+5. Arts/cultural/educational activity meeting
+6. Challenges (team photo, training completion, recipe sharing, media discussion)
+7. Reflections (skill sharing, goal setting)
+8. Additional meetings
+
+## Contributing
+
+This is a private project. For issues or feature requests, contact the development team.
+
+## License
+
+Proprietary - All rights reserved

@@ -121,6 +121,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         logout,
         verify,
         isAdmin,
+        // Mentoring Passport role helpers
+        role: currentUser?.role,
+        profileId: currentUser?.profile_id,
+        isSupervisor: currentUser?.role === 'supervisor',
+        isMentor: currentUser?.role === 'mentor',
+        isMentee: currentUser?.role === 'mentee',
       }}
     >
       {children}

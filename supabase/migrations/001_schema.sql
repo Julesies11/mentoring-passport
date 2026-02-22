@@ -170,7 +170,7 @@ CREATE INDEX idx_mp_notifications_unread ON mp_notifications(recipient_id, is_re
 -- ============================================================================
 
 -- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+CREATE OR REPLACE FUNCTION mp_update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -179,32 +179,32 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply updated_at trigger to relevant tables
-CREATE TRIGGER update_mp_evidence_types_updated_at BEFORE UPDATE ON mp_evidence_types
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_evidence_types_updated_at BEFORE UPDATE ON mp_evidence_types
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_profiles_updated_at BEFORE UPDATE ON mp_profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_profiles_updated_at BEFORE UPDATE ON mp_profiles
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_tasks_updated_at BEFORE UPDATE ON mp_tasks
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_tasks_updated_at BEFORE UPDATE ON mp_tasks
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_pairs_updated_at BEFORE UPDATE ON mp_pairs
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_pairs_updated_at BEFORE UPDATE ON mp_pairs
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_pair_tasks_updated_at BEFORE UPDATE ON mp_pair_tasks
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_pair_tasks_updated_at BEFORE UPDATE ON mp_pair_tasks
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_meetings_updated_at BEFORE UPDATE ON mp_meetings
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_meetings_updated_at BEFORE UPDATE ON mp_meetings
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_evidence_updated_at BEFORE UPDATE ON mp_evidence
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_evidence_updated_at BEFORE UPDATE ON mp_evidence
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
-CREATE TRIGGER update_mp_notes_updated_at BEFORE UPDATE ON mp_notes
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER mp_update_notes_updated_at BEFORE UPDATE ON mp_notes
+  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
 -- Function to auto-create profile when user signs up
-CREATE OR REPLACE FUNCTION handle_new_user()
+CREATE OR REPLACE FUNCTION mp_handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.mp_profiles (id, email, role, full_name)
@@ -219,12 +219,12 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to create profile on user signup
-CREATE TRIGGER on_auth_user_created
+CREATE TRIGGER mp_on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION mp_handle_new_user();
 
 -- Function to auto-create pair_tasks when a pair is created
-CREATE OR REPLACE FUNCTION create_pair_tasks_for_new_pair()
+CREATE OR REPLACE FUNCTION mp_create_pair_tasks_for_new_pair()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO mp_pair_tasks (pair_id, task_id, status)
@@ -235,9 +235,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to create pair_tasks when pair is created
-CREATE TRIGGER on_pair_created
+CREATE TRIGGER mp_on_pair_created
   AFTER INSERT ON mp_pairs
-  FOR EACH ROW EXECUTE FUNCTION create_pair_tasks_for_new_pair();
+  FOR EACH ROW EXECUTE FUNCTION mp_create_pair_tasks_for_new_pair();
 
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -256,7 +256,7 @@ ALTER TABLE mp_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mp_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get current user's role
-CREATE OR REPLACE FUNCTION get_my_role()
+CREATE OR REPLACE FUNCTION mp_mp_get_my_role()
 RETURNS TEXT AS $$
   SELECT role FROM mp_profiles WHERE id = auth.uid();
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
@@ -275,8 +275,8 @@ CREATE POLICY "Evidence types are viewable by all"
 CREATE POLICY "Supervisors can manage evidence types"
   ON mp_evidence_types FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_profiles
@@ -299,8 +299,8 @@ CREATE POLICY "Users can update own profile"
 CREATE POLICY "Supervisors can manage all profiles"
   ON mp_profiles FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_pairs
@@ -313,15 +313,15 @@ CREATE POLICY "Users can view their own pairs"
   USING (
     mentor_id = auth.uid() OR
     mentee_id = auth.uid() OR
-    get_my_role() = 'supervisor'
+    mp_get_my_role() = 'supervisor'
   );
 
 -- Supervisors can manage all pairs
 CREATE POLICY "Supervisors can manage pairs"
   ON mp_pairs FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_tasks
@@ -337,8 +337,8 @@ CREATE POLICY "Tasks are viewable by all"
 CREATE POLICY "Supervisors can manage tasks"
   ON mp_tasks FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_pair_tasks
@@ -352,7 +352,7 @@ CREATE POLICY "Users can view their pair tasks"
     EXISTS (
       SELECT 1 FROM mp_pairs
       WHERE mp_pairs.id = pair_id
-      AND (mentor_id = auth.uid() OR mentee_id = auth.uid() OR get_my_role() = 'supervisor')
+      AND (mentor_id = auth.uid() OR mentee_id = auth.uid() OR mp_get_my_role() = 'supervisor')
     )
   );
 
@@ -372,8 +372,8 @@ CREATE POLICY "Pair members can update pair tasks"
 CREATE POLICY "Supervisors can manage pair tasks"
   ON mp_pair_tasks FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_meetings
@@ -387,7 +387,7 @@ CREATE POLICY "Users can view their meetings"
     EXISTS (
       SELECT 1 FROM mp_pairs
       WHERE mp_pairs.id = pair_id
-      AND (mentor_id = auth.uid() OR mentee_id = auth.uid() OR get_my_role() = 'supervisor')
+      AND (mentor_id = auth.uid() OR mentee_id = auth.uid() OR mp_get_my_role() = 'supervisor')
     )
   );
 
@@ -414,8 +414,8 @@ CREATE POLICY "Pair members can manage meetings"
 CREATE POLICY "Supervisors can manage all meetings"
   ON mp_meetings FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_meeting_subtasks
@@ -430,7 +430,7 @@ CREATE POLICY "Users can view meeting subtasks"
       SELECT 1 FROM mp_meetings m
       JOIN mp_pairs p ON m.pair_id = p.id
       WHERE m.id = meeting_id
-      AND (p.mentor_id = auth.uid() OR p.mentee_id = auth.uid() OR get_my_role() = 'supervisor')
+      AND (p.mentor_id = auth.uid() OR p.mentee_id = auth.uid() OR mp_get_my_role() = 'supervisor')
     )
   );
 
@@ -459,8 +459,8 @@ CREATE POLICY "Pair members can manage meeting subtasks"
 CREATE POLICY "Supervisors can manage all meeting subtasks"
   ON mp_meeting_subtasks FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_evidence
@@ -474,7 +474,7 @@ CREATE POLICY "Users can view their evidence"
     EXISTS (
       SELECT 1 FROM mp_pairs
       WHERE mp_pairs.id = pair_id
-      AND (mentor_id = auth.uid() OR mentee_id = auth.uid() OR get_my_role() = 'supervisor')
+      AND (mentor_id = auth.uid() OR mentee_id = auth.uid() OR mp_get_my_role() = 'supervisor')
     )
   );
 
@@ -502,8 +502,8 @@ CREATE POLICY "Users can update own pending evidence"
 CREATE POLICY "Supervisors can manage all evidence"
   ON mp_evidence FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_notes
@@ -519,10 +519,10 @@ CREATE POLICY "Users can view their notes"
       WHERE mp_pairs.id = pair_id
       AND (
         (mentor_id = auth.uid() OR mentee_id = auth.uid())
-        OR get_my_role() = 'supervisor'
+        OR mp_get_my_role() = 'supervisor'
       )
     )
-    AND (is_private = false OR author_id = auth.uid() OR get_my_role() = 'supervisor')
+    AND (is_private = false OR author_id = auth.uid() OR mp_get_my_role() = 'supervisor')
   );
 
 -- Pair members can create notes
@@ -549,8 +549,8 @@ CREATE POLICY "Users can manage own notes"
 CREATE POLICY "Supervisors can manage all notes"
   ON mp_notes FOR ALL
   TO authenticated
-  USING (get_my_role() = 'supervisor')
-  WITH CHECK (get_my_role() = 'supervisor');
+  USING (mp_get_my_role() = 'supervisor')
+  WITH CHECK (mp_get_my_role() = 'supervisor');
 
 -- ============================================================================
 -- RLS POLICIES: mp_notifications
@@ -618,78 +618,68 @@ FROM (VALUES
 
 -- Create storage bucket for evidence photos
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('evidence-photos', 'evidence-photos', false)
+VALUES ('mp-evidence-photos', 'mp-evidence-photos', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for evidence-photos bucket
 CREATE POLICY "Authenticated users can upload evidence photos"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK (bucket_id = 'evidence-photos');
+  WITH CHECK (bucket_id = 'mp-evidence-photos');
 
 CREATE POLICY "Users can view evidence photos for their pairs"
   ON storage.objects FOR SELECT
   TO authenticated
   USING (
-    bucket_id = 'evidence-photos'
+    bucket_id = 'mp-evidence-photos'
     AND (
       -- Check if user is part of the pair that owns this evidence
       EXISTS (
         SELECT 1 FROM mp_evidence e
         JOIN mp_pairs p ON e.pair_id = p.id
         WHERE e.file_url LIKE '%' || name || '%'
-        AND (p.mentor_id = auth.uid() OR p.mentee_id = auth.uid() OR get_my_role() = 'supervisor')
+        AND (p.mentor_id = auth.uid() OR p.mentee_id = auth.uid() OR mp_get_my_role() = 'supervisor')
       )
     )
   );
 
-CREATE POLICY "Users can delete their own evidence photos"
+CREATE POLICY "Users can delete their pending evidence photos"
   ON storage.objects FOR DELETE
   TO authenticated
   USING (
-    bucket_id = 'evidence-photos'
+    bucket_id = 'mp-evidence-photos'
     AND (
       EXISTS (
         SELECT 1 FROM mp_evidence
         WHERE file_url LIKE '%' || name || '%'
         AND submitted_by = auth.uid()
-        AND status = 'pending'
       )
-      OR get_my_role() = 'supervisor'
+      OR mp_mp_get_my_role() = 'supervisor'
     )
   );
 
 -- Create storage bucket for profile avatars
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('avatars', 'avatars', true)
+VALUES ('mp-avatars', 'mp-avatars', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for avatars bucket
 CREATE POLICY "Anyone can view avatars"
   ON storage.objects FOR SELECT
   TO public
-  USING (bucket_id = 'avatars');
+  USING (bucket_id = 'mp-avatars');
 
 CREATE POLICY "Users can upload their own avatar"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK (
-    bucket_id = 'avatars'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
+  WITH CHECK (bucket_id = 'mp-avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 CREATE POLICY "Users can update their own avatar"
   ON storage.objects FOR UPDATE
   TO authenticated
-  USING (
-    bucket_id = 'avatars'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
+  USING (bucket_id = 'mp-avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 CREATE POLICY "Users can delete their own avatar"
   ON storage.objects FOR DELETE
   TO authenticated
-  USING (
-    bucket_id = 'avatars'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
+  USING (bucket_id = 'mp-avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
