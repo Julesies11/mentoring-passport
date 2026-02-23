@@ -79,6 +79,13 @@ export function useParticipant(id: string) {
   });
 }
 
+export function useAllParticipants() {
+  return useQuery({
+    queryKey: ['participants'],
+    queryFn: fetchParticipants,
+  });
+}
+
 export function useParticipantsByRole(role: 'supervisor' | 'mentor' | 'mentee') {
   return useQuery({
     queryKey: ['participants', 'role', role],

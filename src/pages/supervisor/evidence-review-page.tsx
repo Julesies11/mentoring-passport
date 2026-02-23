@@ -128,7 +128,7 @@ export function EvidenceReviewPage() {
                         <TableCell>{item.task?.name || 'Unknown Task'}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {item.evidence_type?.name || 'Unknown'}
+                            {item.type || 'Unknown'}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
@@ -201,7 +201,7 @@ export function EvidenceReviewPage() {
               <div>
                 <p className="text-sm font-medium mb-1">Evidence Type</p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedEvidence.evidence_type?.name}
+                  {selectedEvidence.type || 'Unknown'}
                 </p>
               </div>
               {selectedEvidence.description && (

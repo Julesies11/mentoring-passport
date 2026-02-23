@@ -77,6 +77,13 @@ export function useUserPairs(userId: string) {
   });
 }
 
+export function useAllPairs() {
+  return useQuery({
+    queryKey: ['pairs'],
+    queryFn: fetchPairs,
+  });
+}
+
 export function usePair(id: string) {
   return useQuery({
     queryKey: ['pairs', id],

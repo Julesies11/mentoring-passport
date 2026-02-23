@@ -7,6 +7,7 @@ import { Demo1Layout } from '@/layouts/demo1/layout';
 import { SupervisorDashboardPage } from '@/pages/supervisor/dashboard-page';
 import { ParticipantsPage } from '@/pages/supervisor/participants-page';
 import { PairsPage } from '@/pages/supervisor/pairs-page';
+import { EvidenceReviewPage } from '@/pages/supervisor/evidence-review-page';
 import { MentorDashboardPage } from '@/pages/mentor/dashboard-page';
 import { TasksPage as MentorTasksPage } from '@/pages/mentor/tasks-page';
 import { MentorMenteesPage } from '@/pages/mentor/mentees-page';
@@ -15,6 +16,10 @@ import { MentorEvidencePage } from '@/pages/mentor/evidence-page';
 import { MentorNotesPage } from '@/pages/mentor/notes-page';
 import { MenteeDashboardPage } from '@/pages/mentee/dashboard-page';
 import { ChecklistPage } from '@/pages/mentee/checklist-page';
+import { MenteeMentorPage } from '@/pages/mentee/mentor-page';
+import { MenteeMeetingsPage } from '@/pages/mentee/meetings-page';
+import { MenteeEvidencePage } from '@/pages/mentee/evidence-page';
+import { MenteeNotesPage } from '@/pages/mentee/notes-page';
 import { Navigate, Route, Routes } from 'react-router';
 
 // Role-based redirect component
@@ -67,6 +72,14 @@ export function AppRoutingSetup() {
             element={
               <RequireRole allowedRoles={['supervisor']}>
                 <PairsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/supervisor/evidence-review"
+            element={
+              <RequireRole allowedRoles={['supervisor']}>
+                <EvidenceReviewPage />
               </RequireRole>
             }
           />
@@ -135,6 +148,38 @@ export function AppRoutingSetup() {
             element={
               <RequireRole allowedRoles={['mentee']}>
                 <ChecklistPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentee/mentor"
+            element={
+              <RequireRole allowedRoles={['mentee']}>
+                <MenteeMentorPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentee/meetings"
+            element={
+              <RequireRole allowedRoles={['mentee']}>
+                <MenteeMeetingsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentee/evidence"
+            element={
+              <RequireRole allowedRoles={['mentee']}>
+                <MenteeEvidencePage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentee/notes"
+            element={
+              <RequireRole allowedRoles={['mentee']}>
+                <MenteeNotesPage />
               </RequireRole>
             }
           />

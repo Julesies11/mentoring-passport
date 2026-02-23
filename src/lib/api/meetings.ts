@@ -120,11 +120,9 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     .insert({
       pair_id: input.pair_id,
       title: input.title,
-      description: input.description,
-      scheduled_at: input.scheduled_at,
-      duration_minutes: input.duration_minutes,
-      location: input.location,
-      status: 'scheduled',
+      notes: input.description,
+      date_time: input.scheduled_at,
+      status: 'upcoming',
     })
     .select(`
       *,

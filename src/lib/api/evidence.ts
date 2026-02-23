@@ -106,7 +106,6 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
     .select(`
       *,
       task:mp_tasks(id, name),
-      evidence_type:mp_evidence_types(id, name),
       pair:mp_pairs(
         id,
         mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
