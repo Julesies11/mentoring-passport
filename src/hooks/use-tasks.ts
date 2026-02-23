@@ -7,10 +7,28 @@ import {
 } from '@/lib/api/tasks';
 
 export function useTasks() {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['tasks'],
     queryFn: fetchTasks,
   });
+
+  // Don't fetch all pair tasks - it causes infinite errors
+  // Instead, fetch tasks per pair when needed
+  const pairTasks: any[] = [];
+  const isLoadingPairTasks = false;
+
+  return {
+    tasks,
+    pairTasks,
+    isLoading,
+    isLoadingPairTasks,
+    error,
+    fetchPairTasks,
+    fetchPairTaskStats,
+    updatePairTaskStatus,
+  };
 }
 
 export function usePairTasks(pairId: string) {

@@ -91,7 +91,9 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
  * This creates both the auth user and the profile
  */
 export async function createParticipant(input: CreateParticipantInput): Promise<Participant> {
-  // Create the auth user
+  console.log('Creating participant:', input.email);
+  
+  // Create the auth user with auto-confirm enabled
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
@@ -99,17 +101,28 @@ export async function createParticipant(input: CreateParticipantInput): Promise<
       data: {
         full_name: input.full_name || '',
       },
+      emailRedirectTo: undefined,
     },
   });
 
+  console.log('Auth signup result:', { authData, authError });
+
   if (authError) {
     console.error('Error creating auth user:', authError);
-    throw authError;
+    throw new Error(`Failed to create user: ${authError.message}`);
   }
 
   if (!authData.user) {
-    throw new Error('Failed to create user');
+    throw new Error('Failed to create user - no user data returned');
   }
+
+  // If user was created but needs confirmation, this is the issue
+  if (authData.user && !authData.user.email_confirmed_at) {
+    console.warn('User created but email not confirmed. Check Supabase email confirmation settings.');
+  }
+
+  // Wait a moment for the trigger to create the profile
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Update the profile with additional details
   // The profile is auto-created by the mp_handle_new_user trigger
@@ -120,14 +133,21 @@ export async function createParticipant(input: CreateParticipantInput): Promise<
       full_name: input.full_name,
       department: input.department,
       phone: input.phone,
+      must_change_password: true,
     })
     .eq('id', authData.user.id)
     .select()
     .single();
 
+  console.log('Profile update result:', { profile, profileError });
+
   if (profileError) {
     console.error('Error updating profile:', profileError);
-    throw profileError;
+    throw new Error(`Failed to update profile: ${profileError.message}`);
+  }
+
+  if (!profile) {
+    throw new Error('Profile was not created by trigger. Check mp_handle_new_user trigger.');
   }
 
   return profile;

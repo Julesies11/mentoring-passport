@@ -24,6 +24,14 @@ export function usePairs() {
     queryFn: fetchPairStats,
   });
 
+  const fetchUserPairsQuery = (userId: string) => {
+    return useQuery({
+      queryKey: ['pairs', 'user', userId],
+      queryFn: () => fetchUserPairs(userId),
+      enabled: !!userId,
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: createPair,
     onSuccess: () => {
@@ -61,18 +69,18 @@ export function usePairs() {
   };
 }
 
-export function usePair(id: string) {
-  return useQuery({
-    queryKey: ['pairs', id],
-    queryFn: () => fetchPair(id),
-    enabled: !!id,
-  });
-}
-
 export function useUserPairs(userId: string) {
   return useQuery({
     queryKey: ['pairs', 'user', userId],
     queryFn: () => fetchUserPairs(userId),
     enabled: !!userId,
+  });
+}
+
+export function usePair(id: string) {
+  return useQuery({
+    queryKey: ['pairs', id],
+    queryFn: () => fetchPair(id),
+    enabled: !!id,
   });
 }

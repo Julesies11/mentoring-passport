@@ -1,7 +1,50 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
+import { useUserPairs } from '@/hooks/use-pairs';
+import { useTasks } from '@/hooks/use-tasks';
+import { useAllMeetings } from '@/hooks/use-meetings';
 
 export function MentorDashboardPage() {
   const { user } = useAuth();
+  const { data: pairs = [] } = useUserPairs(user?.id || '');
+  const { fetchPairTasks } = useTasks();
+  const { meetings = [] } = useAllMeetings();
+
+  // Fetch tasks for each mentor pair
+  const [mentorTasks, setMentorTasks] = useState<any[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAllTasks = async () => {
+      if (pairs.length === 0) {
+        setTasksLoading(false);
+        return;
+      }
+
+      try {
+        const allTasks: any[] = [];
+        for (const pair of pairs) {
+          const tasks = await fetchPairTasks(pair.id);
+          allTasks.push(...tasks);
+        }
+        setMentorTasks(allTasks);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      } finally {
+        setTasksLoading(false);
+      }
+    };
+
+    fetchAllTasks();
+  }, [pairs, fetchPairTasks]);
+
+  // Calculate statistics
+  const menteeCount = pairs.length;
+  const completedTasks = mentorTasks.filter((task: any) => task.status === 'completed').length;
+  const totalTasks = mentorTasks.length;
+  const upcomingMeetings = meetings.filter((meeting: any) => 
+    meeting.status === 'upcoming' && new Date(meeting.date_time) > new Date()
+  ).length;
 
   return (
     <div className="container-fixed">
@@ -18,17 +61,17 @@ export function MentorDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-7.5">
           <div className="card p-7.5">
             <h3 className="text-lg font-semibold mb-2">My Mentees</h3>
-            <p className="text-3xl font-bold text-primary">0</p>
+            <p className="text-3xl font-bold text-primary">{menteeCount}</p>
           </div>
 
           <div className="card p-7.5">
             <h3 className="text-lg font-semibold mb-2">Tasks Completed</h3>
-            <p className="text-3xl font-bold text-success">0/16</p>
+            <p className="text-3xl font-bold text-success">{completedTasks}/{totalTasks}</p>
           </div>
 
           <div className="card p-7.5">
             <h3 className="text-lg font-semibold mb-2">Upcoming Meetings</h3>
-            <p className="text-3xl font-bold text-info">0</p>
+            <p className="text-3xl font-bold text-info">{upcomingMeetings}</p>
           </div>
         </div>
 

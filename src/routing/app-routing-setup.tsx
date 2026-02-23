@@ -9,6 +9,10 @@ import { ParticipantsPage } from '@/pages/supervisor/participants-page';
 import { PairsPage } from '@/pages/supervisor/pairs-page';
 import { MentorDashboardPage } from '@/pages/mentor/dashboard-page';
 import { TasksPage as MentorTasksPage } from '@/pages/mentor/tasks-page';
+import { MentorMenteesPage } from '@/pages/mentor/mentees-page';
+import { MentorMeetingsPage } from '@/pages/mentor/meetings-page';
+import { MentorEvidencePage } from '@/pages/mentor/evidence-page';
+import { MentorNotesPage } from '@/pages/mentor/notes-page';
 import { MenteeDashboardPage } from '@/pages/mentee/dashboard-page';
 import { ChecklistPage } from '@/pages/mentee/checklist-page';
 import { Navigate, Route, Routes } from 'react-router';
@@ -81,6 +85,38 @@ export function AppRoutingSetup() {
             element={
               <RequireRole allowedRoles={['mentor']}>
                 <MentorTasksPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentor/mentees"
+            element={
+              <RequireRole allowedRoles={['mentor']}>
+                <MentorMenteesPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentor/meetings"
+            element={
+              <RequireRole allowedRoles={['mentor']}>
+                <MentorMeetingsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentor/evidence"
+            element={
+              <RequireRole allowedRoles={['mentor']}>
+                <MentorEvidencePage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/mentor/notes"
+            element={
+              <RequireRole allowedRoles={['mentor']}>
+                <MentorNotesPage />
               </RequireRole>
             }
           />

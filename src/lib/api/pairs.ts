@@ -75,9 +75,11 @@ export async function fetchPair(id: string): Promise<Pair | null> {
 
 /**
  * Create a new mentor-mentee pair
+ * Also creates pair_tasks for all existing tasks (moved from database trigger to application layer)
  */
 export async function createPair(input: CreatePairInput): Promise<Pair> {
-  const { data, error } = await supabase
+  // Step 1: Create the pair
+  const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
     .insert(input)
     .select(`
@@ -87,12 +89,42 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     `)
     .single();
 
-  if (error) {
-    console.error('Error creating pair:', error);
-    throw error;
+  if (pairError) {
+    console.error('Error creating pair:', pairError);
+    throw pairError;
   }
 
-  return data;
+  // Step 2: Fetch all tasks
+  const { data: tasks, error: tasksError } = await supabase
+    .from('mp_tasks')
+    .select('id');
+
+  if (tasksError) {
+    console.error('Error fetching tasks:', tasksError);
+    throw tasksError;
+  }
+
+  // Step 3: Create pair_tasks for this new pair
+  if (tasks && tasks.length > 0) {
+    const pairTasks = tasks.map(task => ({
+      pair_id: pair.id,
+      task_id: task.id,
+      status: 'not_submitted' as const,
+    }));
+
+    const { error: pairTasksError } = await supabase
+      .from('mp_pair_tasks')
+      .insert(pairTasks);
+
+    if (pairTasksError) {
+      console.error('Error creating pair tasks:', pairTasksError);
+      // Note: Pair was created successfully, but pair_tasks failed
+      // You might want to handle this differently (e.g., rollback, retry, or log)
+      throw new Error(`Pair created but failed to create tasks: ${pairTasksError.message}`);
+    }
+  }
+
+  return pair;
 }
 
 /**

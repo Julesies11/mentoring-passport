@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useParticipants } from '@/hooks/use-participants';
+import { CreateParticipantDialog } from '@/components/participants/participant-dialog-create';
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
+import { CredentialsDialog } from '@/components/participants/credentials-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -48,11 +50,21 @@ export function ParticipantsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'supervisor' | 'mentor' | 'mentee'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'archived'>('active');
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [newCredentials, setNewCredentials] = useState({ email: '', password: '', name: '', role: '' });
 
   const handleCreate = async (data: CreateParticipantInput) => {
     await createParticipant(data);
+    setNewCredentials({
+      email: data.email,
+      password: data.password,
+      name: data.full_name || data.email,
+      role: data.role,
+    });
+    setShowCredentials(true);
   };
 
   const handleUpdate = async (data: UpdateParticipantInput) => {
@@ -62,13 +74,12 @@ export function ParticipantsPage() {
   };
 
   const handleOpenCreate = () => {
-    setEditingParticipant(null);
-    setDialogOpen(true);
+    setCreateDialogOpen(true);
   };
 
   const handleOpenEdit = (participant: Participant) => {
     setEditingParticipant(participant);
-    setDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
   const filteredParticipants = participants.filter((participant) => {
@@ -276,12 +287,28 @@ export function ParticipantsPage() {
         </div>
       </div>
 
+      <CreateParticipantDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSubmit={handleCreate}
+        isLoading={isCreating}
+      />
+
       <ParticipantDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
         participant={editingParticipant}
-        onSubmit={editingParticipant ? handleUpdate : handleCreate}
-        isLoading={isCreating || isUpdating}
+        onSubmit={handleUpdate}
+        isLoading={isUpdating}
+      />
+
+      <CredentialsDialog
+        open={showCredentials}
+        onOpenChange={setShowCredentials}
+        email={newCredentials.email}
+        password={newCredentials.password}
+        name={newCredentials.name}
+        role={newCredentials.role}
       />
     </div>
   );

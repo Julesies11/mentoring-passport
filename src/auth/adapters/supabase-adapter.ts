@@ -255,6 +255,7 @@ export const SupabaseAdapter = {
       department: profile.department,
       bio: profile.bio,
       status: profile.status,
+      must_change_password: profile.must_change_password,
     };
   },
 

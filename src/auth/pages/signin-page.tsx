@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { SupabaseAdapter } from '@/auth/adapters/supabase-adapter';
 import { useAuth } from '@/auth/context/auth-context';
+import { supabase } from '@/lib/supabase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -24,7 +24,7 @@ import { LoaderCircleIcon } from 'lucide-react';
 export function SignInPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +37,22 @@ export function SignInPage() {
       setIsProcessing(true);
       setError(null);
       await login('admin@test.com', 'Admin123!');
+      
+      // Check if user needs to change password
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('mp_profiles')
+          .select('must_change_password')
+          .eq('id', authUser.id)
+          .single();
+        
+        if (profile?.must_change_password) {
+          navigate('/auth/change-password');
+          return;
+        }
+      }
+      
       const nextPath = searchParams.get('next') || '/';
       navigate(nextPath);
     } catch (err) {
@@ -115,6 +131,21 @@ export function SignInPage() {
 
       // Sign in using the auth context
       await login(values.email, values.password);
+
+      // Check if user needs to change password
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('mp_profiles')
+          .select('must_change_password')
+          .eq('id', authUser.id)
+          .single();
+        
+        if (profile?.must_change_password) {
+          navigate('/auth/change-password');
+          return;
+        }
+      }
 
       // Get the 'next' parameter from URL if it exists
       const nextPath = searchParams.get('next') || '/';

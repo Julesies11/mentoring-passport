@@ -24,7 +24,7 @@ import {
 export function ChangePasswordPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const {} = useAuth();
+  const { user, role } = useAuth();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -99,15 +99,45 @@ export function ChangePasswordPage() {
         throw new Error(error.message);
       }
 
+      // Clear the must_change_password flag if user is logged in
+      if (user) {
+        const { error: profileError } = await supabase
+          .from('mp_profiles')
+          .update({ must_change_password: false })
+          .eq('id', user.id);
+
+        if (profileError) {
+          console.error('Error clearing must_change_password flag:', profileError);
+        }
+      }
+
       // Set success message
       setSuccessMessage('Password changed successfully!');
 
       // Reset form
       form.reset();
 
-      // Redirect to login page after a successful password reset
+      // Redirect based on context
       setTimeout(() => {
-        navigate('/auth/signin');
+        if (user && role) {
+          // User is logged in, redirect to their dashboard
+          switch (role) {
+            case 'supervisor':
+              navigate('/supervisor/dashboard');
+              break;
+            case 'mentor':
+              navigate('/mentor/dashboard');
+              break;
+            case 'mentee':
+              navigate('/mentee/dashboard');
+              break;
+            default:
+              navigate('/');
+          }
+        } else {
+          // User is not logged in (password reset via email), redirect to login
+          navigate('/auth/signin');
+        }
       }, 2000);
     } catch (err) {
       console.error('Password reset error:', err);
@@ -121,7 +151,11 @@ export function ChangePasswordPage() {
     }
   }
 
-  if (!token && !tokenValid) {
+  // If user is logged in, allow them to change password without token
+  // This handles the forced password change flow
+  const isLoggedIn = !!user;
+  
+  if (!token && !tokenValid && !isLoggedIn) {
     return (
       <div className="max-w-md mx-auto space-y-5">
         <div className="text-center space-y-2">
@@ -161,10 +195,13 @@ export function ChangePasswordPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold tracking-tight">
-              Set New Password
+              {isLoggedIn && !token ? 'Change Your Password' : 'Set New Password'}
             </h1>
             <p className="text-muted-foreground">
-              Create a strong password for your account
+              {isLoggedIn && !token 
+                ? 'You are required to change your password before continuing'
+                : 'Create a strong password for your account'
+              }
             </p>
           </div>
 
