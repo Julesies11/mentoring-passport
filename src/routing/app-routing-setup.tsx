@@ -8,6 +8,7 @@ import { SupervisorDashboardPage } from '@/pages/supervisor/dashboard-page';
 import { ParticipantsPage } from '@/pages/supervisor/participants-page';
 import { PairsPage } from '@/pages/supervisor/pairs-page';
 import { EvidenceReviewPage } from '@/pages/supervisor/evidence-review-page';
+import { SupervisorChecklistPage } from '@/pages/supervisor/checklist-page';
 import { MentorDashboardPage } from '@/pages/mentor/dashboard-page';
 import { TasksPage as MentorTasksPage } from '@/pages/mentor/tasks-page';
 import { MentorMenteesPage } from '@/pages/mentor/mentees-page';
@@ -80,6 +81,14 @@ export function AppRoutingSetup() {
             element={
               <RequireRole allowedRoles={['supervisor']}>
                 <EvidenceReviewPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/supervisor/checklist"
+            element={
+              <RequireRole allowedRoles={['supervisor']}>
+                <SupervisorChecklistPage />
               </RequireRole>
             }
           />

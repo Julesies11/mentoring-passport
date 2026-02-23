@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserPlus, Search, MoreVertical, Archive, RotateCcw, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import type { Participant, CreateParticipantInput, UpdateParticipantInput } from '@/lib/api/participants';
 
 const roleColors = {
@@ -222,7 +223,6 @@ export function ParticipantsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
@@ -232,10 +232,20 @@ export function ParticipantsPage() {
                   <TableBody>
                     {filteredParticipants.map((participant) => (
                       <TableRow key={participant.id}>
-                        <TableCell className="font-medium">
-                          {participant.full_name || 'No name'}
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <ProfileAvatar
+                              userId={participant.id}
+                              currentAvatar={participant.avatar_url}
+                              userName={participant.full_name || participant.email}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="font-medium">{participant.full_name || 'No name'}</p>
+                              <p className="text-sm text-muted-foreground">{participant.email}</p>
+                            </div>
+                          </div>
                         </TableCell>
-                        <TableCell>{participant.email}</TableCell>
                         <TableCell>
                           <Badge className={cn('capitalize', roleColors[participant.role])}>
                             {participant.role}

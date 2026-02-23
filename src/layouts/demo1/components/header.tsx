@@ -7,13 +7,16 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollPosition } from '@/hooks/use-scroll-position';
 import { useNotifications } from '@/hooks/use-notifications';
+import { useAuth } from '@/auth/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Breadcrumb } from './breadcrumb';
 
 export function Header() {
   const mobileMode = useIsMobile();
   const { unreadCount } = useNotifications();
+  const { user } = useAuth();
 
   const scrollPosition = useScrollPosition();
   const headerSticky: boolean = scrollPosition > 0;
@@ -64,10 +67,13 @@ export function Header() {
           />
           <UserDropdownMenu
             trigger={
-              <img
-                className="size-9 rounded-full border-2 border-green-500 shrink-0 cursor-pointer"
-                src={toAbsoluteUrl('/media/avatars/300-2.png')}
-                alt="User Avatar"
+              <ProfileAvatar
+                userId={user?.id || ''}
+                currentAvatar={user?.avatar_url}
+                userName={user?.full_name || user?.email}
+                size="md"
+                showEditButton={true}
+                className="cursor-pointer"
               />
             }
           />

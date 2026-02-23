@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePairs } from '@/hooks/use-pairs';
 import { useParticipantsByRole } from '@/hooks/use-participants';
+import { usePairTasks } from '@/hooks/use-tasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -33,15 +34,39 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Link2, Search, MoreVertical, Archive, CheckCircle } from 'lucide-react';
+import { Link2, Search, MoreVertical, Archive, CheckCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { Link } from 'react-router-dom';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 const statusColors = {
   active: 'bg-green-100 text-green-800',
   completed: 'bg-blue-100 text-blue-800',
   archived: 'bg-gray-100 text-gray-800',
 };
+
+// Component to display pair progress with link to checklist
+function PairProgress({ pairId }: { pairId: string }) {
+  const { stats, isLoading } = usePairTasks(pairId);
+
+  if (isLoading) {
+    return <span className="text-sm text-muted-foreground">Loading...</span>;
+  }
+
+  if (!stats) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  return (
+    <Link 
+      to={`/supervisor/checklist?pair=${pairId}`}
+      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+    >
+      {stats.completed}/{stats.total}
+    </Link>
+  );
+}
 
 export function PairsPage() {
   const { pairs, stats, isLoading, createPair, updatePair, archivePair, isCreating } = usePairs();
@@ -183,6 +208,7 @@ export function PairsPage() {
                       <TableHead>Mentor</TableHead>
                       <TableHead>Mentee</TableHead>
                       <TableHead>Department</TableHead>
+                      <TableHead>Progress</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -192,18 +218,37 @@ export function PairsPage() {
                     {filteredPairs.map((pair) => (
                       <TableRow key={pair.id}>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{pair.mentor?.full_name || 'No name'}</p>
-                            <p className="text-sm text-muted-foreground">{pair.mentor?.email}</p>
+                          <div className="flex items-center gap-3">
+                            <ProfileAvatar
+                              userId={pair.mentor?.id || ''}
+                              currentAvatar={pair.mentor?.avatar_url}
+                              userName={pair.mentor?.full_name || pair.mentor?.email}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="font-medium">{pair.mentor?.full_name || 'No name'}</p>
+                              <p className="text-sm text-muted-foreground">{pair.mentor?.email}</p>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{pair.mentee?.full_name || 'No name'}</p>
-                            <p className="text-sm text-muted-foreground">{pair.mentee?.email}</p>
+                          <div className="flex items-center gap-3">
+                            <ProfileAvatar
+                              userId={pair.mentee?.id || ''}
+                              currentAvatar={pair.mentee?.avatar_url}
+                              userName={pair.mentee?.full_name || pair.mentee?.email}
+                              size="sm"
+                            />
+                            <div>
+                              <p className="font-medium">{pair.mentee?.full_name || 'No name'}</p>
+                              <p className="text-sm text-muted-foreground">{pair.mentee?.email}</p>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>{pair.mentor?.department || '-'}</TableCell>
+                        <TableCell>
+                          <PairProgress pairId={pair.id} />
+                        </TableCell>
                         <TableCell>
                           <Badge className={cn('capitalize', statusColors[pair.status])}>
                             {pair.status}
@@ -220,6 +265,12 @@ export function PairsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link to={`/supervisor/checklist?pair=${pair.id}`}>
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  View Checklist
+                                </Link>
+                              </DropdownMenuItem>
                               {pair.status === 'active' && (
                                 <DropdownMenuItem onClick={() => handleMarkComplete(pair.id)}>
                                   <CheckCircle className="w-4 h-4" />

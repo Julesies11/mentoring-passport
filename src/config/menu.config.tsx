@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Image,
   StickyNote,
+  CheckSquare,
 } from 'lucide-react';
 import { type MenuConfig } from './types';
 
