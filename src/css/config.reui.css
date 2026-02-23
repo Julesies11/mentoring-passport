@@ -105,3 +105,34 @@
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(0.825 / 0.6875);
 }
+
+/** Container Utilities **/
+@layer utilities {
+  .container-fixed {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  @media (min-width: theme(--breakpoint-sm)) {
+    .container-fixed {
+      @apply px-6;
+    }
+  }
+  
+  @media (min-width: theme(--breakpoint-lg)) {
+    .container-fixed {
+      @apply px-8;
+    }
+  }
+  
+  @media (min-width: theme(--breakpoint-xl)) {
+    .container-fixed {
+      @apply max-w-screen-xl;
+    }
+  }
+  
+  @media (min-width: theme(--breakpoint-2xl)) {
+    .container-fixed {
+      @apply max-w-screen-2xl;
+    }
+  }
+}

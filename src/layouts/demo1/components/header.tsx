@@ -38,7 +38,9 @@ export function Header() {
             </Link>
           </div>
         ) : (
-          <Breadcrumb />
+          <div className="flex-1">
+            <Breadcrumb />
+          </div>
         )}
 
         {/* Right: Notifications + User Avatar */}
