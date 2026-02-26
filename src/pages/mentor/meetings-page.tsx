@@ -12,11 +12,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, MapPin, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 
 export function MentorMeetingsPage() {
   const { user } = useAuth();
   const { createMeeting, updateMeeting, deleteMeeting, meetings = [], isLoading } = useAllMeetings();
   const { data: pairs = [] } = useUserPairs(user?.id || '');
+
+  // Get active pair
+  const activePair = pairs.find(p => p.status === 'active');
+
+  // Filter meetings for mentor's pairs
+  const mentorMeetings = meetings.filter(meeting => 
+    pairs.some(pair => pair.id === meeting.pair_id)
+  );
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
@@ -31,7 +40,7 @@ export function MentorMeetingsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'scheduled':
+      case 'upcoming':
         return 'bg-blue-100 text-blue-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
@@ -84,6 +93,17 @@ export function MentorMeetingsPage() {
     }
   };
 
+  const handleCalendarUpdate = async (meeting: any) => {
+    try {
+      await updateMeeting(meeting.id, {
+        title: meeting.title,
+        notes: meeting.notes,
+      });
+    } catch (error) {
+      console.error('Error updating meeting:', error);
+    }
+  };
+
   const handleDeleteMeeting = async (meetingId: string) => {
     try {
       await deleteMeeting(meetingId);
@@ -119,7 +139,7 @@ export function MentorMeetingsPage() {
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
             <Badge variant="outline" className="bg-blue-50">
-              {meetings.filter(m => m.status === 'scheduled').length} Scheduled
+              {meetings.filter(m => m.status === 'upcoming').length} Scheduled
             </Badge>
             <Badge variant="outline" className="bg-green-50">
               {meetings.filter(m => m.status === 'completed').length} Completed
@@ -259,7 +279,7 @@ export function MentorMeetingsPage() {
                         {meeting.status}
                       </Badge>
                       <Badge className={getTypeColor(meeting.meeting_type)}>
-                        {meeting.meeting_type.replace('_', ' ')}
+                        {meeting.meeting_type?.replace('_', ' ') || 'Regular'}
                       </Badge>
                     </div>
                   </div>
@@ -269,7 +289,7 @@ export function MentorMeetingsPage() {
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        {format(new Date(meeting.scheduled_at), 'PPP p')}
+                        {format(new Date(meeting.date_time), 'PPP p')}
                       </div>
                       {meeting.location && (
                         <div className="flex items-center gap-2">
@@ -279,12 +299,12 @@ export function MentorMeetingsPage() {
                       )}
                     </div>
                     
-                    {meeting.description && (
-                      <p className="text-gray-700">{meeting.description}</p>
+                    {meeting.notes && (
+                      <p className="text-gray-700">{meeting.notes}</p>
                     )}
                     
                     <div className="flex gap-2">
-                      {meeting.status === 'scheduled' && (
+                      {meeting.status === 'upcoming' && (
                         <>
                           <Button size="sm" onClick={() => handleUpdateMeeting(meeting.id, 'completed')}>
                             Mark Complete
@@ -307,6 +327,17 @@ export function MentorMeetingsPage() {
             ))}
           </div>
         )}
+      </div>
+
+        {/* Calendar Section */}
+        <div className="mt-8">
+          <MeetingCalendar
+          meetings={mentorMeetings}
+          selectedParticipant={activePair?.id || ''}
+          onMeetingCreate={handleCreateMeeting}
+          onMeetingUpdate={handleCalendarUpdate}
+          onMeetingDelete={handleDeleteMeeting}
+        />
       </div>
     </div>
   );

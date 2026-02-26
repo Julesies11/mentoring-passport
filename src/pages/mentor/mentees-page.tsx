@@ -5,11 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Phone, Calendar, MessageSquare } from 'lucide-react';
+import { Mail, Phone, Calendar, MessageSquare, ListTodo } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function MentorMenteesPage() {
   const { user } = useAuth();
   const { data: pairs = [], isLoading } = useUserPairs(user?.id || '');
+  const navigate = useNavigate();
+
+  const handleViewTasks = (menteeId: string) => {
+    navigate(`/mentor/tasks?mentee=${menteeId}`);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,7 +121,8 @@ export function MentorMenteesPage() {
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Message
                     </Button>
-                    <Button size="sm" className="flex-1">
+                    <Button size="sm" className="flex-1" onClick={() => handleViewTasks(pair.mentee?.id || '')}>
+                      <ListTodo className="h-4 w-4 mr-2" />
                       View Tasks
                     </Button>
                   </div>

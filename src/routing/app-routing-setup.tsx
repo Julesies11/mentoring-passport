@@ -7,7 +7,9 @@ import { Demo1Layout } from '@/layouts/demo1/layout';
 import { SupervisorDashboardPage } from '@/pages/supervisor/dashboard-page';
 import { ParticipantsPage } from '@/pages/supervisor/participants-page';
 import { PairsPage } from '@/pages/supervisor/pairs-page';
+import { SupervisorMasterTasksPage } from '@/pages/supervisor/master-tasks-page';
 import { EvidenceReviewPage } from '@/pages/supervisor/evidence-review-page';
+import { SupervisorCalendarPage } from '@/pages/supervisor/calendar-page';
 import { SupervisorChecklistPage } from '@/pages/supervisor/checklist-page';
 import { MentorDashboardPage } from '@/pages/mentor/dashboard-page';
 import { TasksPage as MentorTasksPage } from '@/pages/mentor/tasks-page';
@@ -21,6 +23,7 @@ import { MenteeMentorPage } from '@/pages/mentee/mentor-page';
 import { MenteeMeetingsPage } from '@/pages/mentee/meetings-page';
 import { MenteeEvidencePage } from '@/pages/mentee/evidence-page';
 import { MenteeNotesPage } from '@/pages/mentee/notes-page';
+import { EditProfilePage } from '@/pages/profile/edit-profile';
 import { Navigate, Route, Routes } from 'react-router';
 
 // Role-based redirect component
@@ -77,10 +80,26 @@ export function AppRoutingSetup() {
             }
           />
           <Route
+            path="/supervisor/master-tasks"
+            element={
+              <RequireRole allowedRoles={['supervisor']}>
+                <SupervisorMasterTasksPage />
+              </RequireRole>
+            }
+          />
+          <Route
             path="/supervisor/evidence-review"
             element={
               <RequireRole allowedRoles={['supervisor']}>
                 <EvidenceReviewPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/supervisor/calendar"
+            element={
+              <RequireRole allowedRoles={['supervisor']}>
+                <SupervisorCalendarPage />
               </RequireRole>
             }
           />
@@ -191,6 +210,12 @@ export function AppRoutingSetup() {
                 <MenteeNotesPage />
               </RequireRole>
             }
+          />
+
+          {/* Profile routes - available to all authenticated users */}
+          <Route
+            path="/profile/edit"
+            element={<EditProfilePage />}
           />
         </Route>
       </Route>

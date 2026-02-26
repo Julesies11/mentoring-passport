@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/context/auth-context';
 import {
   fetchTasks,
   fetchPairTasks,
@@ -11,11 +12,9 @@ export function useTasks() {
 
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['tasks'],
-    queryFn: fetchTasks,
+    queryFn: () => fetchTasks(),
   });
 
-  // Don't fetch all pair tasks - it causes infinite errors
-  // Instead, fetch tasks per pair when needed
   const pairTasks: any[] = [];
   const isLoadingPairTasks = false;
 
@@ -27,12 +26,14 @@ export function useTasks() {
     error,
     fetchPairTasks,
     fetchPairTaskStats,
-    updatePairTaskStatus,
+    updatePairTaskStatus: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed') =>
+      updatePairTaskStatus(user.id, taskId, status),
   };
 }
 
 export function usePairTasks(pairId: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ['pair-tasks', pairId],
@@ -48,7 +49,7 @@ export function usePairTasks(pairId: string) {
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: 'not_submitted' | 'awaiting_review' | 'completed' }) =>
-      updatePairTaskStatus(taskId, status),
+      updatePairTaskStatus(taskId, status, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });

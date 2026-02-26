@@ -67,14 +67,15 @@ export function Header() {
           />
           <UserDropdownMenu
             trigger={
-              <ProfileAvatar
-                userId={user?.id || ''}
-                currentAvatar={user?.avatar_url}
-                userName={user?.full_name || user?.email}
-                size="md"
-                showEditButton={true}
-                className="cursor-pointer"
-              />
+              <div className="cursor-pointer">
+                <ProfileAvatar
+                  userId={user?.id || ''}
+                  currentAvatar={user?.avatar_url}
+                  userName={user?.full_name || user?.email}
+                  size="md"
+                  showEditButton={false}
+                />
+              </div>
             }
           />
         </div>

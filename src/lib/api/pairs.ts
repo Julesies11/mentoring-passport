@@ -94,10 +94,12 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw pairError;
   }
 
-  // Step 2: Fetch all tasks
+  // Step 2: Fetch all active tasks from master list
   const { data: tasks, error: tasksError } = await supabase
-    .from('mp_tasks')
-    .select('id');
+    .from('mp_tasks_master')
+    .select('id, name, evidence_type_id, sort_order')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
 
   if (tasksError) {
     console.error('Error fetching tasks:', tasksError);
@@ -108,7 +110,10 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   if (tasks && tasks.length > 0) {
     const pairTasks = tasks.map(task => ({
       pair_id: pair.id,
-      task_id: task.id,
+      master_task_id: task.id,
+      name: task.name,
+      evidence_type_id: task.evidence_type_id,
+      sort_order: task.sort_order,
       status: 'not_submitted' as const,
     }));
 
@@ -121,6 +126,51 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
       // Note: Pair was created successfully, but pair_tasks failed
       // You might want to handle this differently (e.g., rollback, retry, or log)
       throw new Error(`Pair created but failed to create tasks: ${pairTasksError.message}`);
+    }
+
+    // Step 4: Create pair_subtasks for each pair task
+    for (const task of tasks) {
+      // Fetch master subtasks for this task
+      const { data: masterSubtasks, error: subtasksError } = await supabase
+        .from('mp_subtasks_master')
+        .select('id, name, evidence_type_id, sort_order')
+        .eq('task_id', task.id)
+        .order('sort_order', { ascending: true });
+
+      if (subtasksError) {
+        console.error('Error fetching master subtasks:', subtasksError);
+        continue; // Continue with next task if subtasks fetch fails
+      }
+
+      if (masterSubtasks && masterSubtasks.length > 0) {
+        // Get the created pair task ID
+        const { data: createdPairTask } = await supabase
+          .from('mp_pair_tasks')
+          .select('id')
+          .eq('pair_id', pair.id)
+          .eq('master_task_id', task.id)
+          .single();
+
+        if (createdPairTask) {
+          const pairSubtasks = masterSubtasks.map(subtask => ({
+            pair_task_id: createdPairTask.id,
+            master_subtask_id: subtask.id,
+            name: subtask.name,
+            evidence_type_id: subtask.evidence_type_id,
+            sort_order: subtask.sort_order,
+            is_completed: false,
+          }));
+
+          const { error: pairSubtasksError } = await supabase
+            .from('mp_pair_subtasks')
+            .insert(pairSubtasks);
+
+          if (pairSubtasksError) {
+            console.error('Error creating pair subtasks:', pairSubtasksError);
+            // Continue with other subtasks if one fails
+          }
+        }
+      }
     }
   }
 

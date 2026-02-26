@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Clock, MapPin, Users, Video, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 
 export function MenteeMeetingsPage() {
   const { user } = useAuth();
@@ -69,6 +70,36 @@ export function MenteeMeetingsPage() {
     } catch (error) {
       console.error('Error creating meeting:', error);
     }
+  };
+
+  const handleCreateMeeting = async (meetingData: any) => {
+    if (pairs.length === 0) return;
+    
+    try {
+      const pair = pairs[0];
+      await createMeeting({
+        ...meetingData,
+        pair_id: pair.id,
+      });
+      queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
+    } catch (error) {
+      console.error('Error creating meeting:', error);
+    }
+  };
+
+  const handleUpdateMeeting = async (meeting: any) => {
+    // Mentees typically can't update meetings, but we'll include the function
+    console.log('Meeting update not available for mentees');
+  };
+
+  const handleCalendarUpdate = async (meeting: any) => {
+    // Mentees typically can't update meetings, but we'll include the function
+    console.log('Meeting update not available for mentees');
+  };
+
+  const handleDeleteMeeting = async (meetingId: string) => {
+    // Mentees typically can't delete meetings, but we'll include the function
+    console.log('Meeting deletion not available for mentees');
   };
 
   return (
@@ -300,6 +331,16 @@ export function MenteeMeetingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Calendar Section */}
+        <div className="mt-8">
+          <MeetingCalendar
+            meetings={menteeMeetings}
+            onMeetingCreate={handleCreateMeeting}
+            onMeetingUpdate={handleCalendarUpdate}
+            onMeetingDelete={handleDeleteMeeting}
+          />
+        </div>
       </div>
     </div>
   );

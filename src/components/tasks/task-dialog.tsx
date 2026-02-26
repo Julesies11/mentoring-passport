@@ -37,6 +37,7 @@ interface TaskDialogProps {
     description?: string;
     evidence_type?: {
       name: string;
+      requires_submission: boolean;
     };
     completed_at?: string;
   };
@@ -74,7 +75,20 @@ export function TaskDialog({
   };
 
   const handleSubmit = () => {
-    if (!evidenceDescription.trim()) return;
+    // Check if evidence submission is required
+    const requiresSubmission = task.evidence_type?.requires_submission;
+    
+    // Validate description
+    if (!evidenceDescription.trim()) {
+      alert('Please provide a description for your evidence.');
+      return;
+    }
+    
+    // Validate file upload if required
+    if (requiresSubmission && !selectedFile) {
+      alert('This task requires evidence submission. Please upload a file.');
+      return;
+    }
     
     onSubmitEvidence?.(task.id, {
       description: evidenceDescription,
@@ -130,7 +144,14 @@ export function TaskDialog({
           {/* Evidence Submission */}
           {!isCompleted && (
             <div className="space-y-4">
-              <Label className="text-base font-medium">Submit Evidence</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-medium">Submit Evidence</Label>
+                {task.evidence_type?.requires_submission && (
+                  <Badge variant="destructive" className="text-xs">
+                    Required
+                  </Badge>
+                )}
+              </div>
               
               {/* File Upload */}
               <div

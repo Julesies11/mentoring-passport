@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { useNotes } from '@/hooks/use-notes';
+import { usePairNotes } from '@/hooks/use-notes';
 import { useUserPairs } from '@/hooks/use-pairs';
+import { createNote, updateNote, deleteNote } from '@/lib/api/notes';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -15,14 +16,16 @@ import { format } from 'date-fns';
 
 export function MentorNotesPage() {
   const { user } = useAuth();
-  const { fetchPairNotes, createNote, updateNote, deleteNote } = useNotes();
   const { data: pairs = [] } = useUserPairs(user?.id || '');
-  const { data: notes = [], isLoading } = fetchPairNotes();
-
+  
+  // Get the active pair
+  const activePair = pairs.find(p => p.status === 'active');
+  const { notes = [], isLoading } = usePairNotes(activePair?.id || '');
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<any>(null);
   const [formData, setFormData] = useState({
-    pair_id: '',
+    pair_id: activePair?.id || '',
     title: '',
     content: '',
     is_private: false
@@ -74,6 +77,19 @@ export function MentorNotesPage() {
             <h1 className="text-2xl font-semibold text-gray-900">Notes</h1>
             <p className="text-sm text-gray-600">Loading notes...</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activePair) {
+    return (
+      <div className="container-fixed">
+        <div className="card p-12 text-center">
+          <h2 className="text-xl font-semibold mb-2">No Active Pairing</h2>
+          <p className="text-muted-foreground">
+            You don't have an active mentoring relationship at the moment.
+          </p>
         </div>
       </div>
     );

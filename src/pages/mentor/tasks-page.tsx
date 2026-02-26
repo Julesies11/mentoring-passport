@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
@@ -5,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Circle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TaskDialog } from '@/components/tasks/task-dialog';
+import { PairSubTasksDisplay } from '@/components/tasks/pair-subtasks-display';
+import { useSearchParams } from 'react-router-dom';
 
 const statusIcons = {
   not_submitted: Circle,
@@ -26,10 +30,26 @@ const statusLabels = {
 
 export function TasksPage() {
   const { user } = useAuth();
-  const { data: pairs = [], isLoading: pairsLoading } = useUserPairs(user?.id || '');
-  const activePair = pairs.find(p => p.status === 'active');
+  const [searchParams] = useSearchParams();
+  const selectedMenteeId = searchParams.get('mentee');
   
-  const { tasks, stats, isLoading: tasksLoading } = usePairTasks(activePair?.id || '');
+  const { data: pairs = [], isLoading: pairsLoading } = useUserPairs(user?.id || '');
+  
+  // Find pair based on URL parameter or default to active pair
+  const selectedPair = selectedMenteeId 
+    ? pairs.find(p => p.mentee?.id === selectedMenteeId)
+    : pairs.find(p => p.status === 'active');
+  
+  const { tasks, stats, isLoading: tasksLoading } = usePairTasks(selectedPair?.id || '');
+  
+  // State for task dialog
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+
+  const handleTaskClick = (pairTask: any) => {
+    setSelectedTask(pairTask);
+    setIsTaskDialogOpen(true);
+  };
 
   if (pairsLoading || tasksLoading) {
     return (
@@ -41,13 +61,16 @@ export function TasksPage() {
     );
   }
 
-  if (!activePair) {
+  if (!selectedPair) {
     return (
       <div className="container-fixed">
         <div className="card p-12 text-center">
-          <h2 className="text-xl font-semibold mb-2">No Active Pairing</h2>
+          <h2 className="text-xl font-semibold mb-2">No Pairing Found</h2>
           <p className="text-muted-foreground">
-            You haven't been paired with a mentee yet. Please contact your supervisor.
+            {selectedMenteeId 
+              ? "No mentoring relationship found for the selected mentee."
+              : "You don't have an active mentoring relationship at the moment."
+            }
           </p>
         </div>
       </div>
@@ -60,7 +83,8 @@ export function TasksPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Tasks</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Track progress with {activePair.mentee?.full_name || 'your mentee'}
+            Track progress with {selectedPair.mentee?.full_name || 'your mentee'}
+            {selectedMenteeId && ' (selected)'}
           </p>
         </div>
 
@@ -109,7 +133,11 @@ export function TasksPage() {
                 const StatusIcon = statusIcons[pairTask.status];
 
                 return (
-                  <div key={pairTask.id} className="p-4 hover:bg-muted/50 transition-colors">
+                  <div 
+                    key={pairTask.id} 
+                    className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => handleTaskClick(pairTask)}
+                  >
                     <div className="flex items-start gap-4">
                       <div className={cn('mt-1', statusColors[pairTask.status])}>
                         <StatusIcon className="w-6 h-6" />
@@ -142,6 +170,14 @@ export function TasksPage() {
                             Completed on {new Date(pairTask.completed_at).toLocaleDateString()}
                           </p>
                         )}
+                        
+                        {/* Subtasks Display */}
+                        {pairTask.subtasks && pairTask.subtasks.length > 0 && (
+                          <PairSubTasksDisplay
+                            subtasks={pairTask.subtasks}
+                            pairTaskId={pairTask.id}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -150,6 +186,31 @@ export function TasksPage() {
             </div>
           </div>
         </div>
+
+        {/* Task Dialog */}
+        {selectedTask && (
+          <TaskDialog
+            open={isTaskDialogOpen}
+            onOpenChange={setIsTaskDialogOpen}
+            task={{
+              id: selectedTask.task?.id || '',
+              name: selectedTask.task?.name || '',
+              status: selectedTask.status,
+              description: selectedTask.task?.description,
+              evidence_type: selectedTask.task?.evidence_type,
+              completed_at: selectedTask.completed_at,
+            }}
+            pairId={selectedPair?.id || ''}
+            onSubmitEvidence={(taskId, evidence) => {
+              // Handle evidence submission
+              console.log('Submitting evidence for task:', taskId, evidence);
+            }}
+            onUpdateStatus={(taskId, status) => {
+              // Handle status update
+              console.log('Updating status for task:', taskId, status);
+            }}
+          />
+        )}
       </div>
     </div>
   );

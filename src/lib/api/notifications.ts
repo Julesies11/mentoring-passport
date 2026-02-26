@@ -93,6 +93,39 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 }
 
 /**
+ * Create a notification
+ */
+export async function createNotification(
+  recipientId: string,
+  type: string,
+  title: string,
+  description: string | null,
+  actionUrl: string | null = null,
+  relatedId: string | null = null
+): Promise<Notification> {
+  const { data, error } = await supabase
+    .from('mp_notifications')
+    .insert({
+      recipient_id: recipientId,
+      type,
+      title,
+      description,
+      action_url: actionUrl,
+      related_id: relatedId,
+      is_read: false,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * Subscribe to real-time notification updates
  */
 export function subscribeToNotifications(

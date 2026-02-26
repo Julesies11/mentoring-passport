@@ -22,7 +22,7 @@ export function MenteeEvidencePage() {
     type: 'photo',
     file_url: '',
     description: '',
-    task_id: ''
+    task_id: 'none'
   });
 
   // Filter evidence for mentee's pairs
@@ -39,7 +39,7 @@ export function MenteeEvidencePage() {
     // TODO: Implement evidence submission
     console.log('Submit evidence:', formData);
     setIsCreateDialogOpen(false);
-    setFormData({ type: 'photo', file_url: '', description: '', task_id: '' });
+    setFormData({ type: 'photo', file_url: '', description: '', task_id: 'none' });
   };
 
   const getStatusIcon = (status: string) => {
@@ -134,7 +134,7 @@ export function MenteeEvidencePage() {
                       <SelectValue placeholder="Select related task" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No specific task</SelectItem>
+                      <SelectItem value="none">No specific task</SelectItem>
                       {/* TODO: Add actual tasks from mentee's checklist */}
                     </SelectContent>
                   </Select>

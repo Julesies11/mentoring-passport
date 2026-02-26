@@ -1,9 +1,11 @@
 import { supabase } from '@/lib/supabase';
+import { createNotification } from '@/lib/api/notifications';
 
 export interface Evidence {
   id: string;
   pair_id: string;
   task_id: string | null;
+  sub_task_id: string | null;
   meeting_id: string | null;
   submitted_by: string;
   type: 'photo' | 'text';
@@ -15,6 +17,10 @@ export interface Evidence {
   created_at: string;
   updated_at: string;
   task?: {
+    id: string;
+    name: string;
+  };
+  subtask?: {
     id: string;
     name: string;
   };
@@ -37,7 +43,8 @@ export interface Evidence {
 
 export interface CreateEvidenceInput {
   pair_id: string;
-  task_id: string;
+  task_id?: string;
+  sub_task_id?: string;
   evidence_type_id: string;
   file_url: string;
   description?: string;
@@ -53,16 +60,17 @@ export interface ReviewEvidenceInput {
  */
 export async function fetchAllEvidence(): Promise<Evidence[]> {
   const { data, error } = await supabase
-    .from('mp_evidence')
+    .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_tasks(id, name),
+      task:mp_pair_tasks(id, name),
+      subtask:mp_pair_subtasks(id, name),
       pair:mp_pairs(
         id,
         mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
         mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
       ),
-      reviewer:mp_profiles!mp_evidence_reviewed_by_fkey(id, full_name)
+      reviewer:mp_profiles!mp_evidence_uploads_reviewed_by_fkey(id, full_name)
     `)
     .order('created_at', { ascending: false });
 
@@ -79,12 +87,13 @@ export async function fetchAllEvidence(): Promise<Evidence[]> {
  */
 export async function fetchPairEvidence(pairId: string): Promise<Evidence[]> {
   const { data, error } = await supabase
-    .from('mp_evidence')
+    .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_tasks(id, name),
+      task:mp_pair_tasks(id, name),
+      subtask:mp_pair_subtasks(id, name),
       evidence_type:mp_evidence_types(id, name),
-      reviewer:mp_profiles!mp_evidence_reviewed_by_fkey(id, full_name)
+      reviewer:mp_profiles!mp_evidence_uploads_reviewed_by_fkey(id, full_name)
     `)
     .eq('pair_id', pairId)
     .order('created_at', { ascending: false });
@@ -102,10 +111,11 @@ export async function fetchPairEvidence(pairId: string): Promise<Evidence[]> {
  */
 export async function fetchPendingEvidence(): Promise<Evidence[]> {
   const { data, error } = await supabase
-    .from('mp_evidence')
+    .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_tasks(id, name),
+      task:mp_pair_tasks(id, name),
+      subtask:mp_pair_subtasks(id, name),
       pair:mp_pairs(
         id,
         mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
@@ -127,19 +137,25 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
  * Create new evidence
  */
 export async function createEvidence(input: CreateEvidenceInput): Promise<Evidence> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user.id;
+
   const { data, error } = await supabase
-    .from('mp_evidence')
+    .from('mp_evidence_uploads')
     .insert({
       pair_id: input.pair_id,
       task_id: input.task_id,
+      sub_task_id: input.sub_task_id,
       evidence_type_id: input.evidence_type_id,
       file_url: input.file_url,
       description: input.description,
+      submitted_by: userId,
       status: 'pending',
     })
     .select(`
       *,
-      task:mp_tasks(id, name),
+      task:mp_pair_tasks(id, name),
+      subtask:mp_pair_subtasks(id, name),
       evidence_type:mp_evidence_types(id, name)
     `)
     .single();
@@ -147,6 +163,62 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
   if (error) {
     console.error('Error creating evidence:', error);
     throw error;
+  }
+
+  // Create notifications after evidence is successfully uploaded
+  try {
+    // Get pair information for notifications
+    const { data: pairData } = await supabase
+      .from('mp_pairs')
+      .select('mentor_id, mentee_id')
+      .eq('id', input.pair_id)
+      .single();
+
+    if (pairData) {
+      // Get submitter name
+      const { data: submitterData } = await supabase
+        .from('mp_profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single();
+
+      const submitterName = submitterData?.full_name || 'Unknown User';
+      const taskName = data.task?.name || data.subtask?.name || 'Task';
+
+      // Notify mentor if mentee submitted, or vice versa
+      const recipientId = userId === pairData.mentor_id ? pairData.mentee_id : pairData.mentor_id;
+      if (recipientId) {
+        await createNotification(
+          recipientId,
+          'evidence_uploaded',
+          'New Evidence Uploaded',
+          `${submitterName} uploaded evidence for: ${taskName}`,
+          userId === pairData.mentor_id ? '/mentee/evidence' : '/mentor/evidence',
+          data.id
+        );
+      }
+
+      // Notify supervisor
+      const { data: supervisorData } = await supabase
+        .from('mp_profiles')
+        .select('id')
+        .eq('role', 'supervisor')
+        .limit(1);
+
+      if (supervisorData) {
+        await createNotification(
+          supervisorData.id,
+          'evidence_uploaded',
+          'Evidence Awaiting Review',
+          `${submitterName} uploaded evidence for: ${taskName}`,
+          '/supervisor/evidence-review',
+          data.id
+        );
+      }
+    }
+  } catch (notificationError) {
+    // Log notification error but don't fail the evidence upload
+    console.error('Error creating notifications:', notificationError);
   }
 
   return data;
@@ -176,20 +248,48 @@ export async function reviewEvidence(
   }
 
   const { data, error } = await supabase
-    .from('mp_evidence')
+    .from('mp_evidence_uploads')
     .update(updateData)
     .eq('id', evidenceId)
     .select(`
       *,
-      task:mp_tasks(id, name),
+      task:mp_pair_tasks(id, name),
+      subtask:mp_pair_subtasks(id, name),
       evidence_type:mp_evidence_types(id, name),
-      reviewer:mp_profiles!mp_evidence_reviewed_by_fkey(id, full_name)
+      reviewer:mp_profiles!mp_evidence_uploads_reviewed_by_fkey(id, full_name),
+      pair:mp_pairs(mentor_id, mentee_id)
     `)
     .single();
 
   if (error) {
     console.error('Error reviewing evidence:', error);
     throw error;
+  }
+
+  // Create notifications after evidence is reviewed
+  try {
+    // Only notify when status changes to approved or rejected
+    if (data.status === 'approved' || data.status === 'rejected') {
+      const taskName = data.task?.name || data.subtask?.name || 'Task';
+      const submitterId = data.submitted_by;
+      
+      if (submitterId) {
+        // Notify the submitter about the review result
+        await createNotification(
+          submitterId,
+          data.status === 'approved' ? 'evidence_approved' : 'evidence_rejected',
+          data.status === 'approved' ? 'Evidence Approved' : 'Evidence Needs Revision',
+          data.status === 'approved' 
+            ? 'Your evidence has been approved by the supervisor'
+            : 'Your evidence needs revision. Please check the feedback.',
+          submitterId === data.pair?.mentor_id ? '/mentor/evidence' : '/mentee/evidence',
+          data.id
+        );
+      }
+    }
+  } catch (notificationError) {
+    // Log notification error but don't fail the evidence review
+    console.error('Error creating notifications:', notificationError);
   }
 
   return data;
@@ -226,7 +326,7 @@ export async function uploadEvidenceFile(
  */
 export async function fetchEvidenceStats() {
   const { data, error } = await supabase
-    .from('mp_evidence')
+    .from('mp_evidence_uploads')
     .select('status');
 
   if (error) {

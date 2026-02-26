@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
@@ -6,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Circle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TaskDialog } from '@/components/tasks/task-dialog';
+import { PairSubTasksDisplay } from '@/components/tasks/pair-subtasks-display';
 
 const statusIcons = {
   not_submitted: Circle,
@@ -31,6 +34,15 @@ export function ChecklistPage() {
   const activePair = pairs.find(p => p.status === 'active');
   
   const { tasks, stats, isLoading: tasksLoading, updateStatus } = usePairTasks(activePair?.id || '');
+  
+  // State for task dialog
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+
+  const handleTaskClick = (pairTask: any) => {
+    setSelectedTask(pairTask);
+    setIsTaskDialogOpen(true);
+  };
 
   if (pairsLoading || tasksLoading) {
     return (
@@ -110,7 +122,11 @@ export function ChecklistPage() {
                 const StatusIcon = statusIcons[pairTask.status];
 
                 return (
-                  <div key={pairTask.id} className="p-4 hover:bg-muted/50 transition-colors">
+                  <div 
+                    key={pairTask.id} 
+                    className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => handleTaskClick(pairTask)}
+                  >
                     <div className="flex items-start gap-4">
                       <div className={cn('mt-1', statusColors[pairTask.status])}>
                         <StatusIcon className="w-6 h-6" />
@@ -155,6 +171,14 @@ export function ChecklistPage() {
                             Completed on {new Date(pairTask.completed_at).toLocaleDateString()}
                           </p>
                         )}
+                        
+                        {/* Subtasks Display */}
+                        {pairTask.subtasks && pairTask.subtasks.length > 0 && (
+                          <PairSubTasksDisplay
+                            subtasks={pairTask.subtasks}
+                            pairTaskId={pairTask.id}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -163,6 +187,31 @@ export function ChecklistPage() {
             </div>
           </div>
         </div>
+
+        {/* Task Dialog */}
+        {selectedTask && (
+          <TaskDialog
+            open={isTaskDialogOpen}
+            onOpenChange={setIsTaskDialogOpen}
+            task={{
+              id: selectedTask.task?.id || '',
+              name: selectedTask.task?.name || '',
+              status: selectedTask.status,
+              description: selectedTask.task?.description,
+              evidence_type: selectedTask.task?.evidence_type,
+              completed_at: selectedTask.completed_at,
+            }}
+            pairId={activePair?.id || ''}
+            onSubmitEvidence={(taskId, evidence) => {
+              // Handle evidence submission
+              console.log('Submitting evidence for task:', taskId, evidence);
+            }}
+            onUpdateStatus={(taskId, status) => {
+              // Handle status update
+              console.log('Updating status for task:', taskId, status);
+            }}
+          />
+        )}
       </div>
     </div>
   );

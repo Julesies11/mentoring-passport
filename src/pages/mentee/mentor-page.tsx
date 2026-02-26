@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { UserCircle, Mail, Phone, Calendar, MessageSquare } from 'lucide-react';
 
 export function MenteeMentorPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: pairs = [] } = useUserPairs(user?.id || '');
   const [mentorInfo, setMentorInfo] = useState<any>(null);
 
@@ -18,6 +20,28 @@ export function MenteeMentorPage() {
       setMentorInfo(pair.mentor);
     }
   }, [pairs]);
+
+  const handleSendMessage = () => {
+    // Navigate to notes page to send a message to mentor
+    navigate('/mentee/notes');
+  };
+
+  const handleScheduleMeeting = () => {
+    // Navigate to meetings page to schedule a meeting
+    navigate('/mentee/meetings');
+  };
+
+  const handleEmailClick = () => {
+    if (mentorInfo?.email) {
+      window.open(`mailto:${mentorInfo.email}`, '_blank');
+    }
+  };
+
+  const handlePhoneClick = () => {
+    if (mentorInfo?.phone) {
+      window.open(`tel:${mentorInfo.phone}`, '_blank');
+    }
+  };
 
   if (!mentorInfo) {
     return (
@@ -65,12 +89,18 @@ export function MenteeMentorPage() {
               <CardContent className="space-y-4">
                 <Separator />
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3">
+                  <div 
+                    className="flex items-center gap-3 cursor-pointer hover:text-primary transition-colors"
+                    onClick={handleEmailClick}
+                  >
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">{mentorInfo.email}</span>
                   </div>
                   {mentorInfo.phone && (
-                    <div className="flex items-center gap-3">
+                    <div 
+                      className="flex items-center gap-3 cursor-pointer hover:text-primary transition-colors"
+                      onClick={handlePhoneClick}
+                    >
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">{mentorInfo.phone}</span>
                     </div>
@@ -82,11 +112,11 @@ export function MenteeMentorPage() {
                 </div>
                 <Separator />
                 <div className="flex gap-2">
-                  <Button className="flex-1" size="sm">
+                  <Button className="flex-1" size="sm" onClick={handleSendMessage}>
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Send Message
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleScheduleMeeting}>
                     Schedule Meeting
                   </Button>
                 </div>

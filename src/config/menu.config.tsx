@@ -10,6 +10,7 @@ import {
   Image,
   StickyNote,
   CheckSquare,
+  ListTodo,
 } from 'lucide-react';
 import { type MenuConfig } from './types';
 
@@ -31,9 +32,19 @@ export const MENU_SUPERVISOR: MenuConfig = [
     path: '/supervisor/pairs',
   },
   {
+    title: 'Master Tasks',
+    icon: ListTodo,
+    path: '/supervisor/master-tasks',
+  },
+  {
     title: 'Evidence Review',
     icon: FileCheck,
     path: '/supervisor/evidence-review',
+  },
+  {
+    title: 'Calendar',
+    icon: Calendar,
+    path: '/supervisor/calendar',
   },
   {
     title: 'Archive',
