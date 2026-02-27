@@ -6,7 +6,7 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { logout, user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   // Use display data from currentUser
   const displayName = user?.full_name || user?.email || 'User';
@@ -31,6 +32,11 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
 
   const handleThemeToggle = (checked: boolean) => {
     setTheme(checked ? 'dark' : 'light');
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/auth/signin', { replace: true });
   };
 
   return (
@@ -89,7 +95,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={logout}
+            onClick={handleLogout}
           >
             Logout
           </Button>

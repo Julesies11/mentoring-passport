@@ -32,11 +32,11 @@ export function SignInPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Quick test login function
-  const handleTestLogin = async () => {
+  const handleTestLogin = async (email = 'admin@test.com', password = 'Admin123!') => {
     try {
       setIsProcessing(true);
       setError(null);
-      await login('admin@test.com', 'Admin123!');
+      await login(email, password);
       
       // Check if user needs to change password
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -213,26 +213,47 @@ export function SignInPage() {
             <AlertCircle className="text-primary" />
           </AlertIcon>
           <AlertTitle className="text-accent-foreground">
-            <strong>Quick Test Login:</strong> Click the button below to sign in with test credentials.
+            <strong>Quick Test Login:</strong> Click the buttons below to sign in with test credentials.
           </AlertTitle>
         </Alert>
 
-        <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-2">
           <Button
             variant="default"
             type="button"
-            onClick={handleTestLogin}
+            onClick={() => handleTestLogin('admin@test.com', 'Admin123!')}
             disabled={isProcessing}
-            className="w-full bg-primary hover:bg-primary/90"
+            className="w-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700"
           >
             {isProcessing ? (
               <span className="flex items-center gap-2">
                 <LoaderCircleIcon className="size-4! animate-spin" /> Signing in...
               </span>
             ) : (
-              '🚀 Quick Test Login (admin@test.com)'
+              'Supervisor (Leesa)'
             )}
           </Button>
+
+          <div className="flex flex-row gap-2">
+            <Button
+              variant="default"
+              type="button"
+              onClick={() => handleTestLogin('jackie@test.com', 'U12345678')}
+              disabled={isProcessing}
+              className="w-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
+            >
+              Mentor (Jackie)
+            </Button>
+            <Button
+              variant="default"
+              type="button"
+              onClick={() => handleTestLogin('bill@test.com', 'U12345678')}
+              disabled={isProcessing}
+              className="w-full bg-green-600 border-green-600 text-white hover:bg-green-700"
+            >
+              Mentee (Bill)
+            </Button>
+          </div>
         </div>
 
         <div className="relative py-1.5">

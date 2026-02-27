@@ -10,22 +10,22 @@ export const MENU_SUPERVISOR: MenuConfig = [
   },
   {
     title: 'Participants',
-    icon: () => <KeenIcon icon="users" />,
+    icon: () => <KeenIcon icon="user" />,
     path: '/supervisor/participants',
   },
   {
     title: 'Pairs',
-    icon: () => <KeenIcon icon="scroll" />,
+    icon: () => <KeenIcon icon="users" />,
     path: '/supervisor/pairs',
   },
   {
     title: 'Master Tasks',
-    icon: () => <KeenIcon icon="check-list" />,
+    icon: () => <KeenIcon icon="check-squared" />,
     path: '/supervisor/master-tasks',
   },
   {
     title: 'Evidence Review',
-    icon: () => <KeenIcon icon="file-done" />,
+    icon: () => <KeenIcon icon="eye" />,
     path: '/supervisor/evidence-review',
   },
   {
@@ -54,12 +54,12 @@ export const MENU_MENTOR: MenuConfig = [
   },
   {
     title: 'Tasks',
-    icon: () => <KeenIcon icon="clipboard" />,
+    icon: () => <KeenIcon icon="check-squared" />,
     path: '/mentor/tasks',
   },
   {
     title: 'Evidence',
-    icon: () => <KeenIcon icon="picture" />,
+    icon: () => <KeenIcon icon="eye" />,
     path: '/mentor/evidence',
   },
   {
@@ -78,7 +78,7 @@ export const MENU_MENTEE: MenuConfig = [
   },
   {
     title: 'My Mentor',
-    icon: () => <KeenIcon icon="profile-circle" />,
+    icon: () => <KeenIcon icon="users" />,
     path: '/mentee/mentor',
   },
   {
@@ -88,12 +88,12 @@ export const MENU_MENTEE: MenuConfig = [
   },
   {
     title: 'Checklist',
-    icon: () => <KeenIcon icon="check-list" />,
+    icon: () => <KeenIcon icon="check-squared" />,
     path: '/mentee/checklist',
   },
   {
     title: 'Evidence',
-    icon: () => <KeenIcon icon="picture" />,
+    icon: () => <KeenIcon icon="eye" />,
     path: '/mentee/evidence',
   },
   {

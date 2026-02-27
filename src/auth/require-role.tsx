@@ -15,7 +15,7 @@ interface RequireRoleProps {
 export function RequireRole({
   allowedRoles,
   children,
-  redirectTo = '/error/403',
+  redirectTo = '/',
 }: RequireRoleProps) {
   const { user, role, loading } = useAuth();
 
