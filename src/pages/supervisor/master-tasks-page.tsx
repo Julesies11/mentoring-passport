@@ -23,7 +23,7 @@ import {
 } from '@/layouts/demo1/components/toolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Input, InputWrapper } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -303,14 +303,15 @@ export function SupervisorMasterTasksPage() {
           <Card>
             <CardContent className="p-5">
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                <div className="relative flex-1">
-                  <KeenIcon icon="magnifier" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg" />
-                  <Input
-                    placeholder="Search tasks by name or evidence type..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+                <div className="flex-1">
+                  <InputWrapper>
+                    <KeenIcon icon="magnifier" />
+                    <Input
+                      placeholder="Search tasks by name or evidence type..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </InputWrapper>
                 </div>
                 
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">

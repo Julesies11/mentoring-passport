@@ -4,7 +4,7 @@ import { CreateParticipantDialog } from '@/components/participants/participant-d
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
 import { CredentialsDialog } from '@/components/participants/credentials-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, InputWrapper } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -162,20 +162,21 @@ export function ParticipantsContent() {
       {/* Filters */}
       <Card>
         <CardContent className="p-5">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Search */}
-            <div className="flex-1 relative">
-              <KeenIcon icon="magnifier" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg" />
-              <Input
-                placeholder="Search by name, email, or department..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex-1">
+              <InputWrapper>
+                <KeenIcon icon="magnifier" />
+                <Input
+                  placeholder="Search by name, email, or department..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </InputWrapper>
             </div>
 
             {/* Role Filter */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant={filterRole === 'all' ? 'primary' : 'outline'}
                 size="sm"
