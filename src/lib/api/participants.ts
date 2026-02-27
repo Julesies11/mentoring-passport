@@ -88,66 +88,37 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
 
 /**
  * Create a new participant (supervisor only)
- * This creates both the auth user and the profile
+ * This creates both the auth user and the profile using a secure RPC
  */
-export async function createParticipant(input: CreateParticipantInput): Promise<Participant> {
-  console.log('Creating participant:', input.email);
+export async function createParticipant(input: CreateParticipantInput & { avatar_url?: string }): Promise<Participant> {
+  console.log('Creating participant via RPC:', input.email);
   
-  // Create the auth user with auto-confirm enabled
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: input.email,
-    password: input.password,
-    options: {
-      data: {
-        full_name: input.full_name || '',
-      },
-      emailRedirectTo: undefined,
-    },
+  // Use the RPC function to create user without logging out the supervisor
+  const { data: newUserId, error: rpcError } = await supabase.rpc('mp_admin_create_user', {
+    email_input: input.email,
+    password_input: input.password,
+    full_name_input: input.full_name || '',
+    role_input: input.role,
+    department_input: input.department || null,
+    phone_input: input.phone || null,
+    avatar_url_input: input.avatar_url || null
   });
 
-  console.log('Auth signup result:', { authData, authError });
-
-  if (authError) {
-    console.error('Error creating auth user:', authError);
-    throw new Error(`Failed to create user: ${authError.message}`);
+  if (rpcError) {
+    console.error('Error in mp_admin_create_user RPC:', rpcError);
+    throw new Error(`Failed to create user: ${rpcError.message}`);
   }
 
-  if (!authData.user) {
-    throw new Error('Failed to create user - no user data returned');
-  }
-
-  // If user was created but needs confirmation, this is the issue
-  if (authData.user && !authData.user.email_confirmed_at) {
-    console.warn('User created but email not confirmed. Check Supabase email confirmation settings.');
-  }
-
-  // Wait a moment for the trigger to create the profile
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // Update the profile with additional details
-  // The profile is auto-created by the mp_handle_new_user trigger
-  const { data: profile, error: profileError } = await supabase
+  // Fetch the newly created profile
+  const { data: profile, error: fetchError } = await supabase
     .from('mp_profiles')
-    .update({
-      role: input.role,
-      full_name: input.full_name,
-      department: input.department,
-      phone: input.phone,
-      must_change_password: true,
-    })
-    .eq('id', authData.user.id)
-    .select()
+    .select('*')
+    .eq('id', newUserId)
     .single();
 
-  console.log('Profile update result:', { profile, profileError });
-
-  if (profileError) {
-    console.error('Error updating profile:', profileError);
-    throw new Error(`Failed to update profile: ${profileError.message}`);
-  }
-
-  if (!profile) {
-    throw new Error('Profile was not created by trigger. Check mp_handle_new_user trigger.');
+  if (fetchError || !profile) {
+    console.error('Error fetching created profile:', fetchError);
+    throw new Error('User created but profile not found');
   }
 
   return profile;

@@ -45,7 +45,7 @@ export async function fetchPairNotes(pairId: string): Promise<Note[]> {
     .from('mp_notes')
     .select(`
       *,
-      author:mp_profiles!mp_notes_author_id_fkey(id, full_name, role)
+      author:author_id(id, full_name, role)
     `)
     .eq('pair_id', pairId)
     .order('created_at', { ascending: false });
@@ -66,11 +66,11 @@ export async function fetchAllNotes(): Promise<Note[]> {
     .from('mp_notes')
     .select(`
       *,
-      author:mp_profiles!mp_notes_author_id_fkey(id, full_name, role),
+      author:author_id(id, full_name, role),
       pair:mp_pairs(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       )
     `)
     .order('created_at', { ascending: false });
@@ -103,7 +103,7 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
     })
     .select(`
       *,
-      author:mp_profiles!mp_notes_author_id_fkey(id, full_name, role)
+      author:author_id(id, full_name, role)
     `)
     .single();
 
@@ -125,7 +125,7 @@ export async function updateNote(noteId: string, input: UpdateNoteInput): Promis
     .eq('id', noteId)
     .select(`
       *,
-      author:mp_profiles!mp_notes_author_id_fkey(id, full_name, role)
+      author:author_id(id, full_name, role)
     `)
     .single();
 

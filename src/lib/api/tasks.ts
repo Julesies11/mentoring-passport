@@ -13,6 +13,7 @@ export interface Task {
     name: string;
     requires_submission: boolean;
   };
+  subtasks?: MasterSubTask[];
 }
 
 export interface MasterSubTask {
@@ -70,6 +71,31 @@ export interface PairTask {
   };
 }
 
+export interface EvidenceType {
+  id: string;
+  name: string;
+  requires_submission: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Fetch all available evidence types
+ */
+export async function fetchEvidenceTypes(): Promise<EvidenceType[]> {
+  const { data, error } = await supabase
+    .from('mp_evidence_types')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching evidence types:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
 /**
  * Fetch all tasks
  */
@@ -78,7 +104,11 @@ export async function fetchTasks(includeInactive: boolean = false): Promise<Task
     .from('mp_tasks_master')
     .select(`
       *,
-      evidence_type:mp_evidence_types(id, name, requires_submission)
+      evidence_type:mp_evidence_types(id, name, requires_submission),
+      subtasks:mp_subtasks_master(
+        *,
+        evidence_type:mp_evidence_types(id, name, requires_submission)
+      )
     `);
 
   // Only filter for active tasks unless explicitly requested
@@ -337,6 +367,21 @@ export async function updateTask(taskId: string, updates: Partial<Omit<Task, 'id
   }
 
   return data;
+}
+
+/**
+ * Delete a master task
+ */
+export async function deleteTask(taskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_tasks_master')
+    .delete()
+    .eq('id', taskId);
+
+  if (error) {
+    console.error('Error deleting task:', error);
+    throw error;
+  }
 }
 
 /**

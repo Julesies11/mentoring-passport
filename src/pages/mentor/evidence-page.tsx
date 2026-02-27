@@ -1,16 +1,37 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useAllEvidence } from '@/hooks/use-evidence';
 import { useUserPairs } from '@/hooks/use-pairs';
+import { Container } from '@/components/common/container';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+} from '@/layouts/demo1/components/toolbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Upload, Eye, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export function MentorEvidencePage() {
   const { user } = useAuth();
@@ -25,39 +46,42 @@ export function MentorEvidencePage() {
   });
 
   // Filter evidence for mentor's pairs
-  const mentorEvidence = evidence.filter(evidence => 
-    pairs.some(pair => pair.id === evidence.pair_id)
+  const mentorEvidence = evidence.filter(item => 
+    pairs.some(pair => pair.id === item.pair_id)
   );
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return <Badge className="bg-yellow-500 text-white border-none">Pending Review</Badge>;
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return <Badge className="bg-success text-white border-none">Approved</Badge>;
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return <Badge className="bg-danger text-white border-none">Rejected</Badge>;
       default:
-        return 'bg-gray-100 text-gray-800';
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4" />;
+        return <KeenIcon icon="time" />;
       case 'approved':
-        return <CheckCircle className="h-4 w-4" />;
+        return <KeenIcon icon="check-circle" />;
       case 'rejected':
-        return <XCircle className="h-4 w-4" />;
+        return <KeenIcon icon="cross-circle" />;
       default:
-        return <FileText className="h-4 w-4" />;
+        return <KeenIcon icon="document" />;
     }
   };
 
   const handleReviewEvidence = async (evidenceId: string) => {
     try {
-      await reviewEvidence(evidenceId, reviewData);
+      await reviewEvidence(evidenceId, {
+        status: reviewData.status,
+        rejection_reason: reviewData.status === 'rejected' ? reviewData.feedback : undefined
+      });
       setSelectedEvidence(null);
       setReviewData({ status: 'approved', feedback: '' });
     } catch (error) {
@@ -65,225 +89,166 @@ export function MentorEvidencePage() {
     }
   };
 
-  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
-    try {
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-    }
+  const handleViewFile = (fileUrl: string) => {
+    window.open(fileUrl, '_blank');
   };
 
-  if (isLoading) {
-    return (
-      <div className="container-fixed">
-        <div className="flex flex-col gap-5 lg:gap-7.5">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold text-gray-900">Evidence Review</h1>
-            <p className="text-sm text-gray-600">Loading evidence...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container-fixed">
-      <div className="flex flex-col gap-5 lg:gap-7.5">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-gray-900">Evidence Review</h1>
-          <p className="text-sm text-gray-600">
-            Review and approve evidence submitted by your mentees
-          </p>
-        </div>
+    <Fragment>
+      <Container>
+        <Toolbar>
+          <ToolbarHeading
+            title="Evidence Review"
+            description="Review and approve evidence submitted by your mentees"
+          />
+          <ToolbarActions>
+            <div className="flex gap-2">
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-100">
+                {mentorEvidence.filter(e => e.status === 'pending').length} Pending
+              </Badge>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-100">
+                {mentorEvidence.filter(e => e.status === 'approved').length} Approved
+              </Badge>
+            </div>
+          </ToolbarActions>
+        </Toolbar>
+      </Container>
 
-        <div className="flex gap-2">
-          <Badge variant="outline" className="bg-yellow-50">
-            {mentorEvidence.filter(e => e.status === 'pending').length} Pending Review
-          </Badge>
-          <Badge variant="outline" className="bg-green-50">
-            {mentorEvidence.filter(e => e.status === 'approved').length} Approved
-          </Badge>
-          <Badge variant="outline" className="bg-red-50">
-            {mentorEvidence.filter(e => e.status === 'rejected').length} Rejected
-          </Badge>
-        </div>
-
-        {mentorEvidence.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="text-center">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No Evidence Submitted
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Your mentees haven't submitted any evidence yet.
+      <Container>
+        <div className="grid gap-5 lg:gap-7.5">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
+              <p>Loading evidence submissions...</p>
+            </div>
+          ) : mentorEvidence.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <KeenIcon icon="file-up" className="text-3xl text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No Evidence Submitted</h3>
+                <p className="text-muted-foreground text-center max-w-sm">
+                  Your mentees haven't submitted any evidence for review yet. Evidence will appear here once they upload files for their tasks.
                 </p>
-                <p className="text-sm text-gray-500">
-                  Evidence will appear here once mentees submit their work.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {mentorEvidence.map((evidence) => (
-              <Card key={evidence.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{evidence.title}</CardTitle>
-                      <CardDescription>
-                        Submitted by {evidence.pair?.mentee?.full_name || 'Unknown Mentee'}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(evidence.status)}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(evidence.status)}
-                          {evidence.status}
-                        </div>
-                      </Badge>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7.5">
+              {mentorEvidence.map((item) => (
+                <Card key={item.id} className="hover:shadow-md transition-shadow flex flex-col h-full">
+                  <div className="aspect-video bg-gray-100 flex items-center justify-center relative group overflow-hidden">
+                    {item.type === 'photo' ? (
+                      item.file_url ? (
+                        <img 
+                          src={item.file_url} 
+                          alt={item.description}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <KeenIcon icon="picture" className="text-4xl text-gray-300" />
+                      )
+                    ) : (
+                      <KeenIcon icon="document" className="text-4xl text-gray-300" />
+                    )}
+                    <div className="absolute top-3 right-3">
+                      {getStatusBadge(item.status)}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <div>
-                        Submitted: {format(new Date(evidence.created_at), 'PPP')}
-                      </div>
-                      {evidence.type && (
-                        <div>Type: {evidence.type}</div>
-                      )}
+                  <CardContent className="p-5 flex-1 flex flex-col">
+                    <div className="flex justify-between items-center mb-3 text-xs font-medium text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <KeenIcon icon="user" className="text-xs" />
+                        {item.pair?.mentee?.full_name || 'Unknown Mentee'}
+                      </span>
+                      <span>{format(new Date(item.created_at), 'MMM d, yyyy')}</span>
                     </div>
                     
-                    {evidence.description && (
-                      <p className="text-gray-700">{evidence.description}</p>
-                    )}
+                    <h4 className="text-sm font-bold text-gray-900 mb-2 line-clamp-1">
+                      {item.task?.name || 'General Evidence'}
+                    </h4>
                     
-                    {evidence.file_url && (
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">
-                          {evidence.file_name || 'Evidence file'}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadFile(evidence.file_url, evidence.file_name || 'evidence')}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </Button>
-                      </div>
-                    )}
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-1">
+                      {item.description || 'No description provided.'}
+                    </p>
                     
-                    {evidence.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Dialog open={selectedEvidence?.id === evidence.id} onOpenChange={(open) => !open && setSelectedEvidence(null)}>
+                    <div className="flex gap-2 pt-4 border-t border-gray-100 mt-auto">
+                      {item.status === 'pending' ? (
+                        <Dialog open={selectedEvidence?.id === item.id} onOpenChange={(open) => !open && setSelectedEvidence(null)}>
                           <DialogTrigger asChild>
-                            <Button onClick={() => setSelectedEvidence(evidence)}>
-                              Review Evidence
+                            <Button size="sm" className="flex-1" onClick={() => setSelectedEvidence(item)}>
+                              <KeenIcon icon="notepad-edit" />
+                              Review
                             </Button>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="max-w-[500px]">
                             <DialogHeader>
-                              <DialogTitle>Review Evidence</DialogTitle>
+                              <DialogTitle>Review Evidence Submission</DialogTitle>
                               <DialogDescription>
-                                Review "{evidence.title}" submitted by {evidence.pair?.mentee?.full_name}
+                                Reviewing evidence for task: <span className="text-gray-900 font-bold">{item.task?.name}</span>
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label htmlFor="status">Decision</Label>
+                            <div className="grid gap-5 py-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="status" className="text-gray-900 font-semibold">Decision *</Label>
                                 <Select value={reviewData.status} onValueChange={(value: any) => setReviewData({...reviewData, status: value})}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="approved">Approve</SelectItem>
-                                    <SelectItem value="rejected">Reject</SelectItem>
+                                    <SelectItem value="approved">Approve Evidence</SelectItem>
+                                    <SelectItem value="rejected">Request Resubmission</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
                               
-                              <div>
-                                <Label htmlFor="feedback">Feedback</Label>
+                              <div className="grid gap-2">
+                                <Label htmlFor="feedback" className="text-gray-900 font-semibold">
+                                  {reviewData.status === 'approved' ? 'Feedback (Optional)' : 'Rejection Reason *'}
+                                </Label>
                                 <Textarea
                                   id="feedback"
                                   value={reviewData.feedback}
                                   onChange={(e) => setReviewData({...reviewData, feedback: e.target.value})}
-                                  placeholder="Provide feedback to the mentee..."
+                                  placeholder={reviewData.status === 'approved' ? "Great work! This meets all requirements." : "Please provide more detail in the documentation..."}
                                   rows={4}
+                                  className="resize-none"
                                 />
                               </div>
-                              
-                              <div className="flex gap-2">
-                                <Button 
-                                  onClick={() => handleReviewEvidence(evidence.id)}
-                                  className="flex-1"
-                                >
-                                  Submit Review
-                                </Button>
-                                <Button variant="outline" onClick={() => setSelectedEvidence(null)}>
-                                  Cancel
-                                </Button>
-                              </div>
                             </div>
+                            <DialogFooter className="gap-2 sm:gap-0">
+                              <Button variant="outline" onClick={() => setSelectedEvidence(null)}>
+                                Cancel
+                              </Button>
+                              <Button 
+                                onClick={() => handleReviewEvidence(item.id)}
+                                disabled={reviewData.status === 'rejected' && !reviewData.feedback.trim()}
+                                className={reviewData.status === 'approved' ? 'bg-success hover:bg-success-dark' : 'bg-danger hover:bg-danger-dark'}
+                              >
+                                Submit Review
+                              </Button>
+                            </DialogFooter>
                           </DialogContent>
                         </Dialog>
-                        
-                        {evidence.file_url && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadFile(evidence.file_url, evidence.file_name || 'evidence')}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View File
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                    
-                    {(evidence.status === 'approved' || evidence.status === 'rejected') && (
-                      <div className="space-y-2">
-                        {evidence.feedback && (
-                          <div className="bg-gray-50 p-3 rounded-lg">
-                            <p className="text-sm font-medium text-gray-700">Feedback:</p>
-                            <p className="text-sm text-gray-600">{evidence.feedback}</p>
-                          </div>
-                        )}
-                        
-                        {evidence.file_url && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadFile(evidence.file_url, evidence.file_name || 'evidence')}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View File
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+                      ) : (
+                        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-xs font-semibold text-gray-600">
+                          {getStatusIcon(item.status)}
+                          <span>Reviewed as {item.status}</span>
+                        </div>
+                      )}
+                      
+                      <Button size="sm" variant="outline" mode="icon" onClick={() => handleViewFile(item.file_url)}>
+                        <KeenIcon icon="eye" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </Container>
+    </Fragment>
   );
 }
+

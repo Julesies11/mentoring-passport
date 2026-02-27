@@ -5,17 +5,20 @@ import {
   fetchPairTasks,
   fetchPairTaskStats,
   updatePairTaskStatus,
+  type PairTask,
+  type Task
 } from '@/lib/api/tasks';
 
 export function useTasks() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  const { data: tasks = [], isLoading, error } = useQuery({
+  const { data: tasks = [], isLoading, error } = useQuery<Task[]>({
     queryKey: ['tasks'],
     queryFn: () => fetchTasks(),
   });
 
-  const pairTasks: any[] = [];
+  const pairTasks: PairTask[] = [];
   const isLoadingPairTasks = false;
 
   return {
@@ -27,7 +30,7 @@ export function useTasks() {
     fetchPairTasks,
     fetchPairTaskStats,
     updatePairTaskStatus: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed') =>
-      updatePairTaskStatus(user.id, taskId, status),
+      updatePairTaskStatus(taskId, status, user?.id),
   };
 }
 

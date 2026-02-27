@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { useAllParticipants } from '@/hooks/use-participants';
 import { createMeeting, updateMeeting, deleteMeeting } from '@/lib/api/meetings';
 import { useQueryClient } from '@tanstack/react-query';
+import { Container } from '@/components/common/container';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+} from '@/layouts/demo1/components/toolbar';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 import { toast } from 'sonner';
 import type { Meeting } from '@/lib/api/meetings';
@@ -56,26 +62,34 @@ export function SupervisorCalendarPage() {
   };
 
   return (
-    <div className="container-fixed py-8">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Calendar</h1>
-          <p className="text-sm text-gray-600">
-            View and manage all meetings across all mentor-mentee pairs
-          </p>
-        </div>
+    <Fragment>
+      <Container>
+        <Toolbar>
+          <ToolbarHeading
+            title="Program Calendar"
+            description="View and manage all meetings across all mentor-mentee pairs"
+          />
+          <ToolbarActions>
+            {/* Action buttons could go here */}
+          </ToolbarActions>
+        </Toolbar>
+      </Container>
 
-        <MeetingCalendar
-          meetings={meetings}
-          participants={participants}
-          onMeetingCreate={handleMeetingCreate}
-          onMeetingUpdate={handleMeetingUpdate}
-          onMeetingDelete={handleMeetingDelete}
-          selectedParticipant={selectedParticipant}
-          onParticipantFilter={handleParticipantFilter}
-          showFilters={true}
-        />
-      </div>
-    </div>
+      <Container>
+        <div className="grid gap-5 lg:gap-7.5">
+          <MeetingCalendar
+            meetings={meetings}
+            participants={participants}
+            onMeetingCreate={handleMeetingCreate}
+            onMeetingUpdate={handleMeetingUpdate}
+            onMeetingDelete={handleMeetingDelete}
+            selectedParticipant={selectedParticipant}
+            onParticipantFilter={handleParticipantFilter}
+            showFilters={true}
+          />
+        </div>
+      </Container>
+    </Fragment>
   );
 }
+

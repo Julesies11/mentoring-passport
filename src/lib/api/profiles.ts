@@ -53,3 +53,21 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
   return profile;
 }
+
+/**
+ * Constructs a full public URL for a user's avatar.
+ * Handles both absolute URLs and Supabase storage paths.
+ */
+export function getAvatarUrl(userId: string, avatarPath?: string | null): string {
+  if (!avatarPath) return '';
+  
+  // If it's already a full URL, return as is
+  if (avatarPath.startsWith('http')) {
+    return avatarPath;
+  }
+  
+  // Construct Supabase public URL: bucket/userId/filename
+  const fullPath = `${userId}/${avatarPath}`;
+  const { data } = supabase.storage.from('mp-avatars').getPublicUrl(fullPath);
+  return data.publicUrl;
+}

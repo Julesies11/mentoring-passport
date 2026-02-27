@@ -71,11 +71,12 @@ export function SidebarMenu() {
   };
 
   const buildMenuItemRoot = (item: MenuItem, index: number): JSX.Element => {
+    const Icon = item.icon;
     if (item.children) {
       return (
         <AccordionMenuSub key={index} value={item.path || `root-${index}`}>
           <AccordionMenuSubTrigger className="text-sm font-medium">
-            {item.icon && <item.icon data-slot="accordion-menu-icon" />}
+            {Icon && (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />)}
             <span data-slot="accordion-menu-title">{item.title}</span>
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
@@ -101,8 +102,10 @@ export function SidebarMenu() {
             to={item.path || '#'}
             className="flex items-center justify-between grow gap-2"
           >
-            {item.icon && <item.icon data-slot="accordion-menu-icon" />}
-            <span data-slot="accordion-menu-title">{item.title}</span>
+            <div className="flex items-center gap-2">
+              {Icon && (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />)}
+              <span data-slot="accordion-menu-title">{item.title}</span>
+            </div>
           </Link>
         </AccordionMenuItem>
       );
@@ -113,13 +116,14 @@ export function SidebarMenu() {
     item: MenuItem,
     index: number,
   ): JSX.Element => {
+    const Icon = item.icon;
     return (
       <AccordionMenuItem
         key={index}
         value={`disabled-${index}`}
         className="text-sm font-medium"
       >
-        {item.icon && <item.icon data-slot="accordion-menu-icon" />}
+        {Icon && (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />)}
         <span data-slot="accordion-menu-title">{item.title}</span>
         {item.disabled && (
           <Badge variant="secondary" size="sm" className="ms-auto me-[-10px]">
@@ -148,6 +152,7 @@ export function SidebarMenu() {
     index: number,
     level: number = 0,
   ): JSX.Element => {
+    const Icon = item.icon;
     if (item.children) {
       return (
         <AccordionMenuSub
@@ -155,18 +160,21 @@ export function SidebarMenu() {
           value={item.path || `child-${level}-${index}`}
         >
           <AccordionMenuSubTrigger className="text-[13px]">
-            {item.collapse ? (
-              <span className="text-muted-foreground">
-                <span className="hidden [[data-state=open]>span>&]:inline">
-                  {item.collapseTitle}
+            <div className="flex items-center gap-2">
+              {Icon && (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />)}
+              {item.collapse ? (
+                <span className="text-muted-foreground">
+                  <span className="hidden [[data-state=open]>span>&]:inline">
+                    {item.collapseTitle}
+                  </span>
+                  <span className="inline [[data-state=open]>span>&]:hidden">
+                    {item.expandTitle}
+                  </span>
                 </span>
-                <span className="inline [[data-state=open]>span>&]:hidden">
-                  {item.expandTitle}
-                </span>
-              </span>
-            ) : (
-              item.title
-            )}
+              ) : (
+                item.title
+              )}
+            </div>
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
             type="single"
@@ -194,7 +202,15 @@ export function SidebarMenu() {
           value={item.path || ''}
           className="text-[13px]"
         >
-          <Link to={item.path || '#'}>{item.title}</Link>
+          <Link
+            to={item.path || '#'}
+            className="flex items-center justify-between grow gap-2"
+          >
+            <div className="flex items-center gap-2">
+              {Icon && (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />)}
+              <span data-slot="accordion-menu-title">{item.title}</span>
+            </div>
+          </Link>
         </AccordionMenuItem>
       );
     }

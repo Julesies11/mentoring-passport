@@ -1,55 +1,37 @@
-import {
-  LayoutDashboard,
-  Users,
-  Link2,
-  FileCheck,
-  Archive,
-  UserCircle,
-  Calendar,
-  ClipboardList,
-  Image,
-  StickyNote,
-  CheckSquare,
-  ListTodo,
-} from 'lucide-react';
+import { KeenIcon } from '@/components/keenicons';
 import { type MenuConfig } from './types';
 
 // Supervisor menu
 export const MENU_SUPERVISOR: MenuConfig = [
   {
     title: 'Dashboard',
-    icon: LayoutDashboard,
+    icon: () => <KeenIcon icon="element-11" />,
     path: '/supervisor/dashboard',
   },
   {
     title: 'Participants',
-    icon: Users,
+    icon: () => <KeenIcon icon="users" />,
     path: '/supervisor/participants',
   },
   {
     title: 'Pairs',
-    icon: Link2,
+    icon: () => <KeenIcon icon="scroll" />,
     path: '/supervisor/pairs',
   },
   {
     title: 'Master Tasks',
-    icon: ListTodo,
+    icon: () => <KeenIcon icon="check-list" />,
     path: '/supervisor/master-tasks',
   },
   {
     title: 'Evidence Review',
-    icon: FileCheck,
+    icon: () => <KeenIcon icon="file-done" />,
     path: '/supervisor/evidence-review',
   },
   {
     title: 'Calendar',
-    icon: Calendar,
+    icon: () => <KeenIcon icon="calendar" />,
     path: '/supervisor/calendar',
-  },
-  {
-    title: 'Archive',
-    icon: Archive,
-    path: '/supervisor/archive',
   },
 ];
 
@@ -57,32 +39,32 @@ export const MENU_SUPERVISOR: MenuConfig = [
 export const MENU_MENTOR: MenuConfig = [
   {
     title: 'Dashboard',
-    icon: LayoutDashboard,
+    icon: () => <KeenIcon icon="element-11" />,
     path: '/mentor/dashboard',
   },
   {
     title: 'My Mentees',
-    icon: Users,
+    icon: () => <KeenIcon icon="users" />,
     path: '/mentor/mentees',
   },
   {
     title: 'Meetings',
-    icon: Calendar,
+    icon: () => <KeenIcon icon="calendar" />,
     path: '/mentor/meetings',
   },
   {
     title: 'Tasks',
-    icon: ClipboardList,
+    icon: () => <KeenIcon icon="clipboard" />,
     path: '/mentor/tasks',
   },
   {
     title: 'Evidence',
-    icon: Image,
+    icon: () => <KeenIcon icon="picture" />,
     path: '/mentor/evidence',
   },
   {
     title: 'Notes',
-    icon: StickyNote,
+    icon: () => <KeenIcon icon="notepad" />,
     path: '/mentor/notes',
   },
 ];
@@ -91,32 +73,32 @@ export const MENU_MENTOR: MenuConfig = [
 export const MENU_MENTEE: MenuConfig = [
   {
     title: 'Dashboard',
-    icon: LayoutDashboard,
+    icon: () => <KeenIcon icon="element-11" />,
     path: '/mentee/dashboard',
   },
   {
     title: 'My Mentor',
-    icon: UserCircle,
+    icon: () => <KeenIcon icon="profile-circle" />,
     path: '/mentee/mentor',
   },
   {
     title: 'Meetings',
-    icon: Calendar,
+    icon: () => <KeenIcon icon="calendar" />,
     path: '/mentee/meetings',
   },
   {
     title: 'Checklist',
-    icon: ClipboardList,
+    icon: () => <KeenIcon icon="check-list" />,
     path: '/mentee/checklist',
   },
   {
     title: 'Evidence',
-    icon: Image,
+    icon: () => <KeenIcon icon="picture" />,
     path: '/mentee/evidence',
   },
   {
     title: 'Notes',
-    icon: StickyNote,
+    icon: () => <KeenIcon icon="notepad" />,
     path: '/mentee/notes',
   },
 ];

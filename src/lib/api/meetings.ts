@@ -51,8 +51,8 @@ export async function fetchAllMeetings(): Promise<Meeting[]> {
       *,
       pair:mp_pairs(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       )
     `)
     .order('date_time', { ascending: false });
@@ -93,8 +93,8 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
       *,
       pair:mp_pairs!inner(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       )
     `)
     .or(`pair.mentor_id.eq.${userId},pair.mentee_id.eq.${userId}`)
@@ -128,8 +128,8 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       *,
       pair:mp_pairs(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       )
     `)
     .single();
@@ -163,8 +163,8 @@ export async function updateMeeting(
       *,
       pair:mp_pairs(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       )
     `)
     .single();

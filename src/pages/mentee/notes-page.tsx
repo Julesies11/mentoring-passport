@@ -1,17 +1,39 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
 import { useNotes } from '@/hooks/use-notes';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Container } from '@/components/common/container';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+} from '@/layouts/demo1/components/toolbar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { StickyNote, Plus, Edit, Trash2, Eye, EyeOff, Calendar, User } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export function MenteeNotesPage() {
   const { user } = useAuth();
@@ -35,12 +57,34 @@ export function MenteeNotesPage() {
   const privateNotes = menteeNotes.filter(note => note.is_private);
   const sharedNotes = menteeNotes.filter(note => !note.is_private);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement note creation
-    console.log('Create note:', formData);
-    setIsCreateDialogOpen(false);
-    setFormData({ pair_id: '', title: '', content: '', is_private: false });
+    try {
+      await createNote.mutateAsync(formData);
+      setIsCreateDialogOpen(false);
+      setFormData({ pair_id: '', title: '', content: '', is_private: false });
+    } catch (error) {
+      console.error('Error creating note:', error);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedNote) return;
+    try {
+      await updateNote.mutateAsync({
+        noteId: selectedNote.id,
+        updates: {
+          title: formData.title,
+          content: formData.content,
+          is_private: formData.is_private
+        }
+      });
+      setSelectedNote(null);
+      setFormData({ pair_id: '', title: '', content: '', is_private: false });
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
   };
 
   const handleEdit = (note: any) => {
@@ -53,227 +97,320 @@ export function MenteeNotesPage() {
     });
   };
 
-  const handleDelete = (noteId: string) => {
-    // TODO: Implement note deletion
-    console.log('Delete note:', noteId);
+  const handleDelete = async (noteId: string) => {
+    if (confirm('Are you sure you want to delete this note?')) {
+      try {
+        await deleteNote.mutateAsync(noteId);
+      } catch (error) {
+        console.error('Error deleting note:', error);
+      }
+    }
   };
 
   return (
-    <div className="container-fixed">
-      <div className="flex flex-col gap-5 lg:gap-7.5">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Notes</h1>
-            <p className="text-sm text-gray-600">Manage your mentoring notes and reflections</p>
-          </div>
-          
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Note
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Note</DialogTitle>
-                <DialogDescription>
-                  Add a new note to document your mentoring journey and reflections.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="pair_id">Mentoring Relationship</Label>
-                  <Select
-                    value={formData.pair_id}
-                    onValueChange={(value) => setFormData({ ...formData, pair_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select mentoring relationship" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pairs.map((pair) => (
-                        <SelectItem key={pair.id} value={pair.id}>
-                          {pair.mentor?.full_name} - {pair.mentee?.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Enter note title"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="content">Content</Label>
-                  <Textarea
-                    id="content"
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    placeholder="Write your thoughts, reflections, or meeting notes here..."
-                    rows={5}
-                    required
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="is_private"
-                    checked={formData.is_private}
-                    onChange={(e) => setFormData({ ...formData, is_private: e.target.checked })}
-                    className="rounded"
-                  />
-                  <Label htmlFor="is_private">Private note (only visible to you)</Label>
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1">Create Note</Button>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+    <Fragment>
+      <Container>
+        <Toolbar>
+          <ToolbarHeading
+            title="Notes"
+            description="Manage your mentoring notes and reflections"
+          />
+          <ToolbarActions>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <KeenIcon icon="plus" />
+              New Note
+            </Button>
+          </ToolbarActions>
+        </Toolbar>
+      </Container>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-7.5">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Private Notes</CardTitle>
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{privateNotes.length}</div>
-              <p className="text-xs text-muted-foreground">Personal reflections</p>
-            </CardContent>
-          </Card>
+      <Container>
+        <div className="grid gap-5 lg:gap-7.5">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
+              <p>Loading notes...</p>
+            </div>
+          ) : (
+            <Fragment>
+              {/* Stats Section */}
+              <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-5">
+                    <p className="text-sm text-muted-foreground mb-1 text-purple-600">Private Notes</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-bold text-purple-600">{privateNotes.length}</p>
+                      <KeenIcon icon="eye-slash" className="text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-5">
+                    <p className="text-sm text-muted-foreground mb-1 text-success">Shared Notes</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-bold text-success">{sharedNotes.length}</p>
+                      <KeenIcon icon="people" className="text-success" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Shared Notes</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{sharedNotes.length}</div>
-              <p className="text-xs text-muted-foreground">Visible to mentor</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-5 lg:gap-7.5">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">All Notes</h3>
-            {menteeNotes.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <StickyNote className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Notes Yet</h3>
-                  <p className="text-sm text-muted-foreground text-center mb-4">
-                    Start documenting your mentoring journey with notes about meetings, goals, and personal reflections.
-                  </p>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create First Note
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {menteeNotes.map((note) => (
-                  <Card key={note.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <CardTitle className="text-lg">{note.title}</CardTitle>
-                          <CardDescription className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            {format(new Date(note.created_at), 'PPP')}
-                            <Badge variant={note.is_private ? 'secondary' : 'outline'}>
-                              {note.is_private ? 'Private' : 'Shared'}
-                            </Badge>
-                          </CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(note)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(note.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+              {/* Notes Grid */}
+              <div className="space-y-5">
+                <h3 className="text-lg font-bold text-gray-900">All Notes</h3>
+                {menteeNotes.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-16">
+                      <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                        <KeenIcon icon="notepad" className="text-3xl text-gray-400" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                        {note.content}
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">No Notes Yet</h3>
+                      <p className="text-muted-foreground text-center max-w-sm mb-6">
+                        Start documenting your mentoring journey with notes about meetings, goals, and personal reflections.
                       </p>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <User className="h-3 w-3" />
-                          {pairs.find(p => p.id === note.pair_id)?.mentor?.full_name}
-                        </div>
-                        <Button size="sm" variant="outline">
-                          Read More
-                        </Button>
-                      </div>
+                      <Button onClick={() => setIsCreateDialogOpen(true)}>
+                        <KeenIcon icon="plus" />
+                        Create First Note
+                      </Button>
                     </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7.5">
+                    {menteeNotes.map((note) => (
+                      <Card key={note.id} className="hover:shadow-md transition-shadow flex flex-col h-full relative">
+                        <CardHeader className="pb-3 border-b border-gray-100 mb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <KeenIcon icon="notepad" className="text-primary" />
+                              <CardTitle className="text-base font-bold text-gray-900 truncate max-w-[150px]">
+                                {note.title || 'Untitled Note'}
+                              </CardTitle>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {note.is_private ? (
+                                <Badge className="bg-purple-500 text-white border-none text-[10px] h-5 px-1.5">
+                                  <KeenIcon icon="eye-slash" className="text-[10px] mr-1" />
+                                  Private
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-success text-white border-none text-[10px] h-5 px-1.5">
+                                  <KeenIcon icon="people" className="text-[10px] mr-1" />
+                                  Shared
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-5 flex-1 flex flex-col">
+                          <p className="text-sm text-gray-600 mb-6 line-clamp-4 leading-relaxed flex-1">
+                            {note.content}
+                          </p>
+                          
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Mentor</span>
+                              <span className="text-xs font-semibold text-gray-900">
+                                {pairs.find(p => p.id === note.pair_id)?.mentor?.full_name || 'Unknown'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground font-medium">
+                              {format(new Date(note.created_at), 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                          
+                          <div className="flex gap-2 mt-4">
+                            <Button size="xs" variant="outline" className="flex-1" onClick={() => handleEdit(note)}>
+                              <KeenIcon icon="pencil" />
+                              Edit
+                            </Button>
+                            <Button size="xs" variant="ghost" mode="icon" onClick={() => handleDelete(note.id)}>
+                              <KeenIcon icon="trash" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Note-Taking Tips</CardTitle>
-            <CardDescription>Best practices for effective mentoring notes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-600 font-semibold text-sm">1</span>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1">Be Specific</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Include concrete examples and specific details about your learning and experiences.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-600 font-semibold text-sm">2</span>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1">Reflect Regularly</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Take notes after each meeting and weekly to track your progress and insights.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-600 font-semibold text-sm">3</span>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1">Set Action Items</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Document specific goals and next steps to keep yourself accountable.
-                  </p>
-                </div>
-              </div>
+              {/* Tips Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Note-Taking Tips</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                      <div className="size-10 rounded-lg bg-primary-light flex items-center justify-center text-primary">
+                        <KeenIcon icon="check-list" />
+                      </div>
+                      <h4 className="font-bold text-gray-900">Be Specific</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        Include concrete examples and specific details about your learning and experiences to track growth effectively.
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="size-10 rounded-lg bg-success-light flex items-center justify-center text-success">
+                        <KeenIcon icon="arrows-loop" />
+                      </div>
+                      <h4 className="font-bold text-gray-900">Reflect Regularly</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        Take notes after each meeting and weekly to capture fresh insights and maintain a consistent development log.
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="size-10 rounded-lg bg-warning-light flex items-center justify-center text-warning">
+                        <KeenIcon icon="flag" />
+                      </div>
+                      <h4 className="font-bold text-gray-900">Set Action Items</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        Document specific goals and next steps discussed with your mentor to keep yourself accountable and focused.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Fragment>
+          )}
+        </div>
+      </Container>
+
+      {/* Create Note Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Note</DialogTitle>
+            <DialogDescription>
+              Add a new note to document your mentoring journey and reflections.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="grid gap-5 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="pair_id" className="text-gray-900 font-semibold">Mentoring Relationship *</Label>
+              <Select
+                value={formData.pair_id}
+                onValueChange={(value) => setFormData({ ...formData, pair_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select relationship" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pairs.map((pair) => (
+                    <SelectItem key={pair.id} value={pair.id}>
+                      {pair.mentor?.full_name} (Mentor)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="title" className="text-gray-900 font-semibold">Title *</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g., Reflection on Skill Workshop"
+                required
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="content" className="text-gray-900 font-semibold">Content *</Label>
+              <Textarea
+                id="content"
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Write your thoughts, reflections, or meeting notes here..."
+                rows={5}
+                className="resize-none"
+                required
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex flex-col">
+                <Label htmlFor="is_private" className="text-gray-900 font-semibold cursor-pointer">Private Note</Label>
+                <span className="text-[10px] text-muted-foreground">Only visible to you</span>
+              </div>
+              <Switch
+                id="is_private"
+                checked={formData.is_private}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_private: checked })}
+              />
+            </div>
+            
+            <DialogFooter className="pt-4 gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Create Note
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Note Dialog */}
+      <Dialog open={!!selectedNote} onOpenChange={(open) => !open && setSelectedNote(null)}>
+        <DialogContent className="max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+            <DialogDescription>
+              Update your note and reflections.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedNote && (
+            <form onSubmit={handleUpdate} className="grid gap-5 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-title" className="text-gray-900 font-semibold">Title *</Label>
+                <Input
+                  id="edit-title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="edit-content" className="text-gray-900 font-semibold">Content *</Label>
+                <Textarea
+                  id="edit-content"
+                  value={formData.content}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  rows={5}
+                  className="resize-none"
+                  required
+                />
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div className="flex flex-col">
+                  <Label htmlFor="edit-is_private" className="text-gray-900 font-semibold cursor-pointer">Private Note</Label>
+                  <span className="text-[10px] text-muted-foreground">Only visible to you</span>
+                </div>
+                <Switch
+                  id="edit-is_private"
+                  checked={formData.is_private}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_private: checked })}
+                />
+              </div>
+              
+              <DialogFooter className="pt-4 gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setSelectedNote(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Update Note
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Fragment>
   );
 }
+

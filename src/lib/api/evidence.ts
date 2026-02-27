@@ -4,7 +4,7 @@ import { createNotification } from '@/lib/api/notifications';
 export interface Evidence {
   id: string;
   pair_id: string;
-  task_id: string | null;
+  master_task_id: string | null;
   sub_task_id: string | null;
   meeting_id: string | null;
   submitted_by: string;
@@ -43,7 +43,7 @@ export interface Evidence {
 
 export interface CreateEvidenceInput {
   pair_id: string;
-  task_id?: string;
+  master_task_id?: string;
   sub_task_id?: string;
   evidence_type_id: string;
   file_url: string;
@@ -63,14 +63,14 @@ export async function fetchAllEvidence(): Promise<Evidence[]> {
     .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_pair_tasks(id, name),
-      subtask:mp_pair_subtasks(id, name),
+      task:mp_tasks_master!master_task_id(id, name),
+      subtask:mp_pair_subtasks!sub_task_id(id, name),
       pair:mp_pairs(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       ),
-      reviewer:mp_profiles!mp_evidence_uploads_reviewed_by_fkey(id, full_name)
+      reviewer:reviewed_by(id, full_name)
     `)
     .order('created_at', { ascending: false });
 
@@ -90,10 +90,10 @@ export async function fetchPairEvidence(pairId: string): Promise<Evidence[]> {
     .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_pair_tasks(id, name),
-      subtask:mp_pair_subtasks(id, name),
+      task:mp_tasks_master!master_task_id(id, name),
+      subtask:mp_pair_subtasks!sub_task_id(id, name),
       evidence_type:mp_evidence_types(id, name),
-      reviewer:mp_profiles!mp_evidence_uploads_reviewed_by_fkey(id, full_name)
+      reviewer:reviewed_by(id, full_name)
     `)
     .eq('pair_id', pairId)
     .order('created_at', { ascending: false });
@@ -114,12 +114,12 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
     .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_pair_tasks(id, name),
-      subtask:mp_pair_subtasks(id, name),
+      task:mp_tasks_master!master_task_id(id, name),
+      subtask:mp_pair_subtasks!sub_task_id(id, name),
       pair:mp_pairs(
         id,
-        mentor:mp_profiles!mp_pairs_mentor_id_fkey(id, full_name),
-        mentee:mp_profiles!mp_pairs_mentee_id_fkey(id, full_name)
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
       )
     `)
     .eq('status', 'pending')
@@ -138,24 +138,26 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
  */
 export async function createEvidence(input: CreateEvidenceInput): Promise<Evidence> {
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
   const userId = user.id;
 
   const { data, error } = await supabase
     .from('mp_evidence_uploads')
     .insert({
       pair_id: input.pair_id,
-      task_id: input.task_id,
+      master_task_id: input.master_task_id,
       sub_task_id: input.sub_task_id,
       evidence_type_id: input.evidence_type_id,
       file_url: input.file_url,
       description: input.description,
       submitted_by: userId,
+      type: 'photo', // Default type
       status: 'pending',
     })
     .select(`
       *,
-      task:mp_pair_tasks(id, name),
-      subtask:mp_pair_subtasks(id, name),
+      task:mp_tasks_master!master_task_id(id, name),
+      subtask:mp_pair_subtasks!sub_task_id(id, name),
       evidence_type:mp_evidence_types(id, name)
     `)
     .single();
@@ -253,11 +255,11 @@ export async function reviewEvidence(
     .eq('id', evidenceId)
     .select(`
       *,
-      task:mp_pair_tasks(id, name),
-      subtask:mp_pair_subtasks(id, name),
+      task:mp_tasks_master!master_task_id(id, name),
+      subtask:mp_pair_subtasks!sub_task_id(id, name),
       evidence_type:mp_evidence_types(id, name),
-      reviewer:mp_profiles!mp_evidence_uploads_reviewed_by_fkey(id, full_name),
-      pair:mp_pairs(mentor_id, mentee_id)
+      reviewer:reviewed_by(id, full_name),
+      pair:mp_pairs(id, mentor_id, mentee_id)
     `)
     .single();
 

@@ -21,10 +21,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Eye, EyeOff, Camera } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
+import { KeenIcon } from '@/components/keenicons';
+import { ImageInput, type ImageInputFile } from '@/components/image-input';
+import { getAvatarUrl } from '@/lib/api/profiles';
 import type { Participant } from '@/lib/api/participants';
-import { ProfileAvatar } from '@/components/profile/profile-avatar';
-import { ParticipantAvatarUpload } from './participant-avatar-upload';
 
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -51,7 +52,7 @@ interface ParticipantDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   participant?: Participant | null;
-  onSubmit: (data: CreateFormData | UpdateFormData) => Promise<void>;
+  onSubmit: (data: (CreateFormData | UpdateFormData) & { avatar_file?: File; delete_avatar?: boolean }) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -65,8 +66,8 @@ export function ParticipantDialog({
   const isEdit = !!participant;
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(participant?.avatar_url || null);
-  const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
+  const [avatar, setAvatar] = useState<ImageInputFile[]>([]);
+  const [deleteAvatar, setDeleteAvatar] = useState(false);
 
   const {
     register,
@@ -102,32 +103,37 @@ export function ParticipantDialog({
       setValue('full_name', participant.full_name || '');
       setValue('department', participant.department || '');
       setValue('phone', participant.phone || '');
-      if ('bio' in watch()) {
-        setValue('bio', participant.bio || '');
+      setValue('bio', participant.bio || '');
+      setValue('status', participant.status);
+      
+      // Initialize avatar if exists
+      if (participant.avatar_url) {
+        setAvatar([{ dataURL: getAvatarUrl(participant.id, participant.avatar_url) }]);
+      } else {
+        setAvatar([]);
       }
-      if ('status' in watch()) {
-        setValue('status', participant.status);
-      }
+      setDeleteAvatar(false);
     }
-  }, [participant, isEdit, setValue, watch]);
+  }, [participant, isEdit, setValue]);
 
   const handleFormSubmit = async (data: CreateFormData | UpdateFormData) => {
+    console.log('Submitting participant form, isEdit:', isEdit, data);
     try {
       setError(null);
-      await onSubmit(data);
+      const avatarFile = avatar.length > 0 && avatar[0].file ? avatar[0].file : undefined;
+      await onSubmit({ ...data, avatar_file: avatarFile, delete_avatar: deleteAvatar } as any);
       reset();
+      setAvatar([]);
       onOpenChange(false);
     } catch (err) {
+      console.error('Error in handleFormSubmit:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
-  const handleAvatarChange = (newAvatarUrl: string | null) => {
-    setAvatarUrl(newAvatarUrl);
-  };
-
   const handleClose = () => {
     reset();
+    setAvatar([]);
     setError(null);
     onOpenChange(false);
   };
@@ -135,75 +141,100 @@ export function ParticipantDialog({
   const roleValue = watch('role');
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{isEdit ? 'Edit Participant' : 'Add New Participant'}</DialogTitle>
-            <DialogDescription>
-              {isEdit
-                ? 'Update participant information'
-                : 'Create a new participant account'}
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Edit Participant' : 'Add New Participant'}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? 'Update participant information'
+              : 'Create a new participant account'}
+          </DialogDescription>
+        </DialogHeader>
 
-          <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6 pt-2">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm font-medium border border-red-100">
+              {error}
+            </div>
+          )}
 
-            {/* Avatar Section - Only for edit mode */}
-            {isEdit && (
-              <div className="flex items-center justify-center p-6 border-b">
-                <div className="text-center">
-                  <ProfileAvatar
-                    userId={participant?.id || ''}
-                    currentAvatar={avatarUrl}
-                    userName={watch('full_name') || participant?.full_name || ''}
-                    size="xl"
-                    showEditButton={false}
-                    className="ring-4 ring-gray-100 mb-4"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAvatarDialogOpen(true)}
-                    className="mt-2"
+          {/* Avatar Section */}
+          <div className="flex flex-col items-center gap-3">
+            <Label className="text-sm font-bold text-gray-700 uppercase tracking-wider self-start">Profile Picture</Label>
+            <div className="relative group">
+              <ImageInput
+                value={avatar}
+                onChange={(selectedAvatar) => {
+                  setAvatar(selectedAvatar);
+                  setDeleteAvatar(selectedAvatar.length === 0);
+                }}
+              >
+                {({ onImageUpload }) => (
+                  <div
+                    className="size-24 relative cursor-pointer group"
+                    onClick={onImageUpload}
                   >
-                    <Camera className="w-4 h-4 mr-2" />
-                    Change Photo
-                  </Button>
-                </div>
-              </div>
-            )}
+                    <div className="size-full rounded-full border-2 border-gray-200 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center relative shadow-sm">
+                      {avatar.length > 0 ? (
+                        <img src={avatar[0].dataURL} alt="avatar" className="size-full object-cover" />
+                      ) : (
+                        <div className="text-gray-300 flex flex-col items-center">
+                          <KeenIcon icon="user" className="text-3xl" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        Upload
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </ImageInput>
+              {avatar.length > 0 && (
+                <Button
+                  variant="outline"
+                  mode="icon"
+                  className="size-6 absolute -top-1 -right-1 rounded-full bg-white shadow-md border-gray-200 text-gray-500 hover:text-danger hover:border-danger transition-colors z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAvatar([]);
+                    setDeleteAvatar(true);
+                  }}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground italic text-center">Square image recommended, max 2MB</p>
+          </div>
 
+          <div className="grid gap-4">
             {!isEdit && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email" className="text-xs font-bold text-gray-600 uppercase">Email *</Label>
                   <Input
                     id="email"
                     type="email"
-                    {...register('email')}
+                    {...register('email' as any)}
                     placeholder="user@example.com"
+                    className="h-10 border-gray-200"
                   />
-                  {errors.email && (
-                    <p className="text-sm text-red-600">{errors.email.message}</p>
+                  {errors && (errors as any).email && (
+                    <p className="text-xs text-red-600 font-medium">{(errors as any).email.message}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="password" className="text-xs font-bold text-gray-600 uppercase">Password *</Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      {...register('password')}
+                      {...register('password' as any)}
                       placeholder="Minimum 8 characters"
-                      className="pr-10"
+                      className="h-10 pr-10 border-gray-200"
                     />
                     <Button
                       type="button"
@@ -219,85 +250,92 @@ export function ParticipantDialog({
                       )}
                     </Button>
                   </div>
-                  {errors.password && (
-                    <p className="text-sm text-red-600">{errors.password.message}</p>
+                  {errors && (errors as any).password && (
+                    <p className="text-xs text-red-600 font-medium">{(errors as any).password.message}</p>
                   )}
                 </div>
               </>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Role *</Label>
-              <Select
-                value={roleValue}
-                onValueChange={(value) => setValue('role', value as any)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="supervisor">Supervisor</SelectItem>
-                  <SelectItem value="mentor">Mentor</SelectItem>
-                  <SelectItem value="mentee">Mentee</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.role && (
-                <p className="text-sm text-red-600">{errors.role.message}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="role" className="text-xs font-bold text-gray-600 uppercase">Role *</Label>
+                            <Select
+                              value={watch('role') || 'mentee'}
+                              onValueChange={(value) => setValue('role', value as any)}
+                            >
+                              <SelectTrigger className="h-10 border-gray-200">
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="supervisor">Supervisor</SelectItem>
+                                <SelectItem value="mentor">Mentor</SelectItem>
+                                <SelectItem value="mentee">Mentee</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errors.role && (
+                              <p className="text-xs text-red-600 font-medium">{errors.role.message}</p>
+                            )}
+                          </div>
+                            <div className="space-y-2">
+                <Label htmlFor="full_name" className="text-xs font-bold text-gray-600 uppercase">Full Name *</Label>
+                <Input
+                  id="full_name"
+                  {...register('full_name')}
+                  placeholder="John Doe"
+                  className="h-10 border-gray-200"
+                />
+                {errors.full_name && (
+                  <p className="text-xs text-red-600 font-medium">{errors.full_name.message}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name *</Label>
-              <Input
-                id="full_name"
-                {...register('full_name')}
-                placeholder="John Doe"
-              />
-              {errors.full_name && (
-                <p className="text-sm text-red-600">{errors.full_name.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                {...register('department')}
-                placeholder="Emergency Medicine"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                {...register('phone')}
-                placeholder="+1234567890"
-              />
-            </div>
-
-            {isEdit && 'bio' in watch() && (
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="department" className="text-xs font-bold text-gray-600 uppercase">Department</Label>
+                <Input
+                  id="department"
+                  {...register('department')}
+                  placeholder="Medicine"
+                  className="h-10 border-gray-200"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-xs font-bold text-gray-600 uppercase">Phone</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  {...register('phone')}
+                  placeholder="+1234567890"
+                  className="h-10 border-gray-200"
+                />
+              </div>
+            </div>
+
+            {isEdit && (
+              <div className="space-y-2">
+                <Label htmlFor="bio" className="text-xs font-bold text-gray-600 uppercase">Bio</Label>
                 <Textarea
                   id="bio"
-                  {...register('bio')}
+                  {...register('bio' as any)}
                   placeholder="Brief description..."
                   rows={3}
+                  className="border-gray-200"
                 />
               </div>
             )}
 
-            {isEdit && 'status' in watch() && (
+            {isEdit && (
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status" className="text-xs font-bold text-gray-600 uppercase">Status</Label>
                 <Select
-                  value={watch('status')}
-                  onValueChange={(value) => setValue('status', value as any)}
+                  value={watch('status' as any) || 'active'}
+                  onValueChange={(value) => setValue('status' as any, value as any)}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="h-10 border-gray-200">
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
@@ -306,28 +344,18 @@ export function ParticipantDialog({
                 </Select>
               </div>
             )}
+          </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      {isEdit && participant && (
-        <ParticipantAvatarUpload
-          open={avatarDialogOpen}
-          onOpenChange={setAvatarDialogOpen}
-          participantId={participant.id}
-          currentAvatar={avatarUrl}
-          userName={watch('full_name') || participant.full_name}
-          onAvatarChange={handleAvatarChange}
-        />
-      )}
-    </>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={handleClose} className="h-10 px-6 font-bold">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading} className="h-10 px-8 font-bold shadow-lg shadow-primary/20">
+              {isLoading ? 'Saving...' : isEdit ? 'Update Participant' : 'Create Participant'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
