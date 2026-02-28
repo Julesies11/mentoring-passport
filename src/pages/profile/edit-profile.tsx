@@ -15,15 +15,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useQueryClient } from '@tanstack/react-query';
-import { updateProfile } from '@/lib/api/profiles';
+import { updateProfile, getAvatarUrl } from '@/lib/api/profiles';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { AvatarInput } from '@/partials/common/avatar-input';
-import { ImageInputFile } from '@/components/image-input';
+import { ImageInput, type ImageInputFile } from '@/components/image-input';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { KeenIcon } from '@/components/keenicons';
+import { X } from 'lucide-react';
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
+  job_title: z.string().optional(),
   bio: z.string().optional(),
   department: z.string().optional(),
   phone: z.string().optional(),
@@ -34,9 +36,9 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 export function EditProfilePage() {
   const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatar_url || null);
   const [isLoading, setIsLoading] = useState(false);
-  const [avatarFiles, setAvatarFiles] = useState<ImageInputFile[]>([]);
+  const [avatar, setAvatar] = useState<ImageInputFile[]>([]);
+  const [deleteAvatar, setDeleteAvatar] = useState(false);
 
   const {
     register,
@@ -48,6 +50,7 @@ export function EditProfilePage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       full_name: user?.full_name || '',
+      job_title: user?.job_title || '',
       bio: user?.bio || '',
       department: user?.department || '',
       phone: user?.phone || '',
@@ -57,37 +60,42 @@ export function EditProfilePage() {
   useEffect(() => {
     if (user) {
       setValue('full_name', user.full_name || '');
+      setValue('job_title', user.job_title || '');
       setValue('bio', user.bio || '');
       setValue('department', user.department || '');
       setValue('phone', user.phone || '');
-      setAvatarUrl(user.avatar_url || null);
       
-      // Initialize avatar files for Metronic AvatarInput
+      // Initialize avatar for ImageInput
       if (user.avatar_url) {
-        setAvatarFiles([{ 
-          dataURL: `https://rdnaqrzqpcicskylmsyl.supabase.co/storage/v1/object/mp-avatars/${user.id}/${user.avatar_url}`
-        }]);
+        setAvatar([{ dataURL: getAvatarUrl(user.id, user.avatar_url) }]);
       } else {
-        setAvatarFiles([{ 
-          dataURL: toAbsoluteUrl('/media/avatars/300-2.png')
-        }]);
+        setAvatar([]);
       }
+      setDeleteAvatar(false);
     }
   }, [user, setValue]);
-
-  const handleAvatarFilesChange = (files: ImageInputFile[]) => {
-    setAvatarFiles(files);
-  };
 
   const handleFormSubmit = async (data: ProfileFormData) => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      // Handle avatar upload if new file was selected
-      let finalAvatarUrl = avatarUrl;
-      if (avatarFiles.length > 0 && avatarFiles[0].file) {
-        console.log('New avatar file selected:', avatarFiles[0].file);
+      let finalAvatarUrl = user.avatar_url;
+
+      if (deleteAvatar) {
+        finalAvatarUrl = null;
+      } else if (avatar.length > 0 && avatar[0].file) {
+        const file = avatar[0].file;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('mp-avatars')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+        finalAvatarUrl = fileName;
       }
 
       await updateProfile(user.id, {
@@ -103,13 +111,18 @@ export function EditProfilePage() {
       if (updateUser) {
         updateUser({
           ...user,
-          full_name: data.full_name,
-          bio: data.bio,
-          department: data.department,
-          phone: data.phone,
+          ...data,
           avatar_url: finalAvatarUrl,
         });
       }
+
+      // Refresh local avatar state from new URL
+      if (finalAvatarUrl) {
+        setAvatar([{ dataURL: getAvatarUrl(user.id, finalAvatarUrl) }]);
+      } else {
+        setAvatar([]);
+      }
+      setDeleteAvatar(false);
 
       toast.success('Profile updated successfully');
     } catch (error) {
@@ -155,16 +168,55 @@ export function EditProfilePage() {
                   Your public profile image
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center pb-8">
-                <div className="flex justify-center mb-6">
-                  <AvatarInput 
-                    value={avatarFiles}
-                    onChange={handleAvatarFilesChange}
-                  />
+              <CardContent className="text-center pb-8 flex flex-col items-center">
+                <div className="relative group mb-6">
+                  <ImageInput
+                    value={avatar}
+                    onChange={(selectedAvatar) => {
+                      setAvatar(selectedAvatar);
+                      setDeleteAvatar(selectedAvatar.length === 0);
+                    }}
+                  >
+                    {({ onImageUpload }) => (
+                      <div
+                        className="size-32 relative cursor-pointer group"
+                        onClick={onImageUpload}
+                      >
+                        <div className="size-full rounded-full border-4 border-gray-100 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center relative shadow-sm">
+                          {avatar.length > 0 ? (
+                            <img src={avatar[0].dataURL} alt="avatar" className="size-full object-cover" />
+                          ) : (
+                            <div className="text-gray-300 flex flex-col items-center">
+                              <KeenIcon icon="user" className="text-5xl" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/40 py-2 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            Change Photo
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </ImageInput>
+                  {avatar.length > 0 && (
+                    <Button
+                      variant="outline"
+                      mode="icon"
+                      className="size-8 absolute -top-1 -right-1 rounded-full bg-white shadow-md border-gray-200 text-gray-500 hover:text-danger hover:border-danger transition-colors z-10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAvatar([]);
+                        setDeleteAvatar(true);
+                      }}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  )}
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 border-dashed">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Click on the avatar to upload a new photo. Recommended size: 300x300px. JPG, PNG or SVG.
+                
+                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 border-dashed w-full max-w-[240px]">
+                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                    Click the avatar to select a new photo. JPG, PNG or SVG are accepted.
                   </p>
                 </div>
               </CardContent>
@@ -196,6 +248,17 @@ export function EditProfilePage() {
                       )}
                     </div>
 
+                    <div className="grid gap-2">
+                      <Label htmlFor="job_title" className="text-gray-900 font-semibold">Job Title</Label>
+                      <Input
+                        id="job_title"
+                        {...register('job_title')}
+                        placeholder="e.g. Senior Registrar"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="grid gap-2">
                       <Label htmlFor="email" className="text-gray-900 font-semibold opacity-70">Email Address</Label>
                       <Input
@@ -267,4 +330,3 @@ export function EditProfilePage() {
     </Fragment>
   );
 }
-

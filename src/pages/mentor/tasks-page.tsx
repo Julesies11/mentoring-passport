@@ -1,7 +1,8 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
+import { useAllMeetings } from '@/hooks/use-meetings';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -9,35 +10,31 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
 import { KeenIcon } from '@/components/keenicons';
-import { cn } from '@/lib/utils';
-import { TaskDialog } from '@/components/tasks/task-dialog';
-import { PairSubTasksDisplay } from '@/components/tasks/pair-subtasks-display';
 import { useSearchParams } from 'react-router-dom';
-
-const statusColors = {
-  not_submitted: 'text-gray-400',
-  awaiting_review: 'text-yellow-500',
-  completed: 'text-success',
-};
-
-const statusLabels = {
-  not_submitted: 'Not Started',
-  awaiting_review: 'Awaiting Review',
-  completed: 'Completed',
-};
-
-const statusIcons = {
-  not_submitted: 'circle',
-  awaiting_review: 'time',
-  completed: 'check-circle',
-};
+import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
+import { TaskDialog } from '@/components/tasks/task-dialog';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchPairEvidence } from '@/lib/api/evidence';
+import { updateMeeting } from '@/lib/api/meetings';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export function TasksPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const selectedMenteeId = searchParams.get('mentee');
   
@@ -48,15 +45,115 @@ export function TasksPage() {
     ? pairs.find(p => p.mentee?.id === selectedMenteeId)
     : pairs.find(p => p.status === 'active');
   
-  const { tasks, stats, isLoading: tasksLoading } = usePairTasks(selectedPair?.id || '');
-  
-  // State for task dialog
+  const { tasks, stats, isLoading: tasksLoading, updateStatus, updateSubTask } = usePairTasks(selectedPair?.id || '');
+
+  const { data: pairEvidence = [] } = useQuery({
+    queryKey: ['pair-evidence', selectedPair?.id],
+    queryFn: () => fetchPairEvidence(selectedPair?.id || ''),
+    enabled: !!selectedPair?.id,
+  });
+
+  const { meetings = [] } = useAllMeetings();
+  const pairMeetings = useMemo(() => 
+    meetings.filter(m => m.pair_id === selectedPair?.id),
+    [meetings, selectedPair?.id]
+  );
+
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
-  const handleTaskClick = (pairTask: any) => {
-    setSelectedTask(pairTask);
+  // Meeting Linking State
+  const [isLinkMeetingOpen, setIsLinkMeetingOpen] = useState(false);
+  const [linkingTaskId, setLinkingTaskId] = useState<string | null>(null);
+
+  // Link Meeting Mutation
+  const linkMeetingMutation = useMutation({
+    mutationFn: ({ meetingId, pairTaskId }: { meetingId: string; pairTaskId: string | null }) =>
+      updateMeeting(meetingId, { pair_task_id: pairTaskId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
+      toast.success('Meeting linked to task successfully');
+      setIsLinkMeetingOpen(false);
+    },
+    onError: () => {
+      toast.error('Failed to link meeting');
+    }
+  });
+
+  // Automatically expand all tasks by default
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      setExpandedTasks(new Set(tasks.map(task => task.id)));
+    }
+  }, [tasks]);
+
+  // Enrich tasks with evidence counts AND associated meetings
+  const enrichedTasks = useMemo(() => {
+    if (!tasks) return [];
+    
+    return tasks.map(task => {
+      const taskEvidence = pairEvidence.filter(e => e.pair_task_id === task.id);
+      const taskMeetings = pairMeetings.filter(m => m.pair_task_id === task.id);
+      
+      const enrichedSubtasks = task.subtasks?.map(st => {
+        const subtaskEvidence = pairEvidence.filter(e => e.pair_subtask_id === st.id);
+        return {
+          ...st,
+          evidence_count: subtaskEvidence.length,
+          evidence: subtaskEvidence
+        };
+      });
+
+      return {
+        ...task,
+        evidence_count: taskEvidence.length,
+        evidence: taskEvidence,
+        meetings: taskMeetings,
+        subtasks: enrichedSubtasks
+      };
+    });
+  }, [tasks, pairEvidence, pairMeetings]);
+
+  const handleToggleExpand = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleViewDetails = (task: any) => {
+    setSelectedTask(task);
     setIsTaskDialogOpen(true);
+  };
+
+  const handleLinkMeeting = (taskId: string) => {
+    setLinkingTaskId(taskId);
+    setIsLinkMeetingOpen(true);
+  };
+
+  const handleToggleTask = async (taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'completed' ? 'not_submitted' : 'completed';
+    try {
+      updateStatus(taskId, newStatus);
+      toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'reset'}`);
+    } catch (error) {
+      toast.error('Failed to update task status');
+    }
+  };
+
+  const handleToggleSubTask = async (subtaskId: string, currentStatus: boolean) => {
+    try {
+      updateSubTask(subtaskId, { is_completed: !currentStatus });
+      toast.success(`Sub-task ${!currentStatus ? 'completed' : 'reset'}`);
+    } catch (error) {
+      toast.error('Failed to update sub-task status');
+    }
   };
 
   if (pairsLoading || tasksLoading) {
@@ -113,9 +210,6 @@ export function TasksPage() {
             title="Tasks"
             description={`Track progress with ${selectedPair.mentee?.full_name || 'your mentee'}${selectedMenteeId ? ' (selected)' : ''}`}
           />
-          <ToolbarActions>
-            {/* Actions can be added here */}
-          </ToolbarActions>
         </Toolbar>
       </Container>
 
@@ -144,117 +238,76 @@ export function TasksPage() {
             </Card>
           )}
 
-          {/* Stats Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1">Not Started</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">{stats?.not_submitted || 0}</p>
-                  <KeenIcon icon="circle" className="text-gray-300" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1 text-yellow-600">Awaiting Review</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold text-yellow-600">{stats?.awaiting_review || 0}</p>
-                  <KeenIcon icon="time" className="text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1 text-success">Completed</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold text-success">{stats?.completed || 0}</p>
-                  <KeenIcon icon="check-circle" className="text-success" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Tasks List */}
           <Card>
             <CardHeader>
               <CardTitle>Mentoring Tasks</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-gray-100">
-                {tasks.map((pairTask) => {
-                  const task = pairTask.task;
-                  if (!task) return null;
-
-                  return (
-                    <div 
-                      key={pairTask.id} 
-                      className="p-5 hover:bg-gray-50/50 transition-colors cursor-pointer group"
-                      onClick={() => handleTaskClick(pairTask)}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={cn('mt-1', statusColors[pairTask.status as keyof typeof statusColors])}>
-                          <KeenIcon icon={statusIcons[pairTask.status as keyof typeof statusIcons]} className="text-2xl" />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900 group-hover:text-primary transition-colors mb-1">
-                                {task.name}
-                              </h4>
-                              {task.evidence_type && (
-                                <div className="flex items-center gap-1.5">
-                                  <KeenIcon icon="document" className="text-muted-foreground text-sm" />
-                                  <span className="text-xs text-muted-foreground">
-                                    Evidence required: {task.evidence_type.name}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            <Badge 
-                              className={cn(
-                                'shrink-0 capitalize border-none',
-                                pairTask.status === 'completed' && 'bg-success text-white',
-                                pairTask.status === 'awaiting_review' && 'bg-yellow-500 text-white',
-                                pairTask.status === 'not_submitted' && 'bg-gray-100 text-gray-600'
-                              )}
-                            >
-                              {statusLabels[pairTask.status as keyof typeof statusLabels]}
-                            </Badge>
-                          </div>
-
-                          {pairTask.completed_at && (
-                            <div className="flex items-center gap-1.5 mt-2">
-                              <KeenIcon icon="calendar" className="text-muted-foreground text-xs" />
-                              <span className="text-xs text-muted-foreground">
-                                Completed on {new Date(pairTask.completed_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Subtasks Display */}
-                          {pairTask.subtasks && pairTask.subtasks.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-gray-100 border-dashed">
-                              <PairSubTasksDisplay
-                                subtasks={pairTask.subtasks}
-                                pairTaskId={pairTask.id}
-                              />
-                            </div>
-                          )}
-                        </div>
-                        <div className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <KeenIcon icon="right" className="text-gray-400" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <TaskProgressGrid
+                tasks={enrichedTasks}
+                expandedTasks={expandedTasks}
+                onToggleExpand={handleToggleExpand}
+                onViewDetails={handleViewDetails}
+                onToggleTask={handleToggleTask}
+                onToggleSubTask={handleToggleSubTask}
+                onLinkMeeting={handleLinkMeeting}
+              />
             </CardContent>
           </Card>
         </div>
       </Container>
+
+      {/* Link Meeting Dialog */}
+      <Dialog open={isLinkMeetingOpen} onOpenChange={setIsLinkMeetingOpen}>
+        <DialogContent className="max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Link Meeting to Task</DialogTitle>
+            <DialogDescription>
+              Select a meeting to associate with this task. This helps track which meeting the task was discussed in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            {pairMeetings.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <p className="text-sm text-muted-foreground">No meetings found for this pairing.</p>
+              </div>
+            ) : (
+              <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+                {pairMeetings.map((meeting) => (
+                  <button
+                    key={meeting.id}
+                    onClick={() => linkMeetingMutation.mutate({ meetingId: meeting.id, pairTaskId: linkingTaskId })}
+                    className={cn(
+                      "w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group",
+                      meeting.pair_task_id === linkingTaskId
+                        ? "bg-primary/5 border-primary"
+                        : "bg-white border-gray-100 hover:border-primary/30"
+                    )}
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-900">{meeting.title}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(meeting.date_time), 'PPP p')}
+                      </span>
+                    </div>
+                    {meeting.pair_task_id === linkingTaskId ? (
+                      <Badge variant="success" size="xs">Linked</Badge>
+                    ) : (
+                      <KeenIcon icon="plus" className="text-gray-300 group-hover:text-primary transition-colors" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLinkMeetingOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Task Dialog */}
       {selectedTask && (
@@ -262,23 +315,18 @@ export function TasksPage() {
           open={isTaskDialogOpen}
           onOpenChange={setIsTaskDialogOpen}
           task={{
-            id: selectedTask.task?.id || '',
-            name: selectedTask.task?.name || '',
+            id: selectedTask.id,
+            name: selectedTask.name,
             status: selectedTask.status,
             description: selectedTask.task?.description,
-            evidence_type: selectedTask.task?.evidence_type,
+            evidence_type: selectedTask.evidence_type,
             completed_at: selectedTask.completed_at,
           }}
           pairId={selectedPair?.id || ''}
-          onSubmitEvidence={(taskId, evidence) => {
-            console.log('Submitting evidence for task:', taskId, evidence);
-          }}
-          onUpdateStatus={(taskId, status) => {
-            console.log('Updating status for task:', taskId, status);
-          }}
+          onSubmitEvidence={async () => {}}
+          onUpdateStatus={handleToggleTask}
         />
       )}
     </Fragment>
   );
 }
-

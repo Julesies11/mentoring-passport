@@ -250,7 +250,8 @@ export const SupabaseAdapter = {
       is_admin: profile.role === 'supervisor',
       
       // Mentoring Passport specific fields from mp_profiles
-      role: profile.role,
+      role: profile.role as any, // Cast due to type transition
+      job_title: profile.job_title || metadata.job_title || '',
       avatar_url: profile.avatar_url,
       department: profile.department,
       bio: profile.bio,

@@ -1,19 +1,24 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchMasterSubTasks, type MasterSubTask } from '@/lib/api/tasks';
+import { ChevronDown, ChevronRight, List } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, PlusCircle, Edit, Trash2, List } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { KeenIcon } from '@/components/keenicons';
 
 interface SubTaskRowProps {
   taskId: string;
-  subtasks?: MasterSubTask[];
+  subtasks?: any[];
   isExpanded: boolean;
   onToggle: () => void;
+  mode?: 'setup' | 'progress';
 }
 
-export function SubTaskRow({ taskId, subtasks = [], isExpanded, onToggle }: SubTaskRowProps) {
+export function SubTaskRow({
+  taskId,
+  subtasks = [],
+  isExpanded,
+  onToggle,
+  mode = 'setup',
+}: SubTaskRowProps) {
   const subtaskCount = subtasks.length;
 
   if (!isExpanded) {
@@ -34,7 +39,9 @@ export function SubTaskRow({ taskId, subtasks = [], isExpanded, onToggle }: SubT
           </>
         ) : (
           <div className="flex items-center gap-2 pl-6">
-            <span className="text-[10px] text-muted-foreground italic uppercase tracking-wider">No subtasks</span>
+            <span className="text-[10px] text-muted-foreground italic uppercase tracking-wider">
+              No subtasks
+            </span>
           </div>
         )}
       </div>
@@ -55,14 +62,29 @@ export function SubTaskRow({ taskId, subtasks = [], isExpanded, onToggle }: SubT
           Hide {subtaskCount} {subtaskCount === 1 ? 'Subtask' : 'Subtasks'}
         </Button>
       </div>
-      
+
       <div className="pl-8 space-y-1 border-l-2 border-gray-100 ml-2 mt-2">
         {subtasks.map((subtask) => (
-          <div key={subtask.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded transition-colors group h-9">
+          <div
+            key={subtask.id}
+            className="flex items-center justify-between p-2 hover:bg-gray-50 rounded transition-colors group h-9"
+          >
             <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 bg-gray-300 rounded-full group-hover:bg-primary transition-colors"></div>
+              {mode === 'progress' && subtask.is_completed !== undefined ? (
+                <KeenIcon
+                  icon="check-square"
+                  className={cn(
+                    'text-base',
+                    subtask.is_completed ? 'text-success' : 'text-gray-300',
+                  )}
+                />
+              ) : (
+                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full group-hover:bg-primary transition-colors"></div>
+              )}
               <div>
-                <div className="text-sm text-gray-700 font-medium">{subtask.name}</div>
+                <div className="text-sm text-gray-700 font-medium">
+                  {subtask.name}
+                </div>
               </div>
             </div>
           </div>

@@ -32,24 +32,24 @@ export function BottomNavBar() {
           { icon: Users, label: 'Participants', path: '/supervisor/participants' },
           { icon: GitBranch, label: 'Pairs', path: '/supervisor/pairs' },
           { icon: Camera, label: 'Evidence', path: '/supervisor/evidence-review' },
-          { icon: UserCircle, label: 'Profile', path: '/profile' },
+          { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
         ];
       case 'mentor':
         return [
-          { icon: LayoutDashboard, label: 'Dashboard', path: '/mentor/dashboard' },
-          { icon: Users, label: 'Mentees', path: '/mentor/workspace' },
-          { icon: Camera, label: 'Evidence', path: '/mentor/evidence' },
-          { icon: FileText, label: 'Notes', path: '/mentor/notes' },
-          { icon: UserCircle, label: 'Profile', path: '/profile' },
+          { icon: LayoutDashboard, label: 'Dashboard', path: '/program-member/dashboard' },
+          { icon: Users, label: 'Mentees', path: '/program-member/mentees' },
+          { icon: Camera, label: 'Evidence', path: '/program-member/evidence' },
+          { icon: FileText, label: 'Notes', path: '/program-member/notes' },
+          { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
         ];
       case 'mentee':
       default:
         return [
-          { icon: LayoutDashboard, label: 'Dashboard', path: '/mentee/dashboard' },
-          { icon: ClipboardList, label: 'Checklist', path: '/mentee/checklist' },
-          { icon: Camera, label: 'Evidence', path: '/mentee/evidence' },
-          { icon: FileText, label: 'Notes', path: '/mentee/notes' },
-          { icon: UserCircle, label: 'Profile', path: '/profile' },
+          { icon: LayoutDashboard, label: 'Dashboard', path: '/program-member/dashboard' },
+          { icon: ClipboardList, label: 'Checklist', path: '/program-member/checklist' },
+          { icon: Camera, label: 'Evidence', path: '/program-member/evidence' },
+          { icon: FileText, label: 'Notes', path: '/program-member/notes' },
+          { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
         ];
     }
   };

@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
-import { useNotes } from '@/hooks/use-notes';
+import { useUserNotes } from '@/hooks/use-notes';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -18,7 +18,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,13 +32,13 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function MenteeNotesPage() {
   const { user } = useAuth();
   const { data: pairs = [] } = useUserPairs(user?.id || '');
-  const { fetchPairNotes, createNote, updateNote, deleteNote } = useNotes();
-  const { data: notes = [], isLoading } = fetchPairNotes();
+  const { notes = [], isLoading, createNote, updateNote, deleteNote } = useUserNotes(user?.id || '');
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -49,22 +48,23 @@ export function MenteeNotesPage() {
     is_private: false
   });
 
-  // Filter notes for mentee's pairs
-  const menteeNotes = notes.filter(note => 
-    pairs.some(pair => pair.id === note.pair_id)
-  );
-
-  const privateNotes = menteeNotes.filter(note => note.is_private);
-  const sharedNotes = menteeNotes.filter(note => !note.is_private);
+  const privateNotes = notes.filter(note => note.is_private);
+  const sharedNotes = notes.filter(note => !note.is_private);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.pair_id) {
+      toast.error('Please select a mentoring relationship');
+      return;
+    }
     try {
       await createNote.mutateAsync(formData);
       setIsCreateDialogOpen(false);
       setFormData({ pair_id: '', title: '', content: '', is_private: false });
+      toast.success('Note created successfully');
     } catch (error) {
       console.error('Error creating note:', error);
+      toast.error('Failed to create note');
     }
   };
 
@@ -74,7 +74,7 @@ export function MenteeNotesPage() {
     try {
       await updateNote.mutateAsync({
         noteId: selectedNote.id,
-        updates: {
+        input: {
           title: formData.title,
           content: formData.content,
           is_private: formData.is_private
@@ -82,8 +82,10 @@ export function MenteeNotesPage() {
       });
       setSelectedNote(null);
       setFormData({ pair_id: '', title: '', content: '', is_private: false });
+      toast.success('Note updated successfully');
     } catch (error) {
       console.error('Error updating note:', error);
+      toast.error('Failed to update note');
     }
   };
 
@@ -91,7 +93,7 @@ export function MenteeNotesPage() {
     setSelectedNote(note);
     setFormData({
       pair_id: note.pair_id,
-      title: note.title,
+      title: note.title || '',
       content: note.content,
       is_private: note.is_private
     });
@@ -101,8 +103,10 @@ export function MenteeNotesPage() {
     if (confirm('Are you sure you want to delete this note?')) {
       try {
         await deleteNote.mutateAsync(noteId);
+        toast.success('Note deleted successfully');
       } catch (error) {
         console.error('Error deleting note:', error);
+        toast.error('Failed to delete note');
       }
     }
   };
@@ -158,7 +162,7 @@ export function MenteeNotesPage() {
               {/* Notes Grid */}
               <div className="space-y-5">
                 <h3 className="text-lg font-bold text-gray-900">All Notes</h3>
-                {menteeNotes.length === 0 ? (
+                {notes.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-16">
                       <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -176,7 +180,7 @@ export function MenteeNotesPage() {
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7.5">
-                    {menteeNotes.map((note) => (
+                    {notes.map((note) => (
                       <Card key={note.id} className="hover:shadow-md transition-shadow flex flex-col h-full relative">
                         <CardHeader className="pb-3 border-b border-gray-100 mb-4">
                           <div className="flex items-center justify-between">
@@ -202,7 +206,7 @@ export function MenteeNotesPage() {
                           </div>
                         </CardHeader>
                         <CardContent className="p-5 flex-1 flex flex-col">
-                          <p className="text-sm text-gray-600 mb-6 line-clamp-4 leading-relaxed flex-1">
+                          <p className="text-sm text-gray-600 mb-6 line-clamp-4 leading-relaxed flex-1 whitespace-pre-wrap">
                             {note.content}
                           </p>
                           
@@ -210,7 +214,7 @@ export function MenteeNotesPage() {
                             <div className="flex flex-col">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Mentor</span>
                               <span className="text-xs font-semibold text-gray-900">
-                                {pairs.find(p => p.id === note.pair_id)?.mentor?.full_name || 'Unknown'}
+                                {note.pair?.mentor?.full_name || 'Unknown'}
                               </span>
                             </div>
                             <span className="text-[10px] text-muted-foreground font-medium">
@@ -233,44 +237,6 @@ export function MenteeNotesPage() {
                   </div>
                 )}
               </div>
-
-              {/* Tips Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Note-Taking Tips</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-3">
-                      <div className="size-10 rounded-lg bg-primary-light flex items-center justify-center text-primary">
-                        <KeenIcon icon="check-list" />
-                      </div>
-                      <h4 className="font-bold text-gray-900">Be Specific</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        Include concrete examples and specific details about your learning and experiences to track growth effectively.
-                      </p>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="size-10 rounded-lg bg-success-light flex items-center justify-center text-success">
-                        <KeenIcon icon="arrows-loop" />
-                      </div>
-                      <h4 className="font-bold text-gray-900">Reflect Regularly</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        Take notes after each meeting and weekly to capture fresh insights and maintain a consistent development log.
-                      </p>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="size-10 rounded-lg bg-warning-light flex items-center justify-center text-warning">
-                        <KeenIcon icon="flag" />
-                      </div>
-                      <h4 className="font-bold text-gray-900">Set Action Items</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        Document specific goals and next steps discussed with your mentor to keep yourself accountable and focused.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </Fragment>
           )}
         </div>
@@ -413,4 +379,3 @@ export function MenteeNotesPage() {
     </Fragment>
   );
 }
-

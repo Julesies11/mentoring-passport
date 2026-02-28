@@ -3,8 +3,9 @@ import { supabase } from '@/lib/supabase';
 export interface Participant {
   id: string;
   email: string;
-  role: 'supervisor' | 'mentor' | 'mentee';
+  role: 'supervisor' | 'program-member';
   full_name: string | null;
+  job_title: string | null;
   department: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -12,20 +13,26 @@ export interface Participant {
   status: 'active' | 'archived';
   created_at: string;
   updated_at: string;
+  active_mentor_count: number;
+  active_mentee_count: number;
+  inactive_mentor_count: number;
+  inactive_mentee_count: number;
 }
 
 export interface CreateParticipantInput {
   email: string;
   password: string;
-  role: 'supervisor' | 'mentor' | 'mentee';
+  role: 'supervisor' | 'program-member';
   full_name?: string;
+  job_title?: string;
   department?: string;
   phone?: string;
 }
 
 export interface UpdateParticipantInput {
-  role?: 'supervisor' | 'mentor' | 'mentee';
+  role?: 'supervisor' | 'program-member';
   full_name?: string;
+  job_title?: string;
   department?: string;
   bio?: string;
   phone?: string;
@@ -52,7 +59,7 @@ export async function fetchParticipants(): Promise<Participant[]> {
 /**
  * Fetch participants by role
  */
-export async function fetchParticipantsByRole(role: 'supervisor' | 'mentor' | 'mentee'): Promise<Participant[]> {
+export async function fetchParticipantsByRole(role: 'supervisor' | 'program-member'): Promise<Participant[]> {
   const { data, error } = await supabase
     .from('mp_profiles')
     .select('*')
@@ -99,6 +106,7 @@ export async function createParticipant(input: CreateParticipantInput & { avatar
     password_input: input.password,
     full_name_input: input.full_name || '',
     role_input: input.role,
+    job_title_input: input.job_title || null,
     department_input: input.department || null,
     phone_input: input.phone || null,
     avatar_url_input: input.avatar_url || null
@@ -191,8 +199,7 @@ export async function fetchParticipantStats() {
     active: data.filter(p => p.status === 'active').length,
     archived: data.filter(p => p.status === 'archived').length,
     supervisors: data.filter(p => p.role === 'supervisor' && p.status === 'active').length,
-    mentors: data.filter(p => p.role === 'mentor' && p.status === 'active').length,
-    mentees: data.filter(p => p.role === 'mentee' && p.status === 'active').length,
+    'program-members': data.filter(p => p.role === 'program-member' && p.status === 'active').length,
   };
 
   return stats;

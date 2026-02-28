@@ -1,8 +1,13 @@
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { useAllPairs } from '@/hooks/use-pairs';
+import { useAllPairs, usePairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
-import { useSearchParams } from 'react-router-dom';
+import { useAllMeetings, useMeetings } from '@/hooks/use-meetings';
+import { useSearchParams, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchEvidenceTypes, type PairTask, type PairSubTask } from '@/lib/api/tasks';
+import { fetchPairEvidence } from '@/lib/api/evidence';
+import { createMeeting, updateMeeting } from '@/lib/api/meetings';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -13,94 +18,284 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { KeenIcon } from '@/components/keenicons';
-import { TaskDialog } from '@/components/tasks/task-dialog';
+import { PairTaskEditDialog } from '@/components/tasks/pair-task-edit-dialog';
+import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
+import { toast } from 'sonner';
+import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
+import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const statusColors = {
-  not_submitted: 'text-gray-400',
-  awaiting_review: 'text-yellow-500',
-  completed: 'text-success',
-};
-
-const statusLabels = {
-  not_submitted: 'Not Started',
-  awaiting_review: 'Awaiting Review',
-  completed: 'Completed',
-};
-
-const statusIcons = {
-  not_submitted: 'circle',
-  awaiting_review: 'time',
-  completed: 'check-circle',
+const pairStatusColors = {
+  active: 'bg-green-100 text-success border-green-200',
+  completed: 'bg-blue-100 text-blue-700 border-blue-200',
+  archived: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
 export function SupervisorChecklistPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: pairs = [], isLoading: pairsLoading } = useAllPairs();
+  const { updatePairAsync, archivePairAsync, restorePairAsync } = usePairs();
   const [searchParams] = useSearchParams();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
-  const [editingTask, setEditingTask] = useState<string | null>(null);
-  const [newTaskName, setNewTaskName] = useState('');
-  const [isAddingTask, setIsAddingTask] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('setup');
+  
+  // Meeting Dialog State
+  const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
+  const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
+
+  // Management State
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const selectedPair = pairs.find(p => p.id === selectedPairId);
-  const { tasks, stats, isLoading: tasksLoading, updateStatus } = usePairTasks(selectedPairId || '');
+  
+  const { 
+    tasks, 
+    stats, 
+    isLoading: tasksLoading, 
+    createTask,
+    updateTask,
+    deleteTask,
+    createSubTask,
+    updateSubTask,
+    deleteSubTask,
+    reorderTasks,
+    isUpdating,
+    isCreating,
+    isDeleting
+  } = usePairTasks(selectedPairId || '');
+
+  const { data: pairEvidence = [] } = useQuery({
+    queryKey: ['pair-evidence', selectedPairId],
+    queryFn: () => fetchPairEvidence(selectedPairId),
+    enabled: !!selectedPairId,
+  });
+
+  const { meetings = [], isLoading: meetingsLoading } = useAllMeetings();
+  const pairMeetings = useMemo(() => 
+    meetings.filter(m => m.pair_id === selectedPairId),
+    [meetings, selectedPairId]
+  );
+
+  const { data: evidenceTypes = [] } = useQuery({
+    queryKey: ['evidence-types'],
+    queryFn: fetchEvidenceTypes,
+  });
+
+  // Automatically expand all tasks by default
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      setExpandedTasks(new Set(tasks.map(task => task.id)));
+    }
+  }, [tasks]);
+
+  // Enrich tasks with evidence counts AND associated meetings
+  const enrichedTasks = useMemo(() => {
+    if (!tasks) return [];
+    
+    return tasks.map(task => {
+      const taskEvidence = pairEvidence.filter(e => e.pair_task_id === task.id);
+      const taskMeetings = pairMeetings.filter(m => m.pair_task_id === task.id);
+      
+      const enrichedSubtasks = task.subtasks?.map(st => {
+        const subtaskEvidence = pairEvidence.filter(e => e.pair_subtask_id === st.id);
+        return {
+          ...st,
+          evidence_count: subtaskEvidence.length,
+          evidence: subtaskEvidence
+        };
+      });
+
+      return {
+        ...task,
+        evidence_count: taskEvidence.length,
+        evidence: taskEvidence,
+        meetings: taskMeetings,
+        subtasks: enrichedSubtasks
+      };
+    });
+  }, [tasks, pairEvidence, pairMeetings]);
 
   const activePairs = pairs.filter(p => p.status === 'active');
 
   // Handle URL parameter for pair selection
   useEffect(() => {
     const pairId = searchParams.get('pair');
-    if (pairId && pairs.some(p => p.id === pairId)) {
+    if (pairId && pairId !== selectedPairId && pairs.some(p => p.id === pairId)) {
       setSelectedPairId(pairId);
     }
-  }, [searchParams, pairs]);
-
-  const handleSaveTask = async (taskId: string, newName: string) => {
-    console.log('Saving task:', taskId, newName);
-    setEditingTask(null);
-  };
+  }, [searchParams, pairs, selectedPairId]);
 
   const handleAddTask = async () => {
-    if (!newTaskName.trim() || !selectedPairId) return;
-    console.log('Adding task:', newTaskName, 'to pair:', selectedPairId);
-    setNewTaskName('');
-    setIsAddingTask(false);
+    if (!selectedPairId) return;
+    
+    const fallbackEvidenceType = evidenceTypes.find((t: any) => t.name.toLowerCase().includes('not applicable')) || evidenceTypes[0];
+    
+    const maxSortOrder = tasks.reduce((max: number, t: any) => Math.max(max, t.sort_order), 0) || 0;
+
+    createTask({
+      pair_id: selectedPairId,
+      name: 'New Custom Task',
+      status: 'not_submitted',
+      sort_order: maxSortOrder + 1,
+      evidence_type_id: fallbackEvidenceType?.id,
+      master_task_id: null
+    } as any, {
+      onSuccess: (newTask) => {
+        handleOpenEditDialog(newTask);
+      }
+    });
   };
 
-  const handleTaskClick = (pairTask: any) => {
-    setSelectedTask(pairTask);
-    setTaskDialogOpen(true);
+  const handleDeleteTask = (taskId: string) => {
+    if (window.confirm('Are you sure you want to delete this task for this pair? This will remove all associated subtasks and cannot be undone.')) {
+      deleteTask(taskId);
+      setIsEditTaskOpen(false);
+      setSelectedTaskId(null);
+    }
   };
 
-  const handleSubmitEvidence = async (taskId: string, evidence: { description: string; file_url?: string }) => {
-    console.log('Submitting evidence for task:', taskId, evidence);
-    setTaskDialogOpen(false);
+  const handleToggleExpand = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
   };
+
+  const handleOpenEditDialog = (task: PairTask) => {
+    setSelectedTaskId(task.id);
+    setIsReadOnly(false);
+    setIsEditTaskOpen(true);
+  };
+
+  const handleUpdateTask = (taskId: string, updates: Partial<PairTask>) => {
+    updateTask(taskId, updates, {
+      onSuccess: () => {
+        setIsEditTaskOpen(false);
+        setSelectedTaskId(null);
+        toast.success('Task updated successfully');
+      }
+    });
+  };
+
+  const handleCreateSubTask = (taskId: string, name: string, evidenceTypeId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const maxSortOrder = task.subtasks?.reduce((max: number, st: any) => Math.max(max, st.sort_order), 0) || 0;
+
+    createSubTask({
+      pair_task_id: taskId,
+      name,
+      sort_order: maxSortOrder + 1,
+      is_completed: false,
+      evidence_type_id: evidenceTypeId,
+      master_subtask_id: null
+    } as any);
+  };
+
+  const handleReorderSubTasks = (taskId: string, newOrder: PairSubTask[]) => {
+    newOrder.forEach((st, index) => {
+      if (st.sort_order !== index + 1) {
+        updateSubTask(st.id, { sort_order: index + 1 });
+      }
+    });
+  };
+
+  const handleTaskReorder = (newOrder: PairTask[]) => {
+    const updates = newOrder.map((task, index) => ({
+      id: task.id,
+      sort_order: index + 1,
+    }));
+    reorderTasks(updates);
+  };
+
+  const handleViewDetails = (task: any) => {
+    setSelectedTaskId(task.id);
+    setIsReadOnly(true);
+    setIsEditTaskOpen(true);
+  };
+
+  const handleAddMeetingToTask = (taskId: string) => {
+    setTargetTaskId(taskId);
+    setIsMeetingDialogOpen(true);
+  };
+
+  const handleMeetingSubmit = async (meetingInput: any) => {
+    try {
+      await createMeeting(meetingInput);
+      queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
+      toast.success('Meeting scheduled and linked to task');
+      setIsMeetingDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to schedule meeting');
+    }
+  };
+
+  const handlePairStatusChange = async (status: 'active' | 'completed' | 'archived') => {
+    if (!selectedPairId) return;
+    
+    try {
+      if (status === 'archived') {
+        if (window.confirm('Are you sure you want to archive this pair?')) {
+          await archivePairAsync(selectedPairId);
+          toast.success('Pairing archived successfully');
+        }
+      } else if (selectedPair?.status === 'archived' && status === 'active') {
+        await restorePairAsync(selectedPairId);
+        toast.success('Pairing restored to active status');
+      } else {
+        await updatePairAsync(selectedPairId, { status });
+        toast.success(`Pairing status updated to ${status}`);
+      }
+    } catch (error: any) {
+      console.error('Error updating pair status:', error);
+      if (error.code === '23505') {
+        toast.error('Cannot set to active: these participants already have another active pairing.');
+      } else {
+        toast.error('Failed to update status. Please try again.');
+      }
+    }
+  };
+
+  const currentTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return enrichedTasks.find(t => t.id === selectedTaskId) || null;
+  }, [selectedTaskId, enrichedTasks]);
 
   return (
     <Fragment>
       <Container>
         <Toolbar>
           <ToolbarHeading
-            title="Pair Checklists"
-            description="View and manage checklist progress for mentoring pairs"
+            title="Pair Management"
+            description={selectedPair ? `Managing progress and setup for ${selectedPair.mentor?.full_name} ↔ ${selectedPair.mentee?.full_name}` : "View and manage checklist progress for mentoring pairs"}
           />
           <ToolbarActions>
             {selectedPair && (
-              <Button
-                size="sm"
-                onClick={() => setIsAddingTask(true)}
-                disabled={isAddingTask}
-              >
-                <KeenIcon icon="plus" />
-                Add Item
-              </Button>
+              <div className="flex items-center gap-2">
+                <select 
+                  className={cn("h-9 border border-gray-200 font-bold uppercase text-[10px] w-[130px] rounded-md px-2 outline-none focus:ring-2 focus:ring-primary/20", pairStatusColors[selectedPair.status as keyof typeof pairStatusColors])}
+                  value={selectedPair.status} 
+                  onChange={(e) => handlePairStatusChange(e.target.value as any)}
+                >
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
             )}
           </ToolbarActions>
         </Toolbar>
@@ -108,254 +303,213 @@ export function SupervisorChecklistPage() {
 
       <Container>
         <div className="grid gap-5 lg:gap-7.5">
-          {/* Pair Selection */}
-          <Card>
-            <CardContent className="p-5">
-              <div className="grid gap-2 max-w-md">
-                <label className="text-xs font-bold text-gray-700 uppercase">Select Mentoring Pair</label>
-                <Select value={selectedPairId} onValueChange={setSelectedPairId}>
-                  <SelectTrigger className="bg-gray-50 border-gray-200">
-                    <SelectValue placeholder="Choose a pair to view progress..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activePairs.map((pair) => (
-                      <SelectItem key={pair.id} value={pair.id}>
-                        {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Pair Selection and Details */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-7.5">
+            <Card className="lg:col-span-1">
+              <CardContent className="p-5">
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Select Mentoring Pair</label>
+                    <select 
+                      className="bg-gray-50 border border-gray-200 h-11 rounded-md px-3 outline-none focus:ring-2 focus:ring-primary/20 text-sm font-bold text-gray-900"
+                      value={selectedPairId} 
+                      onChange={(e) => setSelectedPairId(e.target.value)}
+                    >
+                      <option value="">Choose a pair...</option>
+                      {pairs.map((pair) => (
+                        <option key={pair.id} value={pair.id}>
+                          {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedPair && (
+                    <div className="pt-4 border-t border-gray-100 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="size-8">
+                          <AvatarImage src={getAvatarPublicUrl(selectedPair.mentor?.avatar_url, selectedPair.mentor?.id)} alt={selectedPair.mentor?.full_name || ''} />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
+                            {getInitials(selectedPair.mentor?.full_name || selectedPair.mentor?.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter leading-none mb-1">Mentor</span>
+                          <span className="text-sm font-bold text-gray-900 truncate">{selectedPair.mentor?.full_name}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="size-8">
+                          <AvatarImage src={getAvatarPublicUrl(selectedPair.mentee?.avatar_url, selectedPair.mentee?.id)} alt={selectedPair.mentee?.full_name || ''} />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
+                            {getInitials(selectedPair.mentee?.full_name || selectedPair.mentee?.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] font-black text-green-600 uppercase tracking-tighter leading-none mb-1">Mentee</span>
+                          <span className="text-sm font-bold text-gray-900 truncate">{selectedPair.mentee?.full_name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {selectedPair && stats && (
+              <Card className="lg:col-span-2 border-primary/10 bg-primary/[0.02]">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Checklist Progress</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-4xl font-black text-gray-900">{stats.completion_percentage}%</p>
+                        <span className="text-sm font-bold text-muted-foreground uppercase">
+                          ({stats.completed} / {stats.total} items)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="size-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary border border-primary/10">
+                      <KeenIcon icon="chart-line-star" className="text-3xl" />
+                    </div>
+                  </div>
+                  <Progress value={stats.completion_percentage} className="h-3 bg-white border border-primary/5" />
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                      <div className="size-10 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-500">
+                        <KeenIcon icon="time" className="text-xl" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Awaiting Review</p>
+                        <p className="text-xl font-black text-gray-900">{stats.awaiting_review || 0}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                      <div className="size-10 rounded-lg bg-green-50 flex items-center justify-center text-success">
+                        <KeenIcon icon="check-circle" className="text-xl" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Completed</p>
+                        <p className="text-xl font-black text-gray-900">{stats.completed || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
           {pairsLoading ? (
             <div className="text-center py-12 text-muted-foreground">
               <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
-              <p>Loading pairs...</p>
+              <p>Loading details...</p>
             </div>
           ) : selectedPair ? (
             <Fragment>
-              {/* Progress Overview */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-                <Card className="lg:col-span-2">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground uppercase mb-1">Overall Progress</p>
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-3xl font-bold text-gray-900">{stats?.completion_percentage}%</p>
-                          <span className="text-sm text-muted-foreground">
-                            ({stats?.completed} of {stats?.total} tasks)
-                          </span>
+              <Tabs defaultValue="setup" value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-5">
+                  <TabsTrigger value="setup" className="font-bold uppercase text-[10px] tracking-widest">
+                    <KeenIcon icon="setting-2" className="mr-2" />
+                    Checklist Setup
+                  </TabsTrigger>
+                  <TabsTrigger value="monitoring" className="font-bold uppercase text-[10px] tracking-widest">
+                    <KeenIcon icon="chart-line" className="mr-2" />
+                    Progress Monitoring
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="setup" className="mt-0 animate-in fade-in duration-300">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        Checklist Setup
+                      </h3>
+                      <Button
+                        size="sm"
+                        onClick={handleAddTask}
+                        disabled={isCreating}
+                      >
+                        <KeenIcon icon="plus" />
+                        Add Custom Task
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {tasksLoading ? (
+                        <div className="text-center py-20 bg-gray-50/50 rounded-3xl border border-gray-100 m-5">
+                          <KeenIcon icon="loading" className="animate-spin mb-3 text-3xl text-primary" />
+                          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Initialising Checklist...</p>
                         </div>
-                      </div>
-                      <div className="size-12 rounded-lg bg-primary-light flex items-center justify-center text-primary">
-                        <KeenIcon icon="chart-line-star" className="text-2xl" />
-                      </div>
-                    </div>
-                    <Progress value={stats?.completion_percentage} className="h-2.5" />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-5 flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground mb-1">Awaiting Review</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-yellow-600">{stats?.awaiting_review || 0}</p>
-                      <KeenIcon icon="time" className="text-yellow-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-5 flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground mb-1 text-success">Completed</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold text-success">{stats?.completed || 0}</p>
-                      <KeenIcon icon="check-circle" className="text-success" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Tasks List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Checklist Items</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {/* Add New Task Form */}
-                  {isAddingTask && (
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50">
-                      <div className="flex items-center gap-2 max-w-2xl">
-                        <Input
-                          placeholder="Enter new checklist item name..."
-                          className="flex-1 bg-white"
-                          value={newTaskName}
-                          onChange={(e) => setNewTaskName(e.target.value)}
-                          autoFocus
+                      ) : (
+                        <TaskSetupGrid
+                          tasks={tasks}
+                          expandedTasks={expandedTasks}
+                          onToggleExpand={handleToggleExpand}
+                          onEdit={handleOpenEditDialog}
+                          onDelete={handleDeleteTask}
+                          onReorder={handleTaskReorder}
+                          isDeleting={isDeleting}
                         />
-                        <Button size="sm" onClick={handleAddTask}>
-                          <KeenIcon icon="check" />
-                          Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => {
-                          setIsAddingTask(false);
-                          setNewTaskName('');
-                        }}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-                  <div className="divide-y divide-gray-100">
-                    {tasksLoading ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <KeenIcon icon="loading" className="animate-spin mb-2 text-xl" />
-                        <p>Loading checklist items...</p>
-                      </div>
-                    ) : tasks.map((pairTask) => {
-                      const task = pairTask.task;
-                      if (!task) return null;
-
-                      return (
-                        <div 
-                          key={pairTask.id} 
-                          className="p-5 hover:bg-gray-50/50 transition-colors cursor-pointer group"
-                          onClick={() => handleTaskClick(pairTask)}
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className={cn('mt-1', statusColors[pairTask.status as keyof typeof statusColors])}>
-                              <KeenIcon icon={statusIcons[pairTask.status as keyof typeof statusIcons]} className="text-2xl" />
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  {editingTask === task.id ? (
-                                    <Input
-                                      className="h-8 max-w-md"
-                                      defaultValue={task.name}
-                                      autoFocus
-                                      onClick={(e) => e.stopPropagation()}
-                                      onBlur={(e) => handleSaveTask(task.id, e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          handleSaveTask(task.id, e.currentTarget.value);
-                                        } else if (e.key === 'Escape') {
-                                          setEditingTask(null);
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <h4 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
-                                      {task.name}
-                                    </h4>
-                                  )}
-                                  {task.evidence_type && (
-                                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                      <KeenIcon icon="document" className="text-[10px]" />
-                                      Evidence Requirement: {task.evidence_type.name}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="xs"
-                                    variant="ghost"
-                                    mode="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingTask(task.id);
-                                    }}
-                                    disabled={editingTask === task.id}
-                                  >
-                                    <KeenIcon icon="pencil" className="text-xs" />
-                                  </Button>
-                                  <Badge 
-                                    className={cn(
-                                      'shrink-0 border-none capitalize',
-                                      pairTask.status === 'completed' && 'bg-success text-white',
-                                      pairTask.status === 'awaiting_review' && 'bg-yellow-500 text-white',
-                                      pairTask.status === 'not_submitted' && 'bg-gray-100 text-gray-600'
-                                    )}
-                                  >
-                                    {statusLabels[pairTask.status as keyof typeof statusLabels]}
-                                  </Badge>
-                                </div>
-                              </div>
-
-                              {/* Status update controls */}
-                              <div className="mt-4 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                                {pairTask.status !== 'not_submitted' && (
-                                  <Button 
-                                    size="xs" 
-                                    variant="outline"
-                                    className="bg-gray-50 hover:bg-gray-100"
-                                    onClick={() => updateStatus(pairTask.id, 'not_submitted')}
-                                  >
-                                    Set to Not Started
-                                  </Button>
-                                )}
-                                {pairTask.status !== 'awaiting_review' && (
-                                  <Button 
-                                    size="xs" 
-                                    variant="outline"
-                                    className="bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-100"
-                                    onClick={() => updateStatus(pairTask.id, 'awaiting_review')}
-                                  >
-                                    Set to Awaiting Review
-                                  </Button>
-                                )}
-                                {pairTask.status !== 'completed' && (
-                                  <Button 
-                                    size="xs" 
-                                    className="bg-success-light text-success hover:bg-success hover:text-white border-transparent"
-                                    onClick={() => updateStatus(pairTask.id, 'completed')}
-                                  >
-                                    Mark as Completed
-                                  </Button>
-                                )}
-                              </div>
-
-                              {pairTask.completed_at && (
-                                <p className="text-[10px] text-muted-foreground mt-3 flex items-center gap-1">
-                                  <KeenIcon icon="calendar-tick" className="text-[10px]" />
-                                  Successfully verified on {new Date(pairTask.completed_at).toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                <TabsContent value="monitoring" className="mt-0">
+                  <Card>
+                    <CardHeader className="py-4 border-b border-gray-100">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        Real-time Progress
+                      </h3>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {tasksLoading ? (
+                        <div className="text-center py-20 bg-gray-50/50 rounded-3xl border border-gray-100 m-5">
+                          <KeenIcon icon="loading" className="animate-spin mb-3 text-3xl text-primary" />
+                          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Initialising Checklist...</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+                      ) : (
+                        <TaskProgressGrid
+                          tasks={enrichedTasks}
+                          expandedTasks={expandedTasks}
+                          onToggleExpand={handleToggleExpand}
+                          onViewDetails={handleViewDetails}
+                          onLinkMeeting={handleAddMeetingToTask}
+                          readOnly={true}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </Fragment>
           ) : activePairs.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <KeenIcon icon="information-2" className="text-3xl text-gray-400" />
+            <Card className="border-dashed border-2 border-gray-200 bg-gray-50/30">
+              <CardContent className="flex flex-col items-center justify-center py-20">
+                <div className="size-24 rounded-3xl bg-white shadow-sm flex items-center justify-center mb-6 border border-gray-100">
+                  <KeenIcon icon="information-2" className="text-5xl text-gray-300" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No Active Pairs Found</h3>
-                <p className="text-muted-foreground text-center max-w-sm">
-                  There are no active mentoring pairs in the system. You can create pairs from the Pairs management page.
+                <h3 className="text-2xl font-black text-gray-900 mb-2">No Active Pairs</h3>
+                <p className="text-muted-foreground text-center max-w-sm font-medium">
+                  There are no active mentoring pairs in the system. Create a pair to start customizing their checklist.
                 </p>
+                <Button className="mt-8 font-bold h-11 px-8 rounded-xl shadow-lg shadow-primary/20" asChild>
+                  <Link to="/supervisor/pairs">
+                    <KeenIcon icon="plus" />
+                    Create First Pair
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <KeenIcon icon="mouse-square" className="text-3xl text-gray-400" />
+            <Card className="border-dashed border-2 border-gray-200 bg-gray-50/30">
+              <CardContent className="flex flex-col items-center justify-center py-20">
+                <div className="size-24 rounded-3xl bg-white shadow-sm flex items-center justify-center mb-6 border border-gray-100">
+                  <KeenIcon icon="mouse-square" className="text-5xl text-gray-300" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Select a Pair</h3>
-                <p className="text-muted-foreground text-center max-w-sm">
-                  Please select a mentoring pair from the dropdown above to view and manage their progress checklist.
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Select a Pair</h3>
+                <p className="text-muted-foreground text-center max-w-sm font-medium">
+                  Please select a mentoring pair from the dropdown above to view and manage their custom checklist.
                 </p>
               </CardContent>
             </Card>
@@ -363,24 +517,30 @@ export function SupervisorChecklistPage() {
         </div>
       </Container>
 
-      {/* Task Dialog */}
-      {selectedTask && (
-        <TaskDialog
-          open={taskDialogOpen}
-          onOpenChange={setTaskDialogOpen}
-          task={{
-            id: selectedTask.id,
-            name: selectedTask.task?.name || 'Unknown Task',
-            status: selectedTask.status,
-            description: selectedTask.task?.description,
-            evidence_type: selectedTask.task?.evidence_type,
-            completed_at: selectedTask.completed_at,
-          }}
-          pairId={selectedPairId || ''}
-          onSubmitEvidence={handleSubmitEvidence}
-          onUpdateStatus={updateStatus}
+      {/* Meeting Dialog for linking to tasks */}
+      {selectedPairId && (
+        <MeetingDialog
+          open={isMeetingDialogOpen}
+          onOpenChange={setIsMeetingDialogOpen}
+          pairId={selectedPairId}
+          initialTaskId={targetTaskId}
+          onSubmit={handleMeetingSubmit}
         />
       )}
+
+      <PairTaskEditDialog
+        open={isEditTaskOpen}
+        onOpenChange={setIsEditTaskOpen}
+        task={currentTask}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+        onCreateSubTask={handleCreateSubTask}
+        onUpdateSubTask={updateSubTask}
+        onDeleteSubTask={deleteSubTask}
+        onReorderSubTasks={handleReorderSubTasks}
+        isUpdating={isUpdating}
+        readOnly={isReadOnly}
+      />
     </Fragment>
   );
 }

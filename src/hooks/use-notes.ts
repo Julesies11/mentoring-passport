@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchPairNotes,
+  fetchUserNotes,
   fetchAllNotes,
   createNote,
   updateNote,
@@ -21,8 +22,7 @@ export function usePairNotes(pairId: string) {
   const createMutation = useMutation({
     mutationFn: createNote,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', 'pair', pairId] });
-      queryClient.invalidateQueries({ queryKey: ['notes', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
@@ -30,16 +30,14 @@ export function usePairNotes(pairId: string) {
     mutationFn: ({ noteId, input }: { noteId: string; input: UpdateNoteInput }) =>
       updateNote(noteId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', 'pair', pairId] });
-      queryClient.invalidateQueries({ queryKey: ['notes', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteNote,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', 'pair', pairId] });
-      queryClient.invalidateQueries({ queryKey: ['notes', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
@@ -47,13 +45,50 @@ export function usePairNotes(pairId: string) {
     notes,
     isLoading,
     error,
-    createNote: (input: CreateNoteInput) => createMutation.mutate(input),
-    updateNote: (noteId: string, input: UpdateNoteInput) =>
-      updateMutation.mutate({ noteId, input }),
-    deleteNote: (noteId: string) => deleteMutation.mutate(noteId),
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
+    createNote: createMutation,
+    updateNote: updateMutation,
+    deleteNote: deleteMutation,
+  };
+}
+
+export function useUserNotes(userId: string) {
+  const queryClient = useQueryClient();
+
+  const { data: notes = [], isLoading, error } = useQuery({
+    queryKey: ['notes', 'user', userId],
+    queryFn: () => fetchUserNotes(userId),
+    enabled: !!userId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ noteId, input }: { noteId: string; input: UpdateNoteInput }) =>
+      updateNote(noteId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  return {
+    notes,
+    isLoading,
+    error,
+    createNote: createMutation,
+    updateNote: updateMutation,
+    deleteNote: deleteMutation,
   };
 }
 
@@ -62,49 +97,4 @@ export function useAllNotes() {
     queryKey: ['notes', 'all'],
     queryFn: fetchAllNotes,
   });
-}
-
-export function useNotes() {
-  const queryClient = useQueryClient();
-
-  const { data: notes = [], isLoading, error } = useQuery({
-    queryKey: ['notes', 'all'],
-    queryFn: fetchAllNotes,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', 'all'] });
-      queryClient.invalidateQueries({ queryKey: ['notes', 'pair'] });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ noteId, input }: { noteId: string; input: UpdateNoteInput }) =>
-      updateNote(noteId, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', 'all'] });
-      queryClient.invalidateQueries({ queryKey: ['notes', 'pair'] });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes', 'all'] });
-      queryClient.invalidateQueries({ queryKey: ['notes', 'pair'] });
-    },
-  });
-
-  return {
-    fetchPairNotes,
-    createNote: (input: CreateNoteInput) => createMutation.mutate(input),
-    updateNote: (noteId: string, input: UpdateNoteInput) =>
-      updateMutation.mutate({ noteId, input }),
-    deleteNote: (noteId: string) => deleteMutation.mutate(noteId),
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
-  };
 }

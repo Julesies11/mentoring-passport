@@ -168,8 +168,8 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       )
     `)
     .eq('pair_id', pairId)
-    .eq('task.is_active', true)
-    .order('sort_order', { ascending: true });
+    .order('sort_order', { ascending: true })
+    .order('sort_order', { referencedTable: 'mp_pair_subtasks', ascending: true });
 
   if (error) {
     console.error('Error fetching pair tasks:', error);
@@ -177,6 +177,48 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
   }
 
   return data || [];
+}
+
+/**
+ * Reorder pair tasks in batch
+ */
+export async function reorderPairTasks(tasks: { id: string; sort_order: number }[]): Promise<void> {
+  // Use a loop of updates instead of upsert to avoid requiring mandatory columns like 'name'
+  const promises = tasks.map(task => 
+    supabase
+      .from('mp_pair_tasks')
+      .update({ sort_order: task.sort_order })
+      .eq('id', task.id)
+  );
+
+  const results = await Promise.all(promises);
+  const error = results.find(r => r.error)?.error;
+
+  if (error) {
+    console.error('Error reordering pair tasks:', error);
+    throw error;
+  }
+}
+
+/**
+ * Reorder master tasks in batch
+ */
+export async function reorderMasterTasks(tasks: { id: string; sort_order: number }[]): Promise<void> {
+  // Use a loop of updates instead of upsert to avoid requiring mandatory columns like 'name'
+  const promises = tasks.map(task => 
+    supabase
+      .from('mp_tasks_master')
+      .update({ sort_order: task.sort_order })
+      .eq('id', task.id)
+  );
+
+  const results = await Promise.all(promises);
+  const error = results.find(r => r.error)?.error;
+
+  if (error) {
+    console.error('Error reordering master tasks:', error);
+    throw error;
+  }
 }
 
 /**
@@ -242,10 +284,19 @@ export async function updatePairTaskStatus(
     updateData.completed_by_user_id = null;
   }
 
-  const { data, error } = await supabase
+  const { error: updateError } = await supabase
     .from('mp_pair_tasks')
     .update(updateData)
-    .eq('id', taskId)
+    .eq('id', taskId);
+
+  if (updateError) {
+    console.error('Error updating pair task status:', updateError);
+    throw updateError;
+  }
+
+  // Fetch updated data with joins
+  const { data, error: fetchError } = await supabase
+    .from('mp_pair_tasks')
     .select(`
       id,
       pair_id,
@@ -257,21 +308,14 @@ export async function updatePairTaskStatus(
       completed_by_user_id,
       created_at,
       updated_at,
-      task:mp_tasks_master(
-        id,
-        name,
-        evidence_type_id,
-        sort_order,
-        is_active,
-        evidence_type:mp_evidence_types(id, name, requires_submission)
-      ),
       evidence_type:mp_evidence_types(id, name, requires_submission)
     `)
+    .eq('id', taskId)
     .single();
 
-  if (error) {
-    console.error('Error updating pair task:', error);
-    throw error;
+  if (fetchError) {
+    console.error('Error fetching updated pair task:', fetchError);
+    throw fetchError;
   }
 
   return data;
@@ -459,6 +503,147 @@ export async function deleteMasterSubTask(subtaskId: string): Promise<void> {
 
   if (error) {
     console.error('Error deleting master subtask:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new task for a pair
+ */
+export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 'updated_at' | 'task' | 'subtasks' | 'evidence_type'>): Promise<PairTask> {
+  const { data, error } = await supabase
+    .from('mp_pair_tasks')
+    .insert(task)
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error creating pair task:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update an existing task for a pair
+ */
+export async function updatePairTask(taskId: string, updates: Partial<PairTask>): Promise<PairTask> {
+  // Remove fields that shouldn't be updated directly or are relational
+  const { id, pair_id, created_at, updated_at, task, subtasks, evidence_type, ...cleanUpdates } = updates as any;
+
+  const { error: updateError } = await supabase
+    .from('mp_pair_tasks')
+    .update(cleanUpdates)
+    .eq('id', taskId);
+
+  if (updateError) {
+    console.error('Error updating pair task:', updateError);
+    throw updateError;
+  }
+
+  // Fetch updated data with joins
+  const { data, error: fetchError } = await supabase
+    .from('mp_pair_tasks')
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission)
+    `)
+    .eq('id', taskId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching updated pair task:', fetchError);
+    throw fetchError;
+  }
+
+  return data;
+}
+
+/**
+ * Delete a pair task
+ */
+export async function deletePairTask(taskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_pair_tasks')
+    .delete()
+    .eq('id', taskId);
+
+  if (error) {
+    console.error('Error deleting pair task:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new subtask for a pair task
+ */
+export async function createPairSubTask(subtask: Omit<PairSubTask, 'id' | 'created_at' | 'updated_at' | 'evidence_type'>): Promise<PairSubTask> {
+  const { data, error } = await supabase
+    .from('mp_pair_subtasks')
+    .insert(subtask)
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error creating pair subtask:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update a pair subtask
+ */
+export async function updatePairSubTask(subtaskId: string, updates: Partial<PairSubTask>): Promise<PairSubTask> {
+  const { id, created_at, updated_at, evidence_type, ...cleanUpdates } = updates as any;
+
+  const { error: updateError } = await supabase
+    .from('mp_pair_subtasks')
+    .update(cleanUpdates)
+    .eq('id', subtaskId);
+
+  if (updateError) {
+    console.error('Error updating pair subtask:', updateError);
+    throw updateError;
+  }
+
+  // Fetch updated data with joins
+  const { data, error: fetchError } = await supabase
+    .from('mp_pair_subtasks')
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission)
+    `)
+    .eq('id', subtaskId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching updated pair subtask:', fetchError);
+    throw fetchError;
+  }
+
+  return data;
+}
+
+/**
+ * Delete a pair subtask
+ */
+export async function deletePairSubTask(subtaskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_pair_subtasks')
+    .delete()
+    .eq('id', subtaskId);
+
+  if (error) {
+    console.error('Error deleting pair subtask:', error);
     throw error;
   }
 }

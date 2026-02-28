@@ -1,6 +1,7 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { SupabaseAdapter } from '@/auth/adapters/supabase-adapter';
 import { AuthContext } from '@/auth/context/auth-context';
+import { supabase } from '@/lib/supabase';
 import * as authHelper from '@/auth/lib/helpers';
 import { AuthModel, UserModel } from '@/auth/lib/models';
 
@@ -10,10 +11,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [auth, setAuth] = useState<AuthModel | undefined>(authHelper.getAuth());
   const [currentUser, setCurrentUser] = useState<UserModel | undefined>();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMentor, setIsMentor] = useState(false);
+  const [isMentee, setIsMentee] = useState(false);
 
-  // Check if user is admin
+  // Check if user is admin and their active pairings
   useEffect(() => {
     setIsAdmin(currentUser?.is_admin === true);
+
+    const checkPairings = async () => {
+      if (currentUser?.id) {
+        try {
+          // Check if user is a mentor in any pair
+          const { count: mentorCount } = await supabase
+            .from('mp_pairs')
+            .select('*', { count: 'exact', head: true })
+            .eq('mentor_id', currentUser.id)
+            .eq('status', 'active');
+          
+          // Check if user is a mentee in any pair
+          const { count: menteeCount } = await supabase
+            .from('mp_pairs')
+            .select('*', { count: 'exact', head: true })
+            .eq('mentee_id', currentUser.id)
+            .eq('status', 'active');
+
+          setIsMentor((mentorCount || 0) > 0);
+          setIsMentee((menteeCount || 0) > 0);
+        } catch (error) {
+          console.error('Error checking pairings:', error);
+        }
+      } else {
+        setIsMentor(false);
+        setIsMentee(false);
+      }
+    };
+
+    checkPairings();
   }, [currentUser]);
 
   const verify = async () => {
@@ -125,8 +158,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         role: currentUser?.role,
         profileId: currentUser?.profile_id,
         isSupervisor: currentUser?.role === 'supervisor',
-        isMentor: currentUser?.role === 'mentor',
-        isMentee: currentUser?.role === 'mentee',
+        isMentor,
+        isMentee,
+        setIsMentor,
+        setIsMentee,
       }}
     >
       {children}

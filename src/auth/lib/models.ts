@@ -11,7 +11,7 @@ export interface AuthModel {
 }
 
 // Role type for mentoring passport
-export type UserRole = 'supervisor' | 'mentor' | 'mentee';
+export type UserRole = 'supervisor' | 'program-member';
 
 // User model representing the user profile
 export interface UserModel {
@@ -33,8 +33,9 @@ export interface UserModel {
   is_admin?: boolean; // Added admin flag
   
   // Mentoring Passport specific fields from mp_profiles
-  role: UserRole; // supervisor, mentor, or mentee
+  role: UserRole; // supervisor or program-member
   profile_id: UUID; // Same as id, but explicit for clarity
+  job_title?: string;
   avatar_url?: string;
   department?: string;
   bio?: string;

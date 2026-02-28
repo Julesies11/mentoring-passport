@@ -10,11 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, Plus, Edit, Trash2 } from 'lucide-react';
 import type { Meeting, CreateMeetingInput } from '@/lib/api/meetings';
-import type { Participant } from '@/lib/api/participants';
+import type { Pair } from '@/lib/api/pairs';
 
 interface MeetingCalendarProps {
   meetings: Meeting[];
-  participants?: Participant[];
+  pairs?: Pair[];
   onMeetingClick?: (meeting: Meeting) => void;
   onDateClick?: (date: Date) => void;
   onMeetingUpdate?: (meeting: Meeting) => void;
@@ -22,8 +22,8 @@ interface MeetingCalendarProps {
   onMeetingCreate?: (meeting: CreateMeetingInput) => void;
   view?: 'month' | 'week';
   onViewChange?: (view: 'month' | 'week') => void;
-  selectedParticipant?: string;
-  onParticipantFilter?: (participantId: string) => void;
+  selectedPairId?: string;
+  onPairFilter?: (pairId: string) => void;
   showFilters?: boolean;
 }
 
@@ -31,7 +31,7 @@ type ViewMode = 'month' | 'week';
 
 export function MeetingCalendar({
   meetings,
-  participants = [],
+  pairs = [],
   onMeetingClick,
   onDateClick,
   onMeetingUpdate,
@@ -39,8 +39,8 @@ export function MeetingCalendar({
   onMeetingCreate,
   view: initialView = 'month',
   onViewChange,
-  selectedParticipant,
-  onParticipantFilter,
+  selectedPairId,
+  onPairFilter,
   showFilters = false,
 }: MeetingCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -49,15 +49,15 @@ export function MeetingCalendar({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [formData, setFormData] = useState({
+    pair_id: '',
     title: '',
-    date_time: '',
     notes: ''
   });
 
-  // Filter meetings based on selected participant
+  // Filter meetings based on selected pair
   const filteredMeetings = meetings.filter(meeting => {
-    if (!selectedParticipant) return true;
-    return meeting.pair_id === selectedParticipant;
+    if (!selectedPairId || selectedPairId === 'all') return true;
+    return meeting.pair_id === selectedPairId;
   });
 
   const handleViewChange = (newView: ViewMode) => {
@@ -86,6 +86,7 @@ export function MeetingCalendar({
     if (onDateClick) {
       onDateClick(date);
     } else {
+      setFormData(prev => ({ ...prev, pair_id: (selectedPairId && selectedPairId !== 'all') ? selectedPairId : '' }));
       setIsCreateDialogOpen(true);
     }
   };
@@ -96,22 +97,21 @@ export function MeetingCalendar({
   };
 
   const handleCreateMeeting = () => {
-    if (!selectedDate || !formData.title || !selectedParticipant) {
+    if (!selectedDate || !formData.title || !formData.pair_id) {
       console.error('Missing required fields for meeting creation');
       return;
     }
 
     const newMeeting: CreateMeetingInput = {
-      pair_id: selectedParticipant,
+      pair_id: formData.pair_id,
       title: formData.title,
-      description: formData.notes,
-      scheduled_at: selectedDate.toISOString(),
-      duration_minutes: 60
+      notes: formData.notes,
+      date_time: selectedDate.toISOString(),
     };
 
     onMeetingCreate?.(newMeeting);
     setIsCreateDialogOpen(false);
-    setFormData({ title: '', date_time: '', notes: '' });
+    setFormData({ pair_id: '', title: '', notes: '' });
     setSelectedDate(null);
   };
 
@@ -120,8 +120,8 @@ export function MeetingCalendar({
 
     const updatedMeeting: Meeting = {
       ...selectedMeeting,
-      title: formData.title,
-      notes: formData.notes
+      title: formData.title || selectedMeeting.title,
+      notes: formData.notes || selectedMeeting.notes
     };
 
     onMeetingUpdate?.(updatedMeeting);
@@ -278,16 +278,16 @@ export function MeetingCalendar({
               {format(currentDate, viewMode === 'month' ? 'MMMM yyyy' : "'Week of' MMM d, yyyy")}
             </CardTitle>
             <div className="flex items-center gap-2">
-              {showFilters && participants.length > 0 && (
-                <Select value={selectedParticipant || ''} onValueChange={onParticipantFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Filter by participant" />
+              {showFilters && pairs.length > 0 && (
+                <Select value={selectedPairId || 'all'} onValueChange={onPairFilter}>
+                  <SelectTrigger className="w-[250px]">
+                    <SelectValue placeholder="Filter by mentoring pair" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Participants</SelectItem>
-                    {participants.map(participant => (
-                      <SelectItem key={participant.id} value={participant.id}>
-                        {participant.full_name || participant.email}
+                    <SelectItem value="all">All Pairings</SelectItem>
+                    {pairs.map(pair => (
+                      <SelectItem key={pair.id} value={pair.id}>
+                        {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -317,7 +317,10 @@ export function MeetingCalendar({
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Button onClick={() => {
+                setFormData(prev => ({ ...prev, pair_id: selectedPairId || '' }));
+                setIsCreateDialogOpen(true);
+              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Meeting
               </Button>
@@ -389,8 +392,26 @@ export function MeetingCalendar({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="pair">Select Pairing *</Label>
+              <Select 
+                value={formData.pair_id} 
+                onValueChange={(val) => setFormData({ ...formData, pair_id: val })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a mentoring pair" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pairs.map(pair => (
+                    <SelectItem key={pair.id} value={pair.id}>
+                      {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
@@ -409,7 +430,7 @@ export function MeetingCalendar({
               />
             </div>
             <div className="flex gap-2 pt-4">
-              <Button onClick={handleCreateMeeting} disabled={!formData.title}>
+              <Button onClick={handleCreateMeeting} disabled={!formData.title || !formData.pair_id}>
                 Create Meeting
               </Button>
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>

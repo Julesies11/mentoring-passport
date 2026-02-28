@@ -3,8 +3,9 @@ import { supabase } from '@/lib/supabase';
 export interface Profile {
   id: string;
   email: string;
-  role: 'supervisor' | 'mentor' | 'mentee';
+  role: 'supervisor' | 'program-member';
   full_name: string | null;
+  job_title: string | null;
   bio: string | null;
   department: string | null;
   phone: string | null;
@@ -16,6 +17,7 @@ export interface Profile {
 
 export interface UpdateProfileInput {
   full_name?: string;
+  job_title?: string | null;
   bio?: string | null;
   department?: string | null;
   phone?: string | null;

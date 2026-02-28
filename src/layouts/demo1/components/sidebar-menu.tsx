@@ -2,7 +2,7 @@
 
 import { JSX, useCallback, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MENU_SUPERVISOR, MENU_MENTOR, MENU_MENTEE } from '@/config/menu.config';
+import { MENU_SUPERVISOR, MENU_PROGRAM_MEMBER } from '@/config/menu.config';
 import { MenuConfig, MenuItem } from '@/config/types';
 import { useAuth } from '@/auth/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -27,11 +27,13 @@ export function SidebarMenu() {
     switch (role) {
       case 'supervisor':
         return MENU_SUPERVISOR;
-      case 'mentor':
-        return MENU_MENTOR;
-      case 'mentee':
-        return MENU_MENTEE;
+      case 'program-member':
+        return MENU_PROGRAM_MEMBER;
       default:
+        // Fallback for transition period if existing users have mentor/mentee roles
+        if (role === 'mentor' || role === 'mentee') {
+          return MENU_PROGRAM_MEMBER;
+        }
         return [];
     }
   }, [role]);

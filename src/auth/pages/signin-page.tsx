@@ -242,16 +242,16 @@ export function SignInPage() {
               disabled={isProcessing}
               className="w-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
             >
-              Mentor (Jackie)
+              Participant (Jackie)
             </Button>
             <Button
               variant="default"
               type="button"
               onClick={() => handleTestLogin('bill@test.com', 'U12345678')}
               disabled={isProcessing}
-              className="w-full bg-green-600 border-green-600 text-white hover:bg-green-700"
+              className="w-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
             >
-              Mentee (Bill)
+              Participant (Bill)
             </Button>
           </div>
         </div>

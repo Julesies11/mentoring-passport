@@ -46,13 +46,34 @@ function RoleBasedRedirect() {
   switch (role) {
     case 'supervisor':
       return <Navigate to="/supervisor/dashboard" replace />;
-    case 'mentor':
-      return <Navigate to="/mentor/dashboard" replace />;
-    case 'mentee':
-      return <Navigate to="/mentee/dashboard" replace />;
+    case 'program-member':
+    case 'mentor': // Fallback for transition
+    case 'mentee': // Fallback for transition
+      return <Navigate to="/program-member/dashboard" replace />;
     default:
       return <Navigate to="/auth/signin" replace />;
   }
+}
+
+// Program Member Route Switcher
+function ProgramMemberRoute({ 
+  mentorElement: MentorElement, 
+  menteeElement: MenteeElement,
+  requiresSingleRole = false
+}: { 
+  mentorElement: React.ElementType, 
+  menteeElement: React.ElementType,
+  requiresSingleRole?: boolean
+}) {
+  const { isMentor, isMentee } = useAuth();
+
+  // If they have both roles, we might want a unified view or a switcher
+  // For now, if they are a mentor, show that, otherwise show mentee
+  if (isMentor) return <MentorElement />;
+  if (isMentee) return <MenteeElement />;
+  
+  // If they have no active pairings yet, show mentee dashboard as default
+  return <MenteeElement />;
 }
 
 export function AppRoutingSetup() {
@@ -73,6 +94,7 @@ export function AppRoutingSetup() {
                 </RequireRole>
               }
             />
+            {/* ... other supervisor routes remain same ... */}
             <Route
               path="/supervisor/participants"
               element={
@@ -122,102 +144,80 @@ export function AppRoutingSetup() {
               }
             />
 
-            {/* Mentor routes */}
+            {/* Program Member Unified Routes */}
             <Route
-              path="/mentor/dashboard"
+              path="/program-member/dashboard"
               element={
-                <RequireRole allowedRoles={['mentor']}>
-                  <MentorDashboardPage />
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                  <ProgramMemberRoute 
+                    mentorElement={MentorDashboardPage} 
+                    menteeElement={MenteeDashboardPage} 
+                  />
                 </RequireRole>
               }
             />
             <Route
-              path="/mentor/tasks"
+              path="/program-member/tasks"
               element={
-                <RequireRole allowedRoles={['mentor']}>
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
                   <MentorTasksPage />
                 </RequireRole>
               }
             />
             <Route
-              path="/mentor/mentees"
+              path="/program-member/mentees"
               element={
-                <RequireRole allowedRoles={['mentor']}>
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
                   <MentorMenteesPage />
                 </RequireRole>
               }
             />
             <Route
-              path="/mentor/meetings"
+              path="/program-member/mentor"
               element={
-                <RequireRole allowedRoles={['mentor']}>
-                  <MentorMeetingsPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/mentor/evidence"
-              element={
-                <RequireRole allowedRoles={['mentor']}>
-                  <MentorEvidencePage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/mentor/notes"
-              element={
-                <RequireRole allowedRoles={['mentor']}>
-                  <MentorNotesPage />
-                </RequireRole>
-              }
-            />
-
-            {/* Mentee routes */}
-            <Route
-              path="/mentee/dashboard"
-              element={
-                <RequireRole allowedRoles={['mentee']}>
-                  <MenteeDashboardPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/mentee/checklist"
-              element={
-                <RequireRole allowedRoles={['mentee']}>
-                  <ChecklistPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/mentee/mentor"
-              element={
-                <RequireRole allowedRoles={['mentee']}>
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
                   <MenteeMentorPage />
                 </RequireRole>
               }
             />
             <Route
-              path="/mentee/meetings"
+              path="/program-member/checklist"
               element={
-                <RequireRole allowedRoles={['mentee']}>
-                  <MenteeMeetingsPage />
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                  <ChecklistPage />
                 </RequireRole>
               }
             />
             <Route
-              path="/mentee/evidence"
+              path="/program-member/meetings"
               element={
-                <RequireRole allowedRoles={['mentee']}>
-                  <MenteeEvidencePage />
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                  <ProgramMemberRoute 
+                    mentorElement={MentorMeetingsPage} 
+                    menteeElement={MenteeMeetingsPage} 
+                  />
                 </RequireRole>
               }
             />
             <Route
-              path="/mentee/notes"
+              path="/program-member/evidence"
               element={
-                <RequireRole allowedRoles={['mentee']}>
-                  <MenteeNotesPage />
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                  <ProgramMemberRoute 
+                    mentorElement={MentorEvidencePage} 
+                    menteeElement={MenteeEvidencePage} 
+                  />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/program-member/notes"
+              element={
+                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                  <ProgramMemberRoute 
+                    mentorElement={MentorNotesPage} 
+                    menteeElement={MenteeNotesPage} 
+                  />
                 </RequireRole>
               }
             />

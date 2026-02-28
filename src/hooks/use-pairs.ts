@@ -6,15 +6,18 @@ import {
   createPair,
   updatePair,
   archivePair,
+  restorePair,
   fetchPairStats,
   type CreatePairInput,
   type UpdatePairInput,
 } from '@/lib/api/pairs';
 
+const EMPTY_ARRAY: any[] = [];
+
 export function usePairs() {
   const queryClient = useQueryClient();
 
-  const { data: pairs = [], isLoading, error } = useQuery({
+  const { data: pairs = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['pairs'],
     queryFn: fetchPairs,
   });
@@ -54,18 +57,32 @@ export function usePairs() {
     },
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: restorePair,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pairs'] });
+    },
+  });
+
   return {
     pairs,
     stats,
     isLoading,
     error,
     createPair: createMutation.mutate,
+    createPairAsync: createMutation.mutateAsync,
     updatePair: (id: string, input: UpdatePairInput) =>
       updateMutation.mutate({ id, input }),
+    updatePairAsync: (id: string, input: UpdatePairInput) =>
+      updateMutation.mutateAsync({ id, input }),
     archivePair: archiveMutation.mutate,
+    archivePairAsync: archiveMutation.mutateAsync,
+    restorePair: restoreMutation.mutate,
+    restorePairAsync: restoreMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isArchiving: archiveMutation.isPending,
+    isRestoring: restoreMutation.isPending,
   };
 }
 

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 export interface Meeting {
   id: string;
   pair_id: string;
+  pair_task_id: string | null;
   title: string;
   date_time: string;
   status: 'upcoming' | 'completed' | 'cancelled';
@@ -24,21 +25,18 @@ export interface Meeting {
 
 export interface CreateMeetingInput {
   pair_id: string;
+  pair_task_id?: string | null;
   title: string;
-  description?: string;
-  scheduled_at: string;
-  duration_minutes: number;
-  location?: string;
+  notes?: string;
+  date_time: string;
 }
 
 export interface UpdateMeetingInput {
   title?: string;
-  description?: string;
-  scheduled_at?: string;
-  duration_minutes?: number;
-  location?: string;
-  status?: 'scheduled' | 'completed' | 'cancelled';
+  date_time?: string;
+  status?: 'upcoming' | 'completed' | 'cancelled';
   notes?: string;
+  pair_task_id?: string | null;
 }
 
 /**
@@ -51,8 +49,8 @@ export async function fetchAllMeetings(): Promise<Meeting[]> {
       *,
       pair:mp_pairs(
         id,
-        mentor:mentor_id(id, full_name),
-        mentee:mentee_id(id, full_name)
+        mentor:mentor_id(id, full_name, job_title),
+        mentee:mentee_id(id, full_name, job_title)
       )
     `)
     .order('date_time', { ascending: false });
@@ -93,14 +91,14 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
       *,
       pair:mp_pairs!inner(
         id,
-        mentor:mentor_id(id, full_name),
-        mentee:mentee_id(id, full_name)
+        mentor:mentor_id(id, full_name, job_title),
+        mentee:mentee_id(id, full_name, job_title)
       )
     `)
-    .or(`pair.mentor_id.eq.${userId},pair.mentee_id.eq.${userId}`)
-    .eq('status', 'scheduled')
-    .gte('scheduled_at', new Date().toISOString())
-    .order('scheduled_at', { ascending: true })
+    .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`, { foreignTable: 'mp_pairs' })
+    .eq('status', 'upcoming')
+    .gte('date_time', new Date().toISOString())
+    .order('date_time', { ascending: true })
     .limit(10);
 
   if (error) {
@@ -119,17 +117,18 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     .from('mp_meetings')
     .insert({
       pair_id: input.pair_id,
+      pair_task_id: input.pair_task_id,
       title: input.title,
-      notes: input.description,
-      date_time: input.scheduled_at,
+      notes: input.notes,
+      date_time: input.date_time,
       status: 'upcoming',
     })
     .select(`
       *,
       pair:mp_pairs(
         id,
-        mentor:mentor_id(id, full_name),
-        mentee:mentee_id(id, full_name)
+        mentor:mentor_id(id, full_name, job_title),
+        mentee:mentee_id(id, full_name, job_title)
       )
     `)
     .single();
@@ -149,22 +148,16 @@ export async function updateMeeting(
   meetingId: string,
   input: UpdateMeetingInput
 ): Promise<Meeting> {
-  const updateData: any = { ...input };
-
-  if (input.status === 'completed' && !input.notes) {
-    updateData.completed_at = new Date().toISOString();
-  }
-
   const { data, error } = await supabase
     .from('mp_meetings')
-    .update(updateData)
+    .update(input)
     .eq('id', meetingId)
     .select(`
       *,
       pair:mp_pairs(
         id,
-        mentor:mentor_id(id, full_name),
-        mentee:mentee_id(id, full_name)
+        mentor:mentor_id(id, full_name, job_title),
+        mentee:mentee_id(id, full_name, job_title)
       )
     `)
     .single();
@@ -197,19 +190,28 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
  */
 export async function fetchMeetingStats() {
   const { data, error } = await supabase
-    .from('mp_meetings')
+    .from('mp_evidence_uploads')
     .select('status');
 
   if (error) {
-    console.error('Error fetching meeting stats:', error);
+    console.error('Error fetching evidence stats for meetings:', error);
     throw error;
   }
 
+  const { data: meetingsData, error: meetingsError } = await supabase
+    .from('mp_meetings')
+    .select('status');
+
+  if (meetingsError) {
+    console.error('Error fetching meeting stats:', meetingsError);
+    throw meetingsError;
+  }
+
   const stats = {
-    total: data.length,
-    scheduled: data.filter(m => m.status === 'scheduled').length,
-    completed: data.filter(m => m.status === 'completed').length,
-    cancelled: data.filter(m => m.status === 'cancelled').length,
+    total: meetingsData.length,
+    upcoming: meetingsData.filter(m => m.status === 'upcoming').length,
+    completed: meetingsData.filter(m => m.status === 'completed').length,
+    cancelled: meetingsData.filter(m => m.status === 'cancelled').length,
   };
 
   return stats;

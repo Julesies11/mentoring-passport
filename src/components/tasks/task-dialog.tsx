@@ -1,8 +1,8 @@
 import { useState } from 'react';
+import { CheckCircle, FileText, Upload, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, X, CheckCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const statusColors = {
   not_submitted: 'text-gray-400',
@@ -36,14 +36,21 @@ interface TaskDialogProps {
     status: 'not_submitted' | 'awaiting_review' | 'completed';
     description?: string;
     evidence_type?: {
+      id?: string;
       name: string;
       requires_submission: boolean;
     };
     completed_at?: string;
   };
   pairId: string;
-  onSubmitEvidence?: (taskId: string, evidence: { description: string; file_url?: string }) => void;
-  onUpdateStatus?: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed') => void;
+  onSubmitEvidence?: (
+    taskId: string,
+    evidence: { description: string; file?: File },
+  ) => void;
+  onUpdateStatus?: (
+    taskId: string,
+    status: 'not_submitted' | 'awaiting_review' | 'completed',
+  ) => void;
   isSubmitting?: boolean;
 }
 
@@ -67,7 +74,7 @@ export function TaskDialog({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFileSelect(files[0]);
@@ -77,30 +84,29 @@ export function TaskDialog({
   const handleSubmit = () => {
     // Check if evidence submission is required
     const requiresSubmission = task.evidence_type?.requires_submission;
-    
+
     // Validate description
     if (!evidenceDescription.trim()) {
       alert('Please provide a description for your evidence.');
       return;
     }
-    
+
     // Validate file upload if required
     if (requiresSubmission && !selectedFile) {
       alert('This task requires evidence submission. Please upload a file.');
       return;
     }
-    
+
     onSubmitEvidence?.(task.id, {
       description: evidenceDescription,
-      file_url: selectedFile ? URL.createObjectURL(selectedFile) : undefined,
+      file: selectedFile || undefined,
     });
-    
-    // Reset form
-    setEvidenceDescription('');
-    setSelectedFile(null);
+
+    // Reset form will be handled by parent or on success
   };
 
-  const canSubmit = task.status === 'not_submitted' || task.status === 'awaiting_review';
+  const canSubmit =
+    task.status === 'not_submitted' || task.status === 'awaiting_review';
   const isCompleted = task.status === 'completed';
 
   return (
@@ -121,18 +127,20 @@ export function TaskDialog({
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div>
               <p className="text-sm font-medium">Current Status</p>
-              <Badge 
+              <Badge
                 className={cn(
                   'mt-1',
                   task.status === 'completed' && 'bg-green-100 text-green-800',
-                  task.status === 'awaiting_review' && 'bg-yellow-100 text-yellow-800',
-                  task.status === 'not_submitted' && 'bg-gray-100 text-gray-800'
+                  task.status === 'awaiting_review' &&
+                    'bg-yellow-100 text-yellow-800',
+                  task.status === 'not_submitted' &&
+                    'bg-gray-100 text-gray-800',
                 )}
               >
                 {statusLabels[task.status]}
               </Badge>
             </div>
-            
+
             {task.evidence_type && (
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Evidence Type</p>
@@ -152,13 +160,15 @@ export function TaskDialog({
                   </Badge>
                 )}
               </div>
-              
+
               {/* File Upload */}
               <div
                 className={cn(
                   'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
-                  dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
-                  selectedFile && 'border-primary bg-primary/5'
+                  dragActive
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted-foreground/25',
+                  selectedFile && 'border-primary bg-primary/5',
                 )}
                 onDragEnter={(e) => {
                   e.preventDefault();
@@ -225,14 +235,19 @@ export function TaskDialog({
           {/* Completed Evidence */}
           {isCompleted && task.completed_at && (
             <div className="space-y-4">
-              <Label className="text-base font-medium">Submitted Evidence</Label>
+              <Label className="text-base font-medium">
+                Submitted Evidence
+              </Label>
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <p className="text-sm font-medium text-green-800">Completed</p>
+                  <p className="text-sm font-medium text-green-800">
+                    Completed
+                  </p>
                 </div>
                 <p className="text-sm text-green-700">
-                  This task was completed on {new Date(task.completed_at).toLocaleDateString()}
+                  This task was completed on{' '}
+                  {new Date(task.completed_at).toLocaleDateString()}
                 </p>
               </div>
             </div>

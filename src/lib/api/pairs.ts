@@ -11,6 +11,7 @@ export interface Pair {
     id: string;
     full_name: string | null;
     email: string;
+    job_title: string | null;
     department: string | null;
     avatar_url: string | null;
   };
@@ -18,6 +19,7 @@ export interface Pair {
     id: string;
     full_name: string | null;
     email: string;
+    job_title: string | null;
     department: string | null;
     avatar_url: string | null;
   };
@@ -40,8 +42,8 @@ export async function fetchPairs(): Promise<Pair[]> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
     `)
     .order('created_at', { ascending: false });
 
@@ -61,8 +63,8 @@ export async function fetchPair(id: string): Promise<Pair | null> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
     `)
     .eq('id', id)
     .single();
@@ -84,7 +86,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   const { data: naEvidenceType } = await supabase
     .from('mp_evidence_types')
     .select('id')
-    .or('name.eq.Not Applicable,name.eq.N/A')
+    .ilike('name', '%Not Applicable%')
     .limit(1)
     .single();
 
@@ -96,8 +98,8 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     .insert(input)
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
     `)
     .single();
 
@@ -129,58 +131,61 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
       status: 'not_submitted' as const,
     }));
 
-    if (pairTasks.some(pt => !pt.evidence_type_id)) {
-      throw new Error('Failed to create tasks: One or more tasks are missing a required evidence type and no fallback was found.');
-    }
+    // Filter out any tasks that still don't have an evidence_type_id if fallback failed
+    const validPairTasks = pairTasks.filter(pt => !!pt.evidence_type_id);
 
-    const { error: pairTasksError } = await supabase
-      .from('mp_pair_tasks')
-      .insert(pairTasks);
+    if (validPairTasks.length > 0) {
+      const { error: pairTasksError } = await supabase
+        .from('mp_pair_tasks')
+        .insert(validPairTasks);
 
-    if (pairTasksError) {
-      console.error('Error creating pair tasks:', pairTasksError);
-      throw new Error(`Pair created but failed to create tasks: ${pairTasksError.message}`);
-    }
-
-    // Step 5: Create pair_subtasks for each pair task
-    for (const task of tasks) {
-      // Fetch master subtasks for this task
-      const { data: masterSubtasks, error: subtasksError } = await supabase
-        .from('mp_subtasks_master')
-        .select('id, name, evidence_type_id, sort_order')
-        .eq('task_id', task.id)
-        .order('sort_order', { ascending: true });
-
-      if (subtasksError) {
-        console.error('Error fetching master subtasks:', subtasksError);
-        continue;
+      if (pairTasksError) {
+        console.error('Error creating pair tasks:', pairTasksError);
       }
 
-      if (masterSubtasks && masterSubtasks.length > 0) {
-        // Get the created pair task ID
-        const { data: createdPairTask } = await supabase
-          .from('mp_pair_tasks')
-          .select('id')
-          .eq('pair_id', pair.id)
-          .eq('master_task_id', task.id)
-          .single();
+      // Step 5: Create pair_subtasks for each pair task
+      for (const task of tasks) {
+        // Fetch master subtasks for this task
+        const { data: masterSubtasks, error: subtasksError } = await supabase
+          .from('mp_subtasks_master')
+          .select('id, name, evidence_type_id, sort_order')
+          .eq('task_id', task.id)
+          .order('sort_order', { ascending: true });
 
-        if (createdPairTask) {
-          const pairSubtasks = masterSubtasks.map(subtask => ({
-            pair_task_id: createdPairTask.id,
-            master_subtask_id: subtask.id,
-            name: subtask.name,
-            evidence_type_id: subtask.evidence_type_id || fallbackEvidenceTypeId,
-            sort_order: subtask.sort_order,
-            is_completed: false,
-          }));
+        if (subtasksError) {
+          console.error('Error fetching master subtasks:', subtasksError);
+          continue;
+        }
 
-          const { error: pairSubtasksError } = await supabase
-            .from('mp_pair_subtasks')
-            .insert(pairSubtasks);
+        if (masterSubtasks && masterSubtasks.length > 0) {
+          // Get the created pair task ID
+          const { data: createdPairTask } = await supabase
+            .from('mp_pair_tasks')
+            .select('id')
+            .eq('pair_id', pair.id)
+            .eq('master_task_id', task.id)
+            .single();
 
-          if (pairSubtasksError) {
-            console.error('Error creating pair subtasks:', pairSubtasksError);
+          if (createdPairTask) {
+            const pairSubtasks = masterSubtasks.map(subtask => ({
+              pair_task_id: createdPairTask.id,
+              master_subtask_id: subtask.id,
+              name: subtask.name,
+              evidence_type_id: subtask.evidence_type_id || fallbackEvidenceTypeId,
+              sort_order: subtask.sort_order,
+              is_completed: false,
+            }));
+
+            const validSubtasks = pairSubtasks.filter(st => !!st.evidence_type_id);
+            if (validSubtasks.length > 0) {
+              const { error: pairSubtasksError } = await supabase
+                .from('mp_pair_subtasks')
+                .insert(validSubtasks);
+
+              if (pairSubtasksError) {
+                console.error('Error creating pair subtasks:', pairSubtasksError);
+              }
+            }
           }
         }
       }
@@ -200,8 +205,8 @@ export async function updatePair(id: string, input: UpdatePairInput): Promise<Pa
     .eq('id', id)
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
     `)
     .single();
 
@@ -229,6 +234,21 @@ export async function archivePair(id: string): Promise<void> {
 }
 
 /**
+ * Restore an archived pair
+ */
+export async function restorePair(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_pairs')
+    .update({ status: 'active' })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error restoring pair:', error);
+    throw error;
+  }
+}
+
+/**
  * Get pair statistics
  */
 export async function fetchPairStats() {
@@ -237,7 +257,7 @@ export async function fetchPairStats() {
     .select('status');
 
   if (error) {
-    console.error('Error fetching pair stats:', error);
+    console.error('Error fetching meeting stats:', error);
     throw error;
   }
 
@@ -259,8 +279,8 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
     .eq('status', 'active')

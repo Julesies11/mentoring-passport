@@ -19,6 +19,7 @@ import { Upload, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toAbsoluteUrl } from '@/lib/helpers';
+import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 
 interface ProfileAvatarProps {
   userId: string;
@@ -51,30 +52,6 @@ export function ProfileAvatar({
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-
-  const getInitials = (name?: string) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getAvatarUrl = () => {
-    if (currentAvatar) {
-      // If it's already a full URL, return as is
-      if (currentAvatar.startsWith('http')) {
-        return currentAvatar;
-      }
-      // If it's a Supabase path, construct the public URL with user folder
-      const fullPath = userId ? `${userId}/${currentAvatar}` : currentAvatar;
-      return supabase.storage.from('mp-avatars').getPublicUrl(fullPath).data.publicUrl;
-    }
-    // No avatar - return null to show initials only
-    return null;
-  };
 
   const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
@@ -166,7 +143,7 @@ export function ProfileAvatar({
     <>
       <div className={cn('relative inline-flex', className)}>
         <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={getAvatarUrl()} alt={userName || 'User avatar'} />
+          <AvatarImage src={getAvatarPublicUrl(currentAvatar, userId)} alt={userName || 'User avatar'} />
           <AvatarFallback className="bg-primary text-primary-foreground">
             {getInitials(userName)}
           </AvatarFallback>
@@ -184,117 +161,118 @@ export function ProfileAvatar({
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Profile Picture</DialogTitle>
-            <DialogDescription>
-              Upload or change your profile picture
-            </DialogDescription>
-          </DialogHeader>
+      {showEditButton && (
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Profile Picture</DialogTitle>
+              <DialogDescription>
+                Upload or change your profile picture
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Current/Preview Avatar */}
-            <div className="flex justify-center">
-              <Avatar className="h-24 w-24">
-                <AvatarImage 
-                  src={previewUrl || getAvatarUrl()} 
-                  alt="Profile preview" 
-                />
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                  {getInitials(userName)}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-
-            {/* Upload Area */}
-            <div
-              className={cn(
-                'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
-                dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
-                selectedFile && 'border-primary bg-primary/5'
-              )}
-              onDragEnter={(e) => {
-                e.preventDefault();
-                setDragActive(true);
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                setDragActive(false);
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-            >
-              {selectedFile ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">{selectedFile.name}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl('');
-                    }}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Drag and drop a file here, or click to select
-                  </p>
-                  <input
-                    type="file"
-                    className="hidden"
-                    id="avatar-upload"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileSelect(file);
-                    }}
-                  />
-                  <Button variant="outline" size="sm" asChild>
-                    <label htmlFor="avatar-upload" className="cursor-pointer">
-                      Select File
-                    </label>
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Guidelines */}
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• Recommended: Square image, at least 200x200px</p>
-              <p>• Maximum file size: 5MB</p>
-              <p>• Supported formats: JPG, PNG, GIF</p>
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            {currentAvatar && (
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isUploading}
+            <div className="space-y-4">
+              {/* Current/Preview Avatar */}
+                          <div className="flex justify-center">
+                            <Avatar className="h-24 w-24">
+                              <AvatarImage 
+                                src={previewUrl || getAvatarPublicUrl(currentAvatar, userId)} 
+                                alt="Profile preview" 
+                              />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                                {getInitials(userName)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                            {/* Upload Area */}
+              <div
+                className={cn(
+                  'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
+                  dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
+                  selectedFile && 'border-primary bg-primary/5'
+                )}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setDragActive(false);
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
               >
-                Remove
+                {selectedFile ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">{selectedFile.name}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setPreviewUrl('');
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Drag and drop a file here, or click to select
+                    </p>
+                    <input
+                      type="file"
+                      className="hidden"
+                      id="avatar-upload"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileSelect(file);
+                      }}
+                    />
+                    <Button variant="outline" size="sm" asChild>
+                      <label htmlFor="avatar-upload" className="cursor-pointer">
+                        Select File
+                      </label>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Guidelines */}
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• Recommended: Square image, at least 200x200px</p>
+                <p>• Maximum file size: 5MB</p>
+                <p>• Supported formats: JPG, PNG, GIF</p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              {currentAvatar && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isUploading}
+                >
+                  Remove
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
               </Button>
-            )}
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || isUploading}
-            >
-              {isUploading ? 'Uploading...' : 'Upload'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <Button
+                onClick={handleUpload}
+                disabled={!selectedFile || isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Upload'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

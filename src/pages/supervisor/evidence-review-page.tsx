@@ -138,12 +138,22 @@ export function EvidenceReviewPage() {
                             <TableRow key={item.id}>
                               <TableCell>
                                 <div className="flex flex-col">
-                                  <span className="font-semibold text-gray-900">
-                                    {item.pair?.mentor?.full_name || 'Unknown'}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    → {item.pair?.mentee?.full_name || 'Unknown'}
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold text-gray-900">
+                                      {item.pair?.mentor?.full_name || 'Unknown'}
+                                    </span>
+                                    {item.pair?.mentor?.job_title && (
+                                      <span className="text-[10px] text-muted-foreground uppercase font-medium">{item.pair.mentor.job_title}</span>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col mt-1 border-t border-gray-100 pt-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      → {item.pair?.mentee?.full_name || 'Unknown'}
+                                    </span>
+                                    {item.pair?.mentee?.job_title && (
+                                      <span className="text-[10px] text-muted-foreground uppercase font-medium">{item.pair.mentee.job_title}</span>
+                                    )}
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell>{item.task?.name || 'Unknown Task'}</TableCell>

@@ -12,10 +12,12 @@ import {
   type UpdateParticipantInput,
 } from '@/lib/api/participants';
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useParticipants() {
   const queryClient = useQueryClient();
 
-  const { data: participants = [], isLoading, error } = useQuery({
+  const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['participants'],
     queryFn: fetchParticipants,
   });
@@ -86,7 +88,7 @@ export function useAllParticipants() {
   });
 }
 
-export function useParticipantsByRole(role: 'supervisor' | 'mentor' | 'mentee') {
+export function useParticipantsByRole(role: 'supervisor' | 'program-member') {
   return useQuery({
     queryKey: ['participants', 'role', role],
     queryFn: () => fetchParticipantsByRole(role),

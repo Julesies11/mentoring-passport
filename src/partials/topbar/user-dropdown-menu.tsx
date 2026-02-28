@@ -27,7 +27,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const displayName = user?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
   const displayAvatar = user?.avatar_url ? 
-    `https://rdnaqrzqpcicskylmsyl.supabase.co/storage/v1/object/mp-avatars/${user.id}/${user.avatar_url}` :
+    `https://rdnaqrzqpcicskylmsyl.supabase.co/storage/v1/object/mp-avatars/${user?.id}/${user.avatar_url}` :
     toAbsoluteUrl('/media/avatars/300-2.png');
 
   const handleThemeToggle = (checked: boolean) => {
@@ -46,15 +46,15 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
         {/* Header */}
         <div className="flex items-center gap-3 p-3">
           <img
-            className="size-9 rounded-full border-2 border-gray-200"
+            className="size-10 rounded-full border border-gray-200 object-cover"
             src={displayAvatar}
             alt="User avatar"
           />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-bold text-gray-900 truncate">
               {displayName}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground truncate">
               {displayEmail}
             </span>
           </div>

@@ -4,6 +4,7 @@ export interface Note {
   id: string;
   pair_id: string;
   author_id: string;
+  title: string | null;
   content: string;
   is_private: boolean;
   created_at: string;
@@ -28,11 +29,13 @@ export interface Note {
 
 export interface CreateNoteInput {
   pair_id: string;
+  title?: string;
   content: string;
   is_private: boolean;
 }
 
 export interface UpdateNoteInput {
+  title?: string;
   content?: string;
   is_private?: boolean;
 }
@@ -52,6 +55,32 @@ export async function fetchPairNotes(pairId: string): Promise<Note[]> {
 
   if (error) {
     console.error('Error fetching pair notes:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch all notes for a user (across all their pairs)
+ */
+export async function fetchUserNotes(userId: string): Promise<Note[]> {
+  const { data, error } = await supabase
+    .from('mp_notes')
+    .select(`
+      *,
+      author:author_id(id, full_name, role),
+      pair:mp_pairs!inner(
+        id,
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
+      )
+    `)
+    .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`, { foreignTable: 'mp_pairs' })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching user notes:', error);
     throw error;
   }
 
@@ -98,6 +127,7 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
     .insert({
       pair_id: input.pair_id,
       author_id: user.id,
+      title: input.title,
       content: input.content,
       is_private: input.is_private,
     })

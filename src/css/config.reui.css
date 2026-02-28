@@ -77,6 +77,21 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 
+  --color-success: var(--color-green-500);
+  --color-success-foreground: var(--color-white);
+  --color-success-light: var(--color-green-50);
+  --color-success-dark: var(--color-green-600);
+
+  --color-warning: var(--color-yellow-500);
+  --color-warning-foreground: var(--color-white);
+  --color-warning-light: var(--color-yellow-50);
+  --color-warning-dark: var(--color-yellow-600);
+
+  --color-info: var(--color-violet-500);
+  --color-info-foreground: var(--color-white);
+  --color-info-light: var(--color-violet-50);
+  --color-info-dark: var(--color-violet-600);
+
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
 

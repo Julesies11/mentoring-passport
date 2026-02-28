@@ -35,71 +35,50 @@ export const MENU_SUPERVISOR: MenuConfig = [
   },
 ];
 
-// Mentor menu
-export const MENU_MENTOR: MenuConfig = [
+// Program Member menu (for both Mentor and Mentee)
+export const MENU_PROGRAM_MEMBER: MenuConfig = [
   {
     title: 'Dashboard',
     icon: () => <KeenIcon icon="element-11" />,
-    path: '/mentor/dashboard',
+    path: '/program-member/dashboard',
+  },
+  {
+    heading: 'Mentoring Tools'
   },
   {
     title: 'My Mentees',
     icon: () => <KeenIcon icon="users" />,
-    path: '/mentor/mentees',
-  },
-  {
-    title: 'Meetings',
-    icon: () => <KeenIcon icon="calendar" />,
-    path: '/mentor/meetings',
-  },
-  {
-    title: 'Tasks',
-    icon: () => <KeenIcon icon="check-squared" />,
-    path: '/mentor/tasks',
-  },
-  {
-    title: 'Evidence',
-    icon: () => <KeenIcon icon="eye" />,
-    path: '/mentor/evidence',
-  },
-  {
-    title: 'Notes',
-    icon: () => <KeenIcon icon="notepad" />,
-    path: '/mentor/notes',
-  },
-];
-
-// Mentee menu
-export const MENU_MENTEE: MenuConfig = [
-  {
-    title: 'Dashboard',
-    icon: () => <KeenIcon icon="element-11" />,
-    path: '/mentee/dashboard',
+    path: '/program-member/mentees',
   },
   {
     title: 'My Mentor',
-    icon: () => <KeenIcon icon="users" />,
-    path: '/mentee/mentor',
+    icon: () => <KeenIcon icon="profile-circle" />,
+    path: '/program-member/mentor',
   },
   {
     title: 'Meetings',
     icon: () => <KeenIcon icon="calendar" />,
-    path: '/mentee/meetings',
+    path: '/program-member/meetings',
   },
   {
     title: 'Checklist',
     icon: () => <KeenIcon icon="check-squared" />,
-    path: '/mentee/checklist',
+    path: '/program-member/checklist',
+  },
+  {
+    title: 'Tasks',
+    icon: () => <KeenIcon icon="clipboard" />,
+    path: '/program-member/tasks',
   },
   {
     title: 'Evidence',
     icon: () => <KeenIcon icon="eye" />,
-    path: '/mentee/evidence',
+    path: '/program-member/evidence',
   },
   {
     title: 'Notes',
     icon: () => <KeenIcon icon="notepad" />,
-    path: '/mentee/notes',
+    path: '/program-member/notes',
   },
 ];
 

@@ -28,6 +28,7 @@ CREATE OR REPLACE FUNCTION public.mp_admin_create_user(
   password_input TEXT,
   full_name_input TEXT,
   role_input TEXT,
+  job_title_input TEXT DEFAULT NULL,
   department_input TEXT DEFAULT NULL,
   phone_input TEXT DEFAULT NULL,
   avatar_url_input TEXT DEFAULT NULL
@@ -75,7 +76,7 @@ BEGIN
     crypt(password_input, gen_salt('bf')), -- Now finds gen_salt in extensions schema
     now(), -- Auto-confirm email
     '{"provider":"email","providers":["email"]}',
-    jsonb_build_object('full_name', full_name_input, 'role', role_input),
+    jsonb_build_object('full_name', full_name_input, 'role', role_input, 'job_title', job_title_input),
     now(),
     now(),
     '',
@@ -89,6 +90,7 @@ BEGIN
   -- (The basic profile was already created by the mp_handle_new_user trigger)
   UPDATE public.mp_profiles
   SET 
+    job_title = job_title_input,
     department = department_input,
     phone = phone_input,
     avatar_url = avatar_url_input,

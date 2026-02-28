@@ -34,6 +34,8 @@ export const AuthContext = createContext<{
   isSupervisor: boolean;
   isMentor: boolean;
   isMentee: boolean;
+  setIsMentor: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsMentee: React.Dispatch<React.SetStateAction<boolean>>;
 }>({
   loading: false,
   setLoading: () => {},
@@ -54,6 +56,8 @@ export const AuthContext = createContext<{
   isSupervisor: false,
   isMentor: false,
   isMentee: false,
+  setIsMentor: () => {},
+  setIsMentee: () => {},
 });
 
 // Hook definition

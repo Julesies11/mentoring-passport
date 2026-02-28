@@ -1,26 +1,34 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { togglePairSubTaskCompletion, type PairSubTask } from '@/lib/api/tasks';
 import { useAuth } from '@/auth/context/auth-context';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, ChevronDown, ChevronRight, Circle } from 'lucide-react';
+import { togglePairSubTaskCompletion, type PairSubTask } from '@/lib/api/tasks';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface PairSubTasksDisplayProps {
   subtasks: PairSubTask[];
   pairTaskId: string;
 }
 
-export function PairSubTasksDisplay({ subtasks, pairTaskId }: PairSubTasksDisplayProps) {
+export function PairSubTasksDisplay({
+  subtasks,
+  pairTaskId,
+}: PairSubTasksDisplayProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
-  
+
   const toggleSubTaskMutation = useMutation({
-    mutationFn: ({ subtaskId, isCompleted }: { subtaskId: string; isCompleted: boolean }) =>
-      togglePairSubTaskCompletion(subtaskId, isCompleted, user?.id),
+    mutationFn: ({
+      subtaskId,
+      isCompleted,
+    }: {
+      subtaskId: string;
+      isCompleted: boolean;
+    }) => togglePairSubTaskCompletion(subtaskId, isCompleted, user?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks'] });
     },
@@ -30,7 +38,7 @@ export function PairSubTasksDisplay({ subtasks, pairTaskId }: PairSubTasksDispla
     toggleSubTaskMutation.mutate({ subtaskId, isCompleted });
   };
 
-  const completedCount = subtasks.filter(st => st.is_completed).length;
+  const completedCount = subtasks.filter((st) => st.is_completed).length;
   const totalCount = subtasks.length;
 
   if (subtasks.length === 0) {
@@ -53,7 +61,10 @@ export function PairSubTasksDisplay({ subtasks, pairTaskId }: PairSubTasksDispla
           )}
           Subtasks ({completedCount}/{totalCount})
         </Button>
-        <Badge variant={completedCount === totalCount ? 'default' : 'secondary'} className="text-xs">
+        <Badge
+          variant={completedCount === totalCount ? 'default' : 'secondary'}
+          className="text-xs"
+        >
           {Math.round((completedCount / totalCount) * 100)}%
         </Badge>
       </div>
@@ -61,11 +72,16 @@ export function PairSubTasksDisplay({ subtasks, pairTaskId }: PairSubTasksDispla
       {expanded && (
         <div className="pl-4 space-y-2 border-l-2 border-muted">
           {subtasks.map((subtask) => (
-            <div key={subtask.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+            <div
+              key={subtask.id}
+              className="flex items-center justify-between p-2 bg-muted/30 rounded"
+            >
               <div className="flex items-center gap-3">
                 <Checkbox
                   checked={subtask.is_completed}
-                  onCheckedChange={(checked) => handleToggleSubTask(subtask.id, !!checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggleSubTask(subtask.id, !!checked)
+                  }
                   disabled={toggleSubTaskMutation.isPending}
                 />
                 <div className="flex items-center gap-2">
@@ -75,10 +91,13 @@ export function PairSubTasksDisplay({ subtasks, pairTaskId }: PairSubTasksDispla
                     <Circle className="w-4 h-4 text-gray-400" />
                   )}
                   <div>
-                    <div className={cn(
-                      "text-sm font-medium",
-                      subtask.is_completed && "line-through text-muted-foreground"
-                    )}>
+                    <div
+                      className={cn(
+                        'text-sm font-medium',
+                        subtask.is_completed &&
+                          'line-through text-muted-foreground',
+                      )}
+                    >
                       {subtask.name}
                     </div>
                     {subtask.evidence_type && (
@@ -95,7 +114,8 @@ export function PairSubTasksDisplay({ subtasks, pairTaskId }: PairSubTasksDispla
                     )}
                     {subtask.completed_at && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        Completed {new Date(subtask.completed_at).toLocaleDateString()}
+                        Completed{' '}
+                        {new Date(subtask.completed_at).toLocaleDateString()}
                       </div>
                     )}
                   </div>

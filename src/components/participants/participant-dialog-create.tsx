@@ -29,8 +29,9 @@ import type { CreateParticipantInput } from '@/lib/api/participants';
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['supervisor', 'mentor', 'mentee']),
+  role: z.enum(['supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
+  job_title: z.string().optional(),
   department: z.string().optional(),
   phone: z.string().optional(),
 });
@@ -66,8 +67,9 @@ export function CreateParticipantDialog({
     defaultValues: {
       email: '',
       password: '',
-      role: 'mentee',
+      role: 'program-member',
       full_name: '',
+      job_title: '',
       department: '',
       phone: '',
     },
@@ -220,8 +222,7 @@ export function CreateParticipantDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="mentor">Mentor</SelectItem>
-                    <SelectItem value="mentee">Mentee</SelectItem>
+                    <SelectItem value="program-member">Program Member</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.role && (
@@ -241,6 +242,16 @@ export function CreateParticipantDialog({
                   <p className="text-xs text-red-600 font-medium">{errors.full_name.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job_title" className="text-xs font-bold text-gray-600 uppercase">Job Title</Label>
+              <Input
+                id="job_title"
+                {...register('job_title')}
+                placeholder="Senior Registrar"
+                className="h-10 border-gray-200"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -30,15 +30,17 @@ import type { Participant } from '@/lib/api/participants';
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['supervisor', 'mentor', 'mentee']),
+  role: z.enum(['supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
+  job_title: z.string().optional(),
   department: z.string().optional(),
   phone: z.string().optional(),
 });
 
 const updateParticipantSchema = z.object({
-  role: z.enum(['supervisor', 'mentor', 'mentee']),
+  role: z.enum(['supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
+  job_title: z.string().optional(),
   department: z.string().optional(),
   bio: z.string().optional(),
   phone: z.string().optional(),
@@ -82,6 +84,7 @@ export function ParticipantDialog({
       ? {
           role: participant.role,
           full_name: participant.full_name || '',
+          job_title: participant.job_title || '',
           department: participant.department || '',
           bio: participant.bio || '',
           phone: participant.phone || '',
@@ -90,21 +93,26 @@ export function ParticipantDialog({
       : {
           email: '',
           password: '',
-          role: 'mentee',
+          role: 'program-member',
           full_name: '',
+          job_title: '',
           department: '',
           phone: '',
         },
   });
 
   useEffect(() => {
-    if (participant && isEdit) {
-      setValue('role', participant.role);
-      setValue('full_name', participant.full_name || '');
-      setValue('department', participant.department || '');
-      setValue('phone', participant.phone || '');
-      setValue('bio', participant.bio || '');
-      setValue('status', participant.status);
+    if (open && participant && isEdit) {
+      const editValues = {
+        role: participant.role,
+        full_name: participant.full_name || '',
+        job_title: participant.job_title || '',
+        department: participant.department || '',
+        phone: participant.phone || '',
+        bio: participant.bio || '',
+        status: participant.status,
+      };
+      reset(editValues as any);
       
       // Initialize avatar if exists
       if (participant.avatar_url) {
@@ -113,8 +121,20 @@ export function ParticipantDialog({
         setAvatar([]);
       }
       setDeleteAvatar(false);
+    } else if (open && !isEdit) {
+      reset({
+        email: '',
+        password: '',
+        role: 'program-member',
+        full_name: '',
+        job_title: '',
+        department: '',
+        phone: '',
+      } as any);
+      setAvatar([]);
+      setDeleteAvatar(false);
     }
-  }, [participant, isEdit, setValue]);
+  }, [participant, isEdit, reset, open]);
 
   const handleFormSubmit = async (data: CreateFormData | UpdateFormData) => {
     console.log('Submitting participant form, isEdit:', isEdit, data);
@@ -261,7 +281,7 @@ export function ParticipantDialog({
                           <div className="space-y-2">
                             <Label htmlFor="role" className="text-xs font-bold text-gray-600 uppercase">Role *</Label>
                             <Select
-                              value={watch('role') || 'mentee'}
+                              value={watch('role') || 'program-member'}
                               onValueChange={(value) => setValue('role', value as any)}
                             >
                               <SelectTrigger className="h-10 border-gray-200">
@@ -269,8 +289,9 @@ export function ParticipantDialog({
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="supervisor">Supervisor</SelectItem>
-                                <SelectItem value="mentor">Mentor</SelectItem>
-                                <SelectItem value="mentee">Mentee</SelectItem>
+                                <SelectItem value="program-member">Program Member</SelectItem>
+                                <SelectItem value="mentor">Mentor (Legacy)</SelectItem>
+                                <SelectItem value="mentee">Mentee (Legacy)</SelectItem>
                               </SelectContent>
                             </Select>
                             {errors.role && (
@@ -289,6 +310,16 @@ export function ParticipantDialog({
                   <p className="text-xs text-red-600 font-medium">{errors.full_name.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job_title" className="text-xs font-bold text-gray-600 uppercase">Job Title</Label>
+              <Input
+                id="job_title"
+                {...register('job_title' as any)}
+                placeholder="Senior Registrar"
+                className="h-10 border-gray-200"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
