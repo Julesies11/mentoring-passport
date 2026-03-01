@@ -42,8 +42,8 @@ export async function fetchPairs(): Promise<Pair[]> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
     `)
     .order('created_at', { ascending: false });
 
@@ -63,8 +63,8 @@ export async function fetchPair(id: string): Promise<Pair | null> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
     `)
     .eq('id', id)
     .single();
@@ -98,8 +98,8 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     .insert(input)
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
     `)
     .single();
 
@@ -205,8 +205,8 @@ export async function updatePair(id: string, input: UpdatePairInput): Promise<Pa
     .eq('id', id)
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
     `)
     .single();
 
@@ -279,8 +279,8 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
     .in('status', ['active', 'completed'])

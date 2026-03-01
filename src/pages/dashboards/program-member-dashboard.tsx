@@ -30,14 +30,14 @@ export function ProgramMemberDashboardPage() {
   const [pairStats, setPairStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Group pairings by role for the user
+  // Group pairings by role for the user (only active ones for dashboard)
   const mentorPairings = useMemo(() => 
-    pairings.filter(p => p.mentor_id === user?.id),
+    pairings.filter(p => p.mentor_id === user?.id && p.status === 'active'),
     [pairings, user?.id]
   );
   
   const menteePairings = useMemo(() => 
-    pairings.filter(p => p.mentee_id === user?.id),
+    pairings.filter(p => p.mentee_id === user?.id && p.status === 'active'),
     [pairings, user?.id]
   );
 
@@ -226,18 +226,6 @@ export function ProgramMemberDashboardPage() {
                     {partner?.bio || "No biography provided yet."}
                   </p>
                 </div>
-
-                {/* Specialties */}
-                {partner?.specialties && partner.specialties.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Specialties</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {partner.specialties.map((s: string, idx: number) => (
-                        <span key={idx} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -252,9 +240,9 @@ export function ProgramMemberDashboardPage() {
                   Tasks Strategy
                 </CardTitle>
                 <Button 
-                  variant="ghost" 
-                  size="xs" 
-                  className="text-success font-black uppercase text-[10px] hover:bg-success/5 h-7 px-3 border border-success/10"
+                  variant="link" 
+                  size="sm" 
+                  className="text-success font-black uppercase text-[10px] hover:bg-success/5 h-7 px-0"
                   onClick={() => goToTasks(stat.pair.id)}
                 >
                   Go to Tasks
@@ -347,9 +335,9 @@ export function ProgramMemberDashboardPage() {
                   Upcoming Meetings
                 </CardTitle>
                 <Button 
-                  variant="ghost" 
-                  size="xs" 
-                  className="text-primary font-black uppercase text-[10px] hover:bg-primary/5 h-7 px-3 border border-primary/10"
+                  variant="link" 
+                  size="sm" 
+                  className="text-primary font-black uppercase text-[10px] hover:bg-primary/5 h-7 px-0"
                   onClick={() => goToMeetings(stat.pair.id)}
                 >
                   Go to Calendar
@@ -444,7 +432,7 @@ export function ProgramMemberDashboardPage() {
                     <div className="h-px bg-gray-200 flex-1" />
                   </div>
                   {pairStats
-                    .filter(s => s.pair.mentee_id === user?.id)
+                    .filter(s => s.pair.mentee_id === user?.id && s.pair.status === 'active')
                     .map(stat => renderRelationshipSection(stat, 'mentee'))
                   }
                 </div>
@@ -458,7 +446,7 @@ export function ProgramMemberDashboardPage() {
                     <div className="h-px bg-gray-200 flex-1" />
                   </div>
                   {pairStats
-                    .filter(s => s.pair.mentor_id === user?.id)
+                    .filter(s => s.pair.mentor_id === user?.id && s.pair.status === 'active')
                     .map(stat => renderRelationshipSection(stat, 'mentor'))
                   }
                 </div>

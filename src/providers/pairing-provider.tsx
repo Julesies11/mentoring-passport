@@ -19,20 +19,28 @@ export function PairingProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize selected pairing
   useEffect(() => {
-    if (!isLoading && pairings.length > 0 && !selectedPairingId) {
-      // Try to get from localStorage first
+    if (!isLoading && pairings.length > 0) {
       const savedId = localStorage.getItem(`selected_pairing_${user?.id}`);
       const stillExists = pairings.find(p => p.id === savedId);
       
       if (stillExists) {
-        setSelectedPairingId(savedId);
+        if (selectedPairingId !== savedId) {
+          setSelectedPairingId(savedId);
+        }
       } else {
         // Default to the first active pairing or just the first pairing
         const firstActive = pairings.find(p => p.status === 'active');
-        setSelectedPairingId(firstActive?.id || pairings[0].id);
+        const defaultId = firstActive?.id || pairings[0].id;
+        if (selectedPairingId !== defaultId) {
+          setSelectedPairingId(defaultId);
+        }
+      }
+    } else if (!isLoading && pairings.length === 0) {
+      if (selectedPairingId !== null) {
+        setSelectedPairingId(null);
       }
     }
-  }, [pairings, isLoading, selectedPairingId, user?.id]);
+  }, [pairings, isLoading, user?.id]); // Removed selectedPairingId from deps to avoid loop
 
   // Persist selection
   const handleSetSelectedPairingId = (id: string | null) => {

@@ -4,6 +4,7 @@ import {
   fetchTasks,
   fetchPairTasks,
   fetchPairTaskStats,
+  fetchAllPairTaskStatuses,
   updatePairTaskStatus,
   createPairTask,
   updatePairTask,
@@ -27,8 +28,13 @@ export function useTasks() {
     queryFn: () => fetchTasks(),
   });
 
+  const { data: allStatuses = [] } = useQuery({
+    queryKey: ['pair-tasks', 'all-statuses'],
+    queryFn: fetchAllPairTaskStatuses,
+  });
+
   const reorderTasksMutation = useMutation({
-    mutationFn: reorderMasterTasks,
+    mutationFn: (newOrder: { id: string; sort_order: number }[]) => reorderMasterTasks(newOrder),
     onMutate: async (newOrder) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
       const previousTasks = queryClient.getQueryData<Task[]>(['tasks']);
@@ -75,6 +81,13 @@ export function useTasks() {
     reorderTasks: (newOrder: { id: string; sort_order: number }[]) =>
       reorderTasksMutation.mutate(newOrder),
   };
+}
+
+export function useAllPairTaskStatuses() {
+  return useQuery({
+    queryKey: ['pair-tasks', 'all-statuses'],
+    queryFn: fetchAllPairTaskStatuses,
+  });
 }
 
 export function usePairTasks(pairId: string) {
@@ -191,7 +204,7 @@ export function usePairTasks(pairId: string) {
   });
 
   const reorderTasksMutation = useMutation({
-    mutationFn: reorderPairTasks,
+    mutationFn: (newOrder: { id: string; sort_order: number }[]) => reorderPairTasks(newOrder),
     onMutate: async (newOrder) => {
       await queryClient.cancelQueries({ queryKey: ['pair-tasks', pairId] });
       const previousTasks = queryClient.getQueryData<PairTask[]>(['pair-tasks', pairId]);

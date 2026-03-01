@@ -1,0 +1,16 @@
+{
+  "name": "Mentoring Passport",
+  "short_name": "Passport",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#006ae6",
+  "icons": [
+    {
+      "src": "/media/app/mini-logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

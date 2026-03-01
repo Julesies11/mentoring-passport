@@ -96,6 +96,17 @@ export function SupervisorChecklistPage() {
     }
   }, [tasks]);
 
+  // Auto-select first pair if none selected
+  useEffect(() => {
+    if (!selectedPairId && pairs.length > 0 && !pairsLoading) {
+      // Check if there's a pair in the search params first (the existing useEffect handles this)
+      const pairIdFromUrl = searchParams.get('pair');
+      if (!pairIdFromUrl) {
+        setSelectedPairId(pairs[0].id);
+      }
+    }
+  }, [pairs, pairsLoading, selectedPairId, searchParams]);
+
   // Enrich tasks with evidence counts AND associated meetings
   const enrichedTasks = useMemo(() => {
     if (!tasks) return [];
@@ -125,18 +136,35 @@ export function SupervisorChecklistPage() {
 
   const activePairs = pairs.filter(p => p.status === 'active');
 
-  // Handle URL parameter for pair selection
+  // Handle URL parameter for pair selection and task deep linking
   useEffect(() => {
     const pairId = searchParams.get('pair');
+    const taskId = searchParams.get('taskId');
+
     if (pairId && pairId !== selectedPairId && pairs.some(p => p.id === pairId)) {
       setSelectedPairId(pairId);
+    }
+
+    if (taskId) {
+      setActiveTab('monitoring');
+      setExpandedTasks(prev => new Set([...Array.from(prev), taskId]));
+      
+      // Small delay to allow tab content to render before scrolling
+      setTimeout(() => {
+        const element = document.getElementById(`task-${taskId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-primary', 'ring-offset-4');
+          setTimeout(() => element.classList.remove('ring-2', 'ring-primary', 'ring-offset-4'), 3000);
+        }
+      }, 500);
     }
   }, [searchParams, pairs, selectedPairId]);
 
   const handleAddTask = async () => {
     if (!selectedPairId) return;
     
-    const fallbackEvidenceType = evidenceTypes.find((t: any) => t.name.toLowerCase().includes('not applicable')) || evidenceTypes[0];
+    const fallbackEvidenceType = (evidenceTypes as any[]).find((t: any) => t.name.toLowerCase().includes('not applicable')) || evidenceTypes[0];
     
     const maxSortOrder = tasks.reduce((max: number, t: any) => Math.max(max, t.sort_order), 0) || 0;
 

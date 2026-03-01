@@ -49,17 +49,24 @@ export interface ReviewEvidenceInput {
 }
 
 /**
- * Helper to get a stable public URL for a storage path
+ * Helper to get a secure signed URL for a storage path
+ * This is needed because the bucket is private.
  */
-export function getEvidenceUrl(path: string | null): string {
+export async function getEvidenceUrl(path: string | null): Promise<string> {
   if (!path) return '';
   if (path.startsWith('http')) return path; // Already a full URL
   
-  const { data } = supabase.storage
+  // For private buckets, we need a signed URL
+  const { data, error } = await supabase.storage
     .from('mp-evidence-photos')
-    .getPublicUrl(path);
+    .createSignedUrl(path, 3600); // 1 hour expiry
     
-  return data.publicUrl;
+  if (error) {
+    console.error('Error creating signed URL:', error);
+    return '';
+  }
+    
+  return data.signedUrl;
 }
 
 /**
@@ -83,10 +90,13 @@ export async function fetchAllEvidence(): Promise<Evidence[]> {
 
   if (error) throw error;
 
-  return (data || []).map(item => ({
+  // Transform file_url to signed URL
+  const enrichedData = await Promise.all((data || []).map(async item => ({
     ...item,
-    file_url: getEvidenceUrl(item.file_url)
-  }));
+    file_url: await getEvidenceUrl(item.file_url)
+  })));
+
+  return enrichedData;
 }
 
 /**
@@ -101,8 +111,8 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
       subtask:mp_pair_subtasks!pair_subtask_id(id, name),
       pair:mp_pairs(
         id,
-        mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentor:mentor_id(id, full_name, avatar_url, job_title),
+        mentee:mentee_id(id, full_name, avatar_url, job_title)
       )
     `)
     .eq('status', 'pending')
@@ -110,10 +120,12 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
 
   if (error) throw error;
 
-  return (data || []).map(item => ({
+  const enrichedData = await Promise.all((data || []).map(async item => ({
     ...item,
-    file_url: getEvidenceUrl(item.file_url)
-  }));
+    file_url: await getEvidenceUrl(item.file_url)
+  })));
+
+  return enrichedData;
 }
 
 /**
@@ -134,10 +146,12 @@ export async function fetchPairEvidence(pairId: string, taskId?: string): Promis
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw error;
 
-  return (data || []).map(item => ({
+  const enrichedData = await Promise.all((data || []).map(async item => ({
     ...item,
-    file_url: getEvidenceUrl(item.file_url)
-  }));
+    file_url: await getEvidenceUrl(item.file_url)
+  })));
+
+  return enrichedData;
 }
 
 /**
@@ -195,7 +209,7 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
 
   const returnData = {
     ...data,
-    file_url: getEvidenceUrl(data.file_url)
+    file_url: await getEvidenceUrl(data.file_url)
   };
 
   try {
@@ -273,7 +287,7 @@ export async function reviewEvidence(
     console.error('Error creating notifications:', notificationError);
   }
 
-  return { ...data, file_url: getEvidenceUrl(data.file_url) };
+  return { ...data, file_url: await getEvidenceUrl(data.file_url) };
 }
 
 /**

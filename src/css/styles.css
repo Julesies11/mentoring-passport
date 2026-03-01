@@ -29,3 +29,22 @@
 /** Dark/Light Theme Variant **/
 @custom-variant dark (&:is(.dark *));
 @custom-variant light (&:not(.dark *));
+
+@layer base {
+  html, body {
+    @apply overflow-x-hidden w-full h-full;
+    position: relative;
+    /* Respect Safe Areas (Notches/Home Bars) */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Gold Standard Mobile Input Rule */
+  @media (max-width: 767px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+}

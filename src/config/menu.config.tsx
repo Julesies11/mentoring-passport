@@ -15,9 +15,15 @@ export const MENU_SUPERVISOR: MenuConfig = [
   },
   {
     title: 'Pairs',
-    icon: () => <KeenIcon icon="users" />,
+    icon: () => <KeenIcon icon="disconnect" />,
     path: '/supervisor/pairs',
   },
+  {
+    title: 'Pair Management',
+    icon: () => <KeenIcon icon="setting-2" />,
+    path: '/supervisor/checklist',
+  },
+
   {
     title: 'Master Tasks',
     icon: () => <KeenIcon icon="check-squared" />,

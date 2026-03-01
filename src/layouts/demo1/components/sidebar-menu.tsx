@@ -50,7 +50,7 @@ export function SidebarMenu() {
     root: 'lg:ps-1 space-y-3',
     group: 'gap-px',
     label:
-      'uppercase text-xs font-medium text-muted-foreground/70 pt-2.25 pb-px',
+      'uppercase text-xs font-medium text-muted-foreground/70 pt-2.25 pb-px text-right px-2',
     separator: '',
     item: 'h-8 hover:bg-transparent text-accent-foreground hover:text-primary data-[selected=true]:text-primary data-[selected=true]:bg-muted data-[selected=true]:font-medium',
     sub: '',
@@ -79,9 +79,9 @@ export function SidebarMenu() {
     if (item.children) {
       return (
         <AccordionMenuSub key={index} value={item.path || `root-${index}`}>
-          <AccordionMenuSubTrigger className="text-sm font-medium">
+          <AccordionMenuSubTrigger className="text-sm font-medium flex justify-between gap-2">
             {iconElement}
-            <span data-slot="accordion-menu-title">{item.title}</span>
+            <span data-slot="accordion-menu-title" className="flex-1 text-right">{item.title}</span>
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
             type="single"
@@ -107,7 +107,7 @@ export function SidebarMenu() {
             className="flex items-center justify-between grow gap-2"
           >
             {iconElement}
-            <span data-slot="accordion-menu-title">{item.title}</span>
+            <span data-slot="accordion-menu-title" className="flex-1 text-right">{item.title}</span>
           </Link>
         </AccordionMenuItem>
       );
@@ -165,20 +165,22 @@ export function SidebarMenu() {
           key={index}
           value={item.path || `child-${level}-${index}`}
         >
-          <AccordionMenuSubTrigger className="text-[13px]">
+          <AccordionMenuSubTrigger className="text-[13px] flex justify-between gap-2">
             {iconElement}
-            {item.collapse ? (
-              <span className="text-muted-foreground">
-                <span className="hidden [[data-state=open]>span>&]:inline">
-                  {item.collapseTitle}
+            <span className="flex-1 text-right">
+              {item.collapse ? (
+                <span className="text-muted-foreground">
+                  <span className="hidden [[data-state=open]>span>&]:inline">
+                    {item.collapseTitle}
+                  </span>
+                  <span className="inline [[data-state=open]>span>&]:hidden">
+                    {item.expandTitle}
+                  </span>
                 </span>
-                <span className="inline [[data-state=open]>span>&]:hidden">
-                  {item.expandTitle}
-                </span>
-              </span>
-            ) : (
-              item.title
-            )}
+              ) : (
+                item.title
+              )}
+            </span>
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
             type="single"
@@ -211,7 +213,7 @@ export function SidebarMenu() {
             className="flex items-center justify-between grow gap-2"
           >
             {iconElement}
-            <span data-slot="accordion-menu-title">{item.title}</span>
+            <span data-slot="accordion-menu-title" className="flex-1 text-right">{item.title}</span>
           </Link>
         </AccordionMenuItem>
       );
@@ -240,7 +242,7 @@ export function SidebarMenu() {
   };
 
   const buildMenuHeading = (item: MenuItem, index: number): JSX.Element => {
-    return <AccordionMenuLabel key={index}>{item.heading}</AccordionMenuLabel>;
+    return <AccordionMenuLabel key={index} className="text-right px-2">{item.heading}</AccordionMenuLabel>;
   };
 
   return (

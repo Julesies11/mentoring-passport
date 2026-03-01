@@ -360,6 +360,22 @@ export async function fetchPairTaskStats(pairId: string) {
 }
 
 /**
+ * Fetch status of all tasks for all pairs
+ */
+export async function fetchAllPairTaskStatuses(): Promise<{ pair_id: string; status: string }[]> {
+  const { data, error } = await supabase
+    .from('mp_pair_tasks')
+    .select('pair_id, status');
+
+  if (error) {
+    console.error('Error fetching all pair task statuses:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
  * Toggle task active status
  */
 export async function toggleTaskActive(taskId: string, isActive: boolean): Promise<Task> {

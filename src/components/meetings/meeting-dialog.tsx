@@ -99,7 +99,7 @@ export function MeetingDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.date_time || !formData.pair_task_id) return;
+    if (!formData.title || !formData.date_time) return;
 
     const submissionData = {
       pair_id: pairId,
@@ -108,7 +108,7 @@ export function MeetingDialog({
       description: formData.notes,
       scheduled_at: new Date(formData.date_time).toISOString(),
       date_time: new Date(formData.date_time).toISOString(),
-      pair_task_id: formData.pair_task_id,
+      pair_task_id: formData.pair_task_id === 'none' || !formData.pair_task_id ? null : formData.pair_task_id,
       location: formData.location,
       meeting_type: formData.meeting_type,
     };
@@ -142,17 +142,17 @@ export function MeetingDialog({
 
             <div className="grid gap-2">
               <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold flex items-center gap-1">
-                Link to Task <span className="text-danger">*</span>
+                Link to Task (Optional)
               </Label>
               <Select
                 value={formData.pair_task_id}
                 onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
-                required
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a task for this meeting" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">No associated task</SelectItem>
                   {tasks.map((task) => {
                     const isCompleted = task.status === 'completed';
                     return (

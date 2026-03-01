@@ -250,14 +250,15 @@ export function TasksPage() {
           </Toolbar>
         </Container>
         <Container>
+          <PairingSelector />
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <KeenIcon icon="user" className="text-3xl text-gray-400" />
               </div>
-              <h2 className="text-xl font-semibold mb-2 text-gray-900">No Pairing Found</h2>
+              <h2 className="text-xl font-semibold mb-2 text-gray-900">No Relationship Selected</h2>
               <p className="text-muted-foreground text-center max-w-sm">
-                You don't have an active mentoring relationship selected at the moment. Please select one from the dashboard or header.
+                Please select a mentoring relationship from the dropdown above to view your tasks.
               </p>
             </CardContent>
           </Card>

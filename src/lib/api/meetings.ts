@@ -15,10 +15,14 @@ export interface Meeting {
     mentor?: {
       id: string;
       full_name: string | null;
+      job_title?: string | null;
+      avatar_url?: string | null;
     };
     mentee?: {
       id: string;
       full_name: string | null;
+      job_title?: string | null;
+      avatar_url?: string | null;
     };
   };
 }
@@ -47,10 +51,10 @@ export async function fetchAllMeetings(): Promise<Meeting[]> {
     .from('mp_meetings')
     .select(`
       *,
-      pair:mp_pairs(
+      pair:mp_pairs!pair_id(
         id,
-        mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
       )
     `)
     .order('date_time', { ascending: false });
@@ -69,7 +73,14 @@ export async function fetchAllMeetings(): Promise<Meeting[]> {
 export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
   const { data, error } = await supabase
     .from('mp_meetings')
-    .select('*')
+    .select(`
+      *,
+      pair:mp_pairs!pair_id(
+        id,
+        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
+      )
+    `)
     .eq('pair_id', pairId)
     .order('date_time', { ascending: false });
 
@@ -91,8 +102,8 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
       *,
       pair:mp_pairs!inner(
         id,
-        mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
       )
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`, { foreignTable: 'mp_pairs' })
@@ -125,10 +136,10 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     })
     .select(`
       *,
-      pair:mp_pairs(
+      pair:mp_pairs!pair_id(
         id,
-        mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
       )
     `)
     .single();
@@ -154,10 +165,10 @@ export async function updateMeeting(
     .eq('id', meetingId)
     .select(`
       *,
-      pair:mp_pairs(
+      pair:mp_pairs!pair_id(
         id,
-        mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
       )
     `)
     .single();
@@ -189,15 +200,6 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
  * Get meeting statistics
  */
 export async function fetchMeetingStats() {
-  const { data, error } = await supabase
-    .from('mp_evidence_uploads')
-    .select('status');
-
-  if (error) {
-    console.error('Error fetching evidence stats for meetings:', error);
-    throw error;
-  }
-
   const { data: meetingsData, error: meetingsError } = await supabase
     .from('mp_meetings')
     .select('status');

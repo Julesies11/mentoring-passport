@@ -4,7 +4,7 @@ import {
   Users, 
   UserCircle, 
   ClipboardList, 
-  Camera, 
+  Calendar,
   FileText,
   GitBranch
 } from 'lucide-react';
@@ -23,60 +23,59 @@ export function BottomNavBar() {
   
   // Role-based navigation items
   const getNavItems = (): NavItem[] => {
-    const role = user?.role || 'mentee';
+    const role = user?.role || 'program-member';
     
-    switch (role) {
-      case 'supervisor':
-        return [
-          { icon: LayoutDashboard, label: 'Dashboard', path: '/supervisor/dashboard' },
-          { icon: Users, label: 'Participants', path: '/supervisor/participants' },
-          { icon: GitBranch, label: 'Pairs', path: '/supervisor/pairs' },
-          { icon: Camera, label: 'Evidence', path: '/supervisor/evidence-review' },
-          { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
-        ];
-      case 'mentor':
-        return [
-          { icon: LayoutDashboard, label: 'Dashboard', path: '/program-member/dashboard' },
-          { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
-          { icon: Camera, label: 'Evidence', path: '/program-member/evidence' },
-          { icon: FileText, label: 'Notes', path: '/program-member/notes' },
-          { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
-        ];
-      case 'mentee':
-      case 'program-member':
-      default:
-        return [
-          { icon: LayoutDashboard, label: 'Dashboard', path: '/program-member/dashboard' },
-          { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
-          { icon: Camera, label: 'Evidence', path: '/program-member/evidence' },
-          { icon: FileText, label: 'Notes', path: '/program-member/notes' },
-          { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
-        ];
+    if (role === 'supervisor') {
+      return [
+        { icon: LayoutDashboard, label: 'Hub', path: '/supervisor/dashboard' },
+        { icon: Users, label: 'Members', path: '/supervisor/participants' },
+        { icon: GitBranch, label: 'Pairs', path: '/supervisor/pairs' },
+        { icon: Calendar, label: 'Calendar', path: '/supervisor/calendar' },
+        { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
+      ];
     }
+
+    // Program Members (Mentors/Mentees)
+    return [
+      { icon: LayoutDashboard, label: 'Hub', path: '/program-member/dashboard' },
+      { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
+      { icon: Calendar, label: 'Meetings', path: '/program-member/meetings' },
+      { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
+    ];
   };
 
   const navItems = getNavItems();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t border-border lg:hidden">
-      <div className="flex justify-around items-center h-16 px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex justify-around items-center h-16 px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
+          const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
           
           return (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[60px]',
+                'flex flex-col items-center justify-center gap-1.5 px-1 py-1 rounded-xl transition-all duration-200 min-w-[64px]',
                 isActive
-                  ? 'text-primary font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'text-primary'
+                  : 'text-gray-400 active:scale-90'
               )}
             >
-              <Icon className={cn('size-5', isActive && 'stroke-[2.5]')} />
-              <span className="text-[10px] leading-none">{item.label}</span>
+              <div className={cn(
+                "p-1 rounded-lg transition-colors",
+                isActive && "bg-primary/10 text-primary"
+              )}>
+                <Icon className={cn('size-5', isActive && 'stroke-[2.5]')} />
+              </div>
+              <span className={cn(
+                "text-[9px] font-bold uppercase tracking-tighter transition-colors",
+                isActive ? "text-primary" : "text-gray-400"
+              )}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
