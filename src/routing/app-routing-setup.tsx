@@ -20,14 +20,12 @@ const ProgramMemberDashboardPage = lazy(() => import('@/pages/dashboards/program
 const TasksPage = lazy(() => import('@/pages/mentor/tasks-page').then(m => ({ default: m.TasksPage })));
 const MentorMenteesPage = lazy(() => import('@/pages/mentor/mentees-page').then(m => ({ default: m.MentorMenteesPage })));
 const MentorMeetingsPage = lazy(() => import('@/pages/mentor/meetings-page').then(m => ({ default: m.MentorMeetingsPage })));
-const MentorEvidencePage = lazy(() => import('@/pages/mentor/evidence-page').then(m => ({ default: m.MentorEvidencePage })));
 const MentorNotesPage = lazy(() => import('@/pages/mentor/notes-page').then(m => ({ default: m.MentorNotesPage })));
 
 const MenteeDashboardPage = lazy(() => import('@/pages/mentee/dashboard-page').then(m => ({ default: m.MenteeDashboardPage })));
 const ChecklistPage = lazy(() => import('@/pages/mentee/checklist-page').then(m => ({ default: m.ChecklistPage })));
 const MenteeMentorPage = lazy(() => import('@/pages/mentee/mentor-page').then(m => ({ default: m.MenteeMentorPage })));
 const MenteeMeetingsPage = lazy(() => import('@/pages/mentee/meetings-page').then(m => ({ default: m.MenteeMeetingsPage })));
-const MenteeEvidencePage = lazy(() => import('@/pages/mentee/evidence-page').then(m => ({ default: m.MenteeEvidencePage })));
 const MenteeNotesPage = lazy(() => import('@/pages/mentee/notes-page').then(m => ({ default: m.MenteeNotesPage })));
 
 const EditProfilePage = lazy(() => import('@/pages/profile/edit-profile').then(m => ({ default: m.EditProfilePage })));
@@ -192,17 +190,6 @@ export function AppRoutingSetup() {
                   <ProgramMemberRoute 
                     mentorElement={MentorMeetingsPage} 
                     menteeElement={MenteeMeetingsPage} 
-                  />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/program-member/evidence"
-              element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
-                  <ProgramMemberRoute 
-                    mentorElement={MentorEvidencePage} 
-                    menteeElement={MenteeEvidencePage} 
                   />
                 </RequireRole>
               }
