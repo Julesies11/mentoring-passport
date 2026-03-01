@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input, InputWrapper } from '@/components/ui/input';
+import { SearchInput } from '@/components/common/search-input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KeenIcon } from '@/components/keenicons';
@@ -91,15 +92,13 @@ export function MatchmakerDialog({
                     </Badge>
                   )}
                 </div>
-                <InputWrapper>
-                  <KeenIcon icon="magnifier" />
-                  <Input 
-                    placeholder="Search mentors..." 
-                    value={mentorSearch}
-                    onChange={(e) => setMentorSearch(e.target.value)}
-                    className="h-9"
-                  />
-                </InputWrapper>
+                <SearchInput
+                  placeholder="Search mentors..." 
+                  value={mentorSearch}
+                  onChange={(e) => setMentorSearch(e.target.value)}
+                  onClear={() => setMentorSearch('')}
+                  className="h-9"
+                />
               </div>
               
               <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-3 space-y-2">
@@ -170,15 +169,13 @@ export function MatchmakerDialog({
                     </Badge>
                   )}
                 </div>
-                <InputWrapper>
-                  <KeenIcon icon="magnifier" />
-                  <Input 
-                    placeholder="Search mentees..." 
-                    value={menteeSearch}
-                    onChange={(e) => setMenteeSearch(e.target.value)}
-                    className="h-9"
-                  />
-                </InputWrapper>
+                <SearchInput
+                  placeholder="Search mentees..." 
+                  value={menteeSearch}
+                  onChange={(e) => setMenteeSearch(e.target.value)}
+                  onClear={() => setMenteeSearch('')}
+                  className="h-9"
+                />
               </div>
               
               <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-3 space-y-2">

@@ -273,7 +273,7 @@ export function MeetingCalendar({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 me-6">
               <CalendarIcon className="h-5 w-5" />
               {format(currentDate, viewMode === 'month' ? 'MMMM yyyy' : "'Week of' MMM d, yyyy")}
             </CardTitle>

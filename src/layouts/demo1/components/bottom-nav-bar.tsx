@@ -37,16 +37,17 @@ export function BottomNavBar() {
       case 'mentor':
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/program-member/dashboard' },
-          { icon: Users, label: 'Mentees', path: '/program-member/mentees' },
+          { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
           { icon: Camera, label: 'Evidence', path: '/program-member/evidence' },
           { icon: FileText, label: 'Notes', path: '/program-member/notes' },
           { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
         ];
       case 'mentee':
+      case 'program-member':
       default:
         return [
           { icon: LayoutDashboard, label: 'Dashboard', path: '/program-member/dashboard' },
-          { icon: ClipboardList, label: 'Checklist', path: '/program-member/checklist' },
+          { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
           { icon: Camera, label: 'Evidence', path: '/program-member/evidence' },
           { icon: FileText, label: 'Notes', path: '/program-member/notes' },
           { icon: UserCircle, label: 'Profile', path: '/profile/edit' },

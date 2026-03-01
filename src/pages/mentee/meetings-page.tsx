@@ -1,18 +1,16 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { useUserPairs } from '@/hooks/use-pairs';
 import { useAllMeetings } from '@/hooks/use-meetings';
-import { createMeeting } from '@/lib/api/meetings';
-import { useQueryClient } from '@tanstack/react-query';
+import { usePairTasks } from '@/hooks/use-tasks';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -25,94 +23,69 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 import { cn } from '@/lib/utils';
+import { usePairing } from '@/providers/pairing-provider';
+import { useSearchParams } from 'react-router-dom';
 
 export function MenteeMeetingsPage() {
   const { user } = useAuth();
-  const { data: pairs = [] } = useUserPairs(user?.id || '');
-  const { meetings = [], isLoading } = useAllMeetings();
-  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { createMeeting, updateMeeting, deleteMeeting, meetings = [], isLoading } = useAllMeetings();
+  const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
+    pair_id: '',
     title: '',
-    date_time: '',
-    notes: ''
+    description: '',
+    scheduled_at: '',
+    location: 'Virtual',
+    meeting_type: 'virtual' as const,
+    pair_task_id: ''
   });
+
+  // Fetch tasks for the selected pair in the form
+  const { tasks = [] } = usePairTasks(formData.pair_id);
+
+  // Handle search params for pre-filling
+  useEffect(() => {
+    const shouldCreate = searchParams.get('create') === 'true';
+    const taskId = searchParams.get('taskId');
+    const pairId = searchParams.get('pairId');
+
+    if (shouldCreate) {
+      setIsCreateDialogOpen(true);
+      setFormData(prev => ({
+        ...prev,
+        pair_id: pairId || activePair?.id || '',
+        pair_task_id: taskId || '',
+        title: taskId ? 'Task Discussion' : prev.title
+      }));
+      
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('create');
+      newParams.delete('taskId');
+      newParams.delete('pairId');
+      setSearchParams(newParams);
+    } else if (activePair && !formData.pair_id) {
+      setFormData(prev => ({ ...prev, pair_id: activePair.id }));
+    }
+  }, [searchParams, activePair]);
 
   // Filter meetings for mentee's pairs
   const menteeMeetings = meetings.filter(meeting => 
     pairs.some(pair => pair.id === meeting.pair_id)
   );
-
-  const upcomingMeetings = menteeMeetings.filter(meeting => 
-    meeting.status === 'upcoming'
-  );
-
-  const pastMeetings = menteeMeetings.filter(meeting => 
-    meeting.status === 'completed' || meeting.status === 'cancelled'
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (pairs.length === 0) {
-      console.error('No mentor pair found');
-      return;
-    }
-
-    try {
-      // Get the first pair (mentee should only have one mentor)
-      const pair = pairs[0];
-      
-      await createMeeting({
-        pair_id: pair.id,
-        title: formData.title,
-        description: formData.notes,
-        scheduled_at: new Date(formData.date_time).toISOString(),
-        duration_minutes: 60, // Default 1 hour
-        location: 'Virtual' // Default location
-      });
-
-      // Reset form and close dialog
-      setIsCreateDialogOpen(false);
-      setFormData({ title: '', date_time: '', notes: '' });
-      
-      // Refresh meetings data using React Query
-      queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
-    } catch (error) {
-      console.error('Error creating meeting:', error);
-    }
-  };
-
-  const handleCreateMeeting = async (meetingData: any) => {
-    if (pairs.length === 0) return;
-    
-    try {
-      const pair = pairs[0];
-      await createMeeting({
-        ...meetingData,
-        pair_id: pair.id,
-      });
-      queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
-    } catch (error) {
-      console.error('Error creating meeting:', error);
-    }
-  };
-
-  const handleUpdateMeeting = async (meeting: any) => {
-    console.log('Meeting update restricted for mentees');
-  };
-
-  const handleCalendarUpdate = async (meeting: any) => {
-    console.log('Meeting update restricted for mentees');
-  };
-
-  const handleDeleteMeeting = async (meetingId: string) => {
-    console.log('Meeting deletion restricted for mentees');
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -124,6 +97,29 @@ export function MenteeMeetingsPage() {
         return <Badge className="bg-danger text-white border-none">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const handleCreateMeeting = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    try {
+      await createMeeting({
+        ...formData,
+        scheduled_at: new Date(formData.scheduled_at).toISOString(),
+        pair_task_id: formData.pair_task_id === 'none' ? undefined : (formData.pair_task_id || undefined)
+      });
+      setIsCreateDialogOpen(false);
+      setFormData({
+        pair_id: activePair?.id || '',
+        title: '',
+        description: '',
+        scheduled_at: '',
+        location: 'Virtual',
+        meeting_type: 'virtual',
+        pair_task_id: ''
+      });
+    } catch (error) {
+      console.error('Error creating meeting:', error);
     }
   };
 
@@ -151,168 +147,69 @@ export function MenteeMeetingsPage() {
               <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
               <p>Loading meetings...</p>
             </div>
+          ) : menteeMeetings.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <KeenIcon icon="calendar-add" className="text-3xl text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No Meetings Scheduled</h3>
+                <p className="text-muted-foreground text-center max-w-sm">
+                  You haven't scheduled any mentoring meetings yet. Start by scheduling your first session.
+                </p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-7.5">
-              {/* Upcoming Meetings */}
-              <Card className="flex flex-col h-full">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <KeenIcon icon="calendar-tick" className="text-primary text-xl" />
-                    <CardTitle>Upcoming Meetings</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  {upcomingMeetings.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                        <KeenIcon icon="calendar" className="text-2xl text-gray-400" />
-                      </div>
-                      <h3 className="text-base font-bold text-gray-900 mb-1">No Upcoming Meetings</h3>
-                      <p className="text-sm text-muted-foreground text-center max-w-xs mb-6">
-                        Schedule a meeting with your mentor to discuss your progress.
-                      </p>
-                      <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
-                        <KeenIcon icon="plus" />
-                        Schedule Meeting
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {upcomingMeetings.map((meeting) => (
-                        <div key={meeting.id} className="p-4 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                          <div className="flex justify-between items-start mb-3">
-                            <h4 className="font-bold text-gray-900">{meeting.title}</h4>
-                            {getStatusBadge(meeting.status)}
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-medium text-gray-600">
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="calendar" className="text-muted-foreground text-sm" />
-                              {format(new Date(meeting.date_time), 'PPP')}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <KeenIcon icon="time" className="text-muted-foreground text-sm" />
-                              {format(new Date(meeting.date_time), 'p')}
-                            </div>
-                            {meeting.notes && (
-                              <div className="flex items-start gap-1.5 sm:col-span-2 mt-1">
-                                <KeenIcon icon="notepad" className="text-muted-foreground text-sm mt-0.5" />
-                                <span className="line-clamp-2">{meeting.notes}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2 mt-4">
-                            <Button size="xs" variant="outline" className="flex-1">
-                              <KeenIcon icon="video" />
-                              Join Meeting
-                            </Button>
-                            <Button size="xs" variant="ghost">
-                              Reschedule
-                            </Button>
-                          </div>
+              {menteeMeetings.map((meeting) => (
+                <Card key={meeting.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3 border-b border-gray-100 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 text-primary">
+                          <KeenIcon icon="calendar" />
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Past Meetings */}
-              <Card className="flex flex-col h-full">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <KeenIcon icon="history" className="text-gray-400 text-xl" />
-                    <CardTitle>Meeting History</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  {pastMeetings.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                        <KeenIcon icon="time" className="text-2xl text-gray-400" />
-                      </div>
-                      <h3 className="text-base font-bold text-gray-900 mb-1">No Past Meetings</h3>
-                      <p className="text-sm text-muted-foreground text-center max-w-xs">
-                        Your meeting history will appear here once you've had sessions with your mentor.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {pastMeetings.map((meeting) => (
-                        <div key={meeting.id} className="p-4 rounded-lg border border-gray-100 opacity-80 hover:opacity-100 transition-opacity">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold text-gray-800">{meeting.title}</h4>
-                            <Badge variant="outline" className={cn(
-                              'border-none capitalize',
-                              meeting.status === 'completed' ? 'bg-success-light text-success' : 'bg-gray-100 text-gray-500'
-                            )}>
-                              {meeting.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <KeenIcon icon="calendar" className="text-xs" />
-                              {format(new Date(meeting.date_time), 'MMM d, yyyy')}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <KeenIcon icon="time" className="text-xs" />
-                              {format(new Date(meeting.date_time), 'p')}
-                            </div>
-                          </div>
+                        <div>
+                          <CardTitle className="text-base font-bold text-gray-900">{meeting.title}</CardTitle>
+                          <p className="text-xs text-muted-foreground">
+                            With {meeting.pair?.mentor?.full_name || 'Your Mentor'}
+                          </p>
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(meeting.status)}
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                        <KeenIcon icon="calendar" className="text-muted-foreground" />
+                        {format(new Date(meeting.date_time), 'PPP')}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                        <KeenIcon icon="time" className="text-muted-foreground" />
+                        {format(new Date(meeting.date_time), 'p')}
+                      </div>
+                    </div>
+                    
+                    {meeting.notes && (
+                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 border-dashed">
+                        <p className="text-sm text-gray-700 italic">"{meeting.notes}"</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
 
-          {/* Guidelines */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Meeting Guidelines</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-3">
-                  <div className="size-10 rounded-lg bg-primary-light flex items-center justify-center text-primary">
-                    <span className="font-bold">01</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900">Prepare Agenda</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Come prepared with topics you want to discuss and specific questions you need answered to make the most of the time.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="size-10 rounded-lg bg-success-light flex items-center justify-center text-success">
-                    <span className="font-bold">02</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900">Be Punctual</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Respect your mentor's time by joining meetings on time and being ready to engage in productive dialogue.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="size-10 rounded-lg bg-warning-light flex items-center justify-center text-warning">
-                    <span className="font-bold">03</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900">Follow Up</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    After each meeting, summarize key takeaways and action items, and share them with your mentor for alignment.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Calendar Section */}
-          <div className="space-y-4 mt-5">
-            <h3 className="text-lg font-bold text-gray-900">Program Calendar</h3>
+          <div className="mt-5 lg:mt-7.5">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Program Calendar</h3>
             <MeetingCalendar
               meetings={menteeMeetings}
               onMeetingCreate={handleCreateMeeting}
-              onMeetingUpdate={handleCalendarUpdate}
-              onMeetingDelete={handleDeleteMeeting}
             />
           </div>
         </div>
@@ -324,48 +221,101 @@ export function MenteeMeetingsPage() {
           <DialogHeader>
             <DialogTitle>Schedule New Meeting</DialogTitle>
             <DialogDescription>
-              Request a meeting with your mentor to discuss your progress and goals.
+              Schedule a meeting with your mentor.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-5 py-4">
+          <form onSubmit={handleCreateMeeting} className="grid gap-5 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="pair" className="text-gray-900 font-semibold">Mentor *</Label>
+                <Select value={formData.pair_id} onValueChange={(value) => setFormData({...formData, pair_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select mentor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pairs.map((pair) => (
+                      <SelectItem key={pair.id} value={pair.id}>
+                        {pair.mentor?.full_name || 'Your Mentor'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold">Link to Task</Label>
+                <Select value={formData.pair_task_id} onValueChange={(value) => setFormData({...formData, pair_task_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Optional: Select task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {tasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
             <div className="grid gap-2">
-              <Label htmlFor="title" className="text-gray-900 font-semibold">Meeting Title *</Label>
+              <Label htmlFor="title" className="text-gray-900 font-semibold">Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Monthly Check-in, Goal Review"
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                placeholder="e.g., Weekly Progress Review"
                 required
               />
             </div>
+            
             <div className="grid gap-2">
-              <Label htmlFor="date_time" className="text-gray-900 font-semibold">Preferred Date & Time *</Label>
-              <Input
-                id="date_time"
-                type="datetime-local"
-                value={formData.date_time}
-                onChange={(e) => setFormData({ ...formData, date_time: e.target.value })}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="notes" className="text-gray-900 font-semibold">Agenda / Notes</Label>
+              <Label htmlFor="description" className="text-gray-900 font-semibold">Agenda / Notes</Label>
               <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="What would you like to discuss in this meeting?"
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="What would you like to discuss?"
                 rows={3}
                 className="resize-none"
               />
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="scheduled_at" className="text-gray-900 font-semibold">Date & Time *</Label>
+                <Input
+                  id="scheduled_at"
+                  type="datetime-local"
+                  value={formData.scheduled_at}
+                  onChange={(e) => setFormData({...formData, scheduled_at: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="meeting_type" className="text-gray-900 font-semibold">Type</Label>
+                <Select value={formData.meeting_type} onValueChange={(value: any) => setFormData({...formData, meeting_type: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in_person">In Person</SelectItem>
+                    <SelectItem value="virtual">Virtual</SelectItem>
+                    <SelectItem value="phone">Phone Call</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
             <DialogFooter className="pt-4 gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">
-                <KeenIcon icon="send" />
-                Send Request
+                Schedule Meeting
               </Button>
             </DialogFooter>
           </form>
@@ -374,4 +324,3 @@ export function MenteeMeetingsPage() {
     </Fragment>
   );
 }
-

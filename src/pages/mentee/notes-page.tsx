@@ -1,6 +1,5 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { useUserPairs } from '@/hooks/use-pairs';
 import { useUserNotes } from '@/hooks/use-notes';
 import { Container } from '@/components/common/container';
 import {
@@ -33,10 +32,11 @@ import { Switch } from '@/components/ui/switch';
 import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { usePairing } from '@/providers/pairing-provider';
 
 export function MenteeNotesPage() {
   const { user } = useAuth();
-  const { data: pairs = [] } = useUserPairs(user?.id || '');
+  const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
   const { notes = [], isLoading, createNote, updateNote, deleteNote } = useUserNotes(user?.id || '');
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -47,6 +47,12 @@ export function MenteeNotesPage() {
     content: '',
     is_private: false
   });
+
+  useEffect(() => {
+    if (activePair && !formData.pair_id) {
+      setFormData(prev => ({ ...prev, pair_id: activePair.id }));
+    }
+  }, [activePair]);
 
   const privateNotes = notes.filter(note => note.is_private);
   const sharedNotes = notes.filter(note => !note.is_private);

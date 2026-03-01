@@ -10,6 +10,7 @@ import { QueryProvider } from './providers/query-provider';
 import { SettingsProvider } from './providers/settings-provider';
 import { ThemeProvider } from './providers/theme-provider';
 import { TooltipsProvider } from './providers/tooltips-provider';
+import { PairingProvider } from './providers/pairing-provider';
 
 const { BASE_URL } = import.meta.env;
 
@@ -28,7 +29,9 @@ export function App() {
                     <BrowserRouter basename={BASE_URL}>
                       <Toaster />
                       <ModulesProvider>
-                        <AppRouting />
+                        <PairingProvider>
+                          <AppRouting />
+                        </PairingProvider>
                       </ModulesProvider>
                     </BrowserRouter>
                   </LoadingBarContainer>

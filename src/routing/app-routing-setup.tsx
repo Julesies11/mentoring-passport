@@ -16,8 +16,8 @@ const EvidenceReviewPage = lazy(() => import('@/pages/supervisor/evidence-review
 const SupervisorCalendarPage = lazy(() => import('@/pages/supervisor/calendar-page').then(m => ({ default: m.SupervisorCalendarPage })));
 const SupervisorChecklistPage = lazy(() => import('@/pages/supervisor/checklist-page').then(m => ({ default: m.SupervisorChecklistPage })));
 
-const MentorDashboardPage = lazy(() => import('@/pages/mentor/dashboard-page').then(m => ({ default: m.MentorDashboardPage })));
-const MentorTasksPage = lazy(() => import('@/pages/mentor/tasks-page').then(m => ({ default: m.TasksPage })));
+const ProgramMemberDashboardPage = lazy(() => import('@/pages/dashboards/program-member-dashboard').then(m => ({ default: m.ProgramMemberDashboardPage })));
+const TasksPage = lazy(() => import('@/pages/mentor/tasks-page').then(m => ({ default: m.TasksPage })));
 const MentorMenteesPage = lazy(() => import('@/pages/mentor/mentees-page').then(m => ({ default: m.MentorMenteesPage })));
 const MentorMeetingsPage = lazy(() => import('@/pages/mentor/meetings-page').then(m => ({ default: m.MentorMeetingsPage })));
 const MentorEvidencePage = lazy(() => import('@/pages/mentor/evidence-page').then(m => ({ default: m.MentorEvidencePage })));
@@ -149,10 +149,7 @@ export function AppRoutingSetup() {
               path="/program-member/dashboard"
               element={
                 <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
-                  <ProgramMemberRoute 
-                    mentorElement={MentorDashboardPage} 
-                    menteeElement={MenteeDashboardPage} 
-                  />
+                  <ProgramMemberDashboardPage />
                 </RequireRole>
               }
             />
@@ -160,7 +157,7 @@ export function AppRoutingSetup() {
               path="/program-member/tasks"
               element={
                 <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
-                  <MentorTasksPage />
+                  <TasksPage />
                 </RequireRole>
               }
             />

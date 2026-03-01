@@ -1,6 +1,5 @@
 import { Fragment, useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { useUserPairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { Container } from '@/components/common/container';
@@ -12,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { KeenIcon } from '@/components/keenicons';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { TaskDialog } from '@/components/tasks/task-dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,19 +30,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { usePairing } from '@/providers/pairing-provider';
 
 export function TasksPage() {
-  const { user } = useAuth();
+  const { user, isMentor } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
-  const selectedMenteeId = searchParams.get('mentee');
-  
-  const { data: pairs = [], isLoading: pairsLoading } = useUserPairs(user?.id || '');
-  
-  // Find pair based on URL parameter or default to active pair
-  const selectedPair = selectedMenteeId 
-    ? pairs.find(p => p.mentee?.id === selectedMenteeId)
-    : pairs.find(p => p.status === 'active');
+  const { selectedPairing: selectedPair, isLoading: pairsLoading } = usePairing();
   
   const { tasks, stats, isLoading: tasksLoading, updateStatus, updateSubTask } = usePairTasks(selectedPair?.id || '');
 
@@ -137,6 +130,11 @@ export function TasksPage() {
     setIsLinkMeetingOpen(true);
   };
 
+  const handleCreateMeeting = (taskId: string) => {
+    // Redirect to meetings page with task ID and pair ID in state or params
+    navigate(`/program-member/meetings?create=true&taskId=${taskId}&pairId=${selectedPair?.id}`);
+  };
+
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'not_submitted' : 'completed';
     try {
@@ -190,10 +188,7 @@ export function TasksPage() {
               </div>
               <h2 className="text-xl font-semibold mb-2 text-gray-900">No Pairing Found</h2>
               <p className="text-muted-foreground text-center max-w-sm">
-                {selectedMenteeId 
-                  ? "No mentoring relationship found for the selected mentee."
-                  : "You don't have an active mentoring relationship at the moment."
-                }
+                You don't have an active mentoring relationship selected at the moment. Please select one from the dashboard or header.
               </p>
             </CardContent>
           </Card>
@@ -202,13 +197,15 @@ export function TasksPage() {
     );
   }
 
+  const otherUser = isMentor ? selectedPair.mentee : selectedPair.mentor;
+
   return (
     <Fragment>
       <Container>
         <Toolbar>
           <ToolbarHeading
             title="Tasks"
-            description={`Track progress with ${selectedPair.mentee?.full_name || 'your mentee'}${selectedMenteeId ? ' (selected)' : ''}`}
+            description={`Track progress with ${otherUser?.full_name || 'your partner'}`}
           />
         </Toolbar>
       </Container>
@@ -252,6 +249,7 @@ export function TasksPage() {
                 onToggleTask={handleToggleTask}
                 onToggleSubTask={handleToggleSubTask}
                 onLinkMeeting={handleLinkMeeting}
+                onCreateMeeting={handleCreateMeeting}
               />
             </CardContent>
           </Card>
@@ -268,9 +266,30 @@ export function TasksPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2 border-dashed"
+              onClick={() => {
+                setIsLinkMeetingOpen(false);
+                handleCreateMeeting(linkingTaskId || '');
+              }}
+            >
+              <KeenIcon icon="plus" />
+              Schedule New Meeting for this Task
+            </Button>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or link existing</span>
+              </div>
+            </div>
+
             {pairMeetings.length === 0 ? (
               <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                <p className="text-sm text-muted-foreground">No meetings found for this pairing.</p>
+                <p className="text-sm text-muted-foreground">No existing meetings found for this pairing.</p>
               </div>
             ) : (
               <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">

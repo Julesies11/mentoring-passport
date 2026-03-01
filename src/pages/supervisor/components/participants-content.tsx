@@ -6,7 +6,7 @@ import { CreateParticipantDialog } from '@/components/participants/participant-d
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
 import { CredentialsDialog } from '@/components/participants/credentials-dialog';
 import { Button } from '@/components/ui/button';
-import { Input, InputWrapper } from '@/components/ui/input';
+import { SearchInput } from '@/components/common/search-input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -213,14 +213,12 @@ export function ParticipantsContent() {
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Search */}
             <div className="flex-1">
-              <InputWrapper>
-                <KeenIcon icon="magnifier" />
-                <Input
-                  placeholder="Search by name, email, or department..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </InputWrapper>
+              <SearchInput
+                placeholder="Search by name, email, or department..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onClear={() => setSearchQuery('')}
+              />
             </div>
 
             {/* Role Filter */}

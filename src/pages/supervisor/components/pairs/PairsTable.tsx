@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input, InputWrapper } from '@/components/ui/input';
+import { SearchInput } from '@/components/common/search-input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KeenIcon } from '@/components/keenicons';
@@ -113,15 +113,13 @@ export function PairsTable({ pairs, isLoading, filterStatus, onShowMatchmaker }:
         <CardTitle>Mentoring Pairings</CardTitle>
         <CardToolbar>
           <div className="flex items-center gap-4">
-            <InputWrapper className="w-[300px]">
-              <KeenIcon icon="magnifier" />
-              <Input
-                placeholder="Search by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9"
-              />
-            </InputWrapper>
+            <SearchInput
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={() => setSearchQuery('')}
+              className="h-9 w-[300px]"
+            />
             <Button size="sm" onClick={onShowMatchmaker}>
               <KeenIcon icon="plus-squared" />
               Create Pair

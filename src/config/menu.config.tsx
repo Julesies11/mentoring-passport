@@ -38,7 +38,7 @@ export const MENU_SUPERVISOR: MenuConfig = [
 // Program Member menu (for both Mentor and Mentee)
 export const MENU_PROGRAM_MEMBER: MenuConfig = [
   {
-    title: 'Dashboard',
+    title: 'Relationship Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/program-member/dashboard',
   },
@@ -46,14 +46,9 @@ export const MENU_PROGRAM_MEMBER: MenuConfig = [
     heading: 'Mentoring Tools'
   },
   {
-    title: 'My Mentees',
-    icon: () => <KeenIcon icon="users" />,
-    path: '/program-member/mentees',
-  },
-  {
-    title: 'My Mentor',
-    icon: () => <KeenIcon icon="profile-circle" />,
-    path: '/program-member/mentor',
+    title: 'Tasks',
+    icon: () => <KeenIcon icon="clipboard" />,
+    path: '/program-member/tasks',
   },
   {
     title: 'Meetings',
@@ -61,24 +56,9 @@ export const MENU_PROGRAM_MEMBER: MenuConfig = [
     path: '/program-member/meetings',
   },
   {
-    title: 'Checklist',
-    icon: () => <KeenIcon icon="check-squared" />,
-    path: '/program-member/checklist',
-  },
-  {
-    title: 'Tasks',
-    icon: () => <KeenIcon icon="clipboard" />,
-    path: '/program-member/tasks',
-  },
-  {
     title: 'Evidence',
     icon: () => <KeenIcon icon="eye" />,
     path: '/program-member/evidence',
-  },
-  {
-    title: 'Notes',
-    icon: () => <KeenIcon icon="notepad" />,
-    path: '/program-member/notes',
   },
 ];
 

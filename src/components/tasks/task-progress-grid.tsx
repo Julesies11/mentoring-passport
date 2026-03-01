@@ -13,6 +13,7 @@ interface TaskProgressGridProps {
   onToggleTask?: (taskId: string, currentStatus: string) => void;
   onToggleSubTask?: (subtaskId: string, currentStatus: boolean) => void;
   onLinkMeeting?: (taskId: string) => void;
+  onCreateMeeting?: (taskId: string) => void;
   readOnly?: boolean;
 }
 
@@ -104,15 +105,26 @@ export function TaskProgressGrid({
                     )}
                     
                     {!readOnly && (
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="h-5 px-1.5 text-[9px] font-bold text-primary hover:bg-primary/5 rounded-full border border-primary/10 gap-1"
-                        onClick={() => onLinkMeeting?.(task.id)}
-                      >
-                        <KeenIcon icon="plus" className="text-[8px]" />
-                        Link Meeting
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="h-5 px-1.5 text-[9px] font-bold text-primary hover:bg-primary/5 rounded-full border border-primary/10 gap-1"
+                          onClick={() => onLinkMeeting?.(task.id)}
+                        >
+                          <KeenIcon icon="plus" className="text-[8px]" />
+                          Link Meeting
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="h-5 px-1.5 text-[9px] font-bold text-success hover:bg-success/5 rounded-full border border-success/10 gap-1"
+                          onClick={() => onCreateMeeting?.(task.id)}
+                        >
+                          <KeenIcon icon="calendar" className="text-[8px]" />
+                          Add Meeting
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

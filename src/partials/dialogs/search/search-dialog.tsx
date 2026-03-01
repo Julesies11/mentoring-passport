@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { SearchInput } from '@/components/common/search-input';
 import { DropdownMenu4 } from '@/partials/dropdown-menu/dropdown-menu-4';
 import {
   Badge,
@@ -246,13 +247,12 @@ export function SearchDialog({ trigger }: { trigger: ReactNode }) {
           <DialogTitle></DialogTitle>
           <DialogDescription></DialogDescription>
           <div className="relative">
-            <Search className="absolute top-1/2 -translate-y-1/2 size-4" />
-            <Input
-              type="text"
+            <SearchInput
               name="query"
               value={searchInput}
-              className="ps-6 outline-none! ring-0! shadow-none! border-0"
+              className="ps-9 outline-none! ring-0! shadow-none! border-0"
               onChange={(e) => setSearchInput(e.target.value)}
+              onClear={() => setSearchInput('')}
               placeholder="Search..."
             />
           </div>

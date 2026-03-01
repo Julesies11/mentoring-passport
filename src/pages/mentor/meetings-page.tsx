@@ -1,7 +1,7 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useAllMeetings } from '@/hooks/use-meetings';
-import { useUserPairs } from '@/hooks/use-pairs';
+import { usePairTasks } from '@/hooks/use-tasks';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -34,19 +34,14 @@ import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 import { cn } from '@/lib/utils';
+import { usePairing } from '@/providers/pairing-provider';
+import { useSearchParams } from 'react-router-dom';
 
 export function MentorMeetingsPage() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { createMeeting, updateMeeting, deleteMeeting, meetings = [], isLoading } = useAllMeetings();
-  const { data: pairs = [] } = useUserPairs(user?.id || '');
-
-  // Get active pair
-  const activePair = pairs.find(p => p.status === 'active');
-
-  // Filter meetings for mentor's pairs
-  const mentorMeetings = meetings.filter(meeting => 
-    pairs.some(pair => pair.id === meeting.pair_id)
-  );
+  const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,8 +50,44 @@ export function MentorMeetingsPage() {
     description: '',
     scheduled_at: '',
     location: '',
-    meeting_type: 'in_person' as const
+    meeting_type: 'in_person' as const,
+    pair_task_id: ''
   });
+
+  // Fetch tasks for the selected pair in the form
+  const { tasks = [] } = usePairTasks(formData.pair_id);
+
+  // Handle search params for pre-filling
+  useEffect(() => {
+    const shouldCreate = searchParams.get('create') === 'true';
+    const taskId = searchParams.get('taskId');
+    const pairId = searchParams.get('pairId');
+
+    if (shouldCreate) {
+      setIsCreateDialogOpen(true);
+      setFormData(prev => ({
+        ...prev,
+        pair_id: pairId || activePair?.id || '',
+        pair_task_id: taskId || '',
+        // If taskId is present, maybe set a default title
+        title: taskId ? 'Task Discussion' : prev.title
+      }));
+      
+      // Clear search params after reading
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('create');
+      newParams.delete('taskId');
+      newParams.delete('pairId');
+      setSearchParams(newParams);
+    } else if (activePair && !formData.pair_id) {
+      setFormData(prev => ({ ...prev, pair_id: activePair.id }));
+    }
+  }, [searchParams, activePair]);
+
+  // Filter meetings for mentor's pairs
+  const mentorMeetings = meetings.filter(meeting => 
+    pairs.some(pair => pair.id === meeting.pair_id)
+  );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -89,16 +120,18 @@ export function MentorMeetingsPage() {
     try {
       await createMeeting({
         ...formData,
-        scheduled_at: new Date(formData.scheduled_at).toISOString()
+        scheduled_at: new Date(formData.scheduled_at).toISOString(),
+        pair_task_id: formData.pair_task_id === 'none' ? undefined : (formData.pair_task_id || undefined)
       });
       setIsCreateDialogOpen(false);
       setFormData({
-        pair_id: '',
+        pair_id: activePair?.id || '',
         title: '',
         description: '',
         scheduled_at: '',
         location: '',
-        meeting_type: 'in_person'
+        meeting_type: 'in_person',
+        pair_task_id: ''
       });
     } catch (error) {
       console.error('Error creating meeting:', error);
@@ -159,20 +192,39 @@ export function MentorMeetingsPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleCreateMeeting} className="grid gap-5 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="pair" className="text-gray-900 font-semibold">Mentee *</Label>
-                      <Select value={formData.pair_id} onValueChange={(value) => setFormData({...formData, pair_id: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select mentee" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {pairs.map((pair) => (
-                            <SelectItem key={pair.id} value={pair.id}>
-                              {pair.mentee?.full_name || 'Unknown'}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="pair" className="text-gray-900 font-semibold">Mentee *</Label>
+                        <Select value={formData.pair_id} onValueChange={(value) => setFormData({...formData, pair_id: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select mentee" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {pairs.map((pair) => (
+                              <SelectItem key={pair.id} value={pair.id}>
+                                {pair.mentee?.full_name || pair.mentor?.full_name || 'Unknown'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold">Link to Task</Label>
+                        <Select value={formData.pair_task_id} onValueChange={(value) => setFormData({...formData, pair_task_id: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Optional: Select task" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {tasks.map((task) => (
+                              <SelectItem key={task.id} value={task.id}>
+                                {task.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     
                     <div className="grid gap-2">

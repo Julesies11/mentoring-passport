@@ -1,7 +1,7 @@
 import { NotificationsSheet } from '@/partials/topbar/notifications-sheet';
 import { UserDropdownMenu } from '@/partials/topbar/user-dropdown-menu';
 import { Bell } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,14 +12,20 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Breadcrumb } from './breadcrumb';
+import { PairingSelector } from '@/components/common/pairing-selector';
 
 export function Header() {
   const mobileMode = useIsMobile();
   const { unreadCount } = useNotifications();
-  const { user } = useAuth();
+  const { user, isMentor, isMentee } = useAuth();
+  const { pathname } = useLocation();
 
   const scrollPosition = useScrollPosition();
   const headerSticky: boolean = scrollPosition > 0;
+
+  const isProgramMember = isMentor || isMentee;
+  const isDashboard = pathname.includes('/dashboard');
+  const showPairingSelector = isProgramMember && !isDashboard;
 
   return (
     <header
@@ -41,13 +47,15 @@ export function Header() {
             </Link>
           </div>
         ) : (
-          <div className="flex-1">
+          <div className="flex items-center gap-4 flex-1">
             <Breadcrumb />
+            {showPairingSelector && <PairingSelector />}
           </div>
         )}
 
         {/* Right: Notifications + User Avatar */}
         <div className="flex items-center gap-3">
+          {mobileMode && showPairingSelector && <PairingSelector />}
           <NotificationsSheet
             trigger={
               <Button

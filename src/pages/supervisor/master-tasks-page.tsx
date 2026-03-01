@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input, InputWrapper } from '@/components/ui/input';
+import { SearchInput } from '@/components/common/search-input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -341,15 +341,14 @@ export function SupervisorMasterTasksPage() {
           <Card>
             <CardContent className="p-5">
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                {/* Search */}
                 <div className="flex-1">
-                  <InputWrapper>
-                    <KeenIcon icon="magnifier" />
-                    <Input
-                      placeholder="Search tasks by name or evidence type..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </InputWrapper>
+                  <SearchInput
+                    placeholder="Search tasks by name or evidence type..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onClear={() => setSearchTerm('')}
+                  />
                 </div>
 
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
