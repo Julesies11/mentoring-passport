@@ -1,9 +1,9 @@
 # Gemini Project Instructions — Metronic React (Vite) + TanStack Query + Supabase
 
 This project uses:
-- React 18 (Vite)
+- React 19 (Vite)
 - Metronic React Template v9.4.0
-- TanStack Query v5
+- TanStack Query
 - Supabase
 - Tailwind integrated with Metronic
 
