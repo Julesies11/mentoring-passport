@@ -102,8 +102,8 @@ export async function createNotification(
   description: string | null,
   actionUrl: string | null = null,
   relatedId: string | null = null
-): Promise<Notification> {
-  const { data, error } = await supabase
+): Promise<void> {
+  const { error } = await supabase
     .from('mp_notifications')
     .insert({
       recipient_id: recipientId,
@@ -113,16 +113,12 @@ export async function createNotification(
       action_url: actionUrl,
       related_id: relatedId,
       is_read: false,
-    })
-    .select('*')
-    .single();
+    });
 
   if (error) {
     console.error('Error creating notification:', error);
     throw error;
   }
-
-  return data;
 }
 
 /**

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
+import { useAuth } from '@/auth/context/auth-context';
+import { usePairing } from '@/providers/pairing-provider';
 
 interface MeetingDialogProps {
   open: boolean;
@@ -27,7 +30,7 @@ interface MeetingDialogProps {
   pairId: string;
   meeting?: Meeting | null;
   initialTaskId?: string | null;
-  onSubmit: (data: CreateMeetingInput) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -40,11 +43,20 @@ export function MeetingDialog({
   onSubmit,
   isSubmitting = false,
 }: MeetingDialogProps) {
+  const { user, isMentor } = useAuth();
+  const { pairings } = usePairing();
+  
+  const currentPair = pairings.find(p => p.id === pairId);
+  const otherUser = isMentor ? currentPair?.mentee : currentPair?.mentor;
+  const participantName = otherUser?.full_name || 'Program Member';
+
   const [formData, setFormData] = useState({
     title: '',
     date_time: '',
     notes: '',
     pair_task_id: '',
+    location: '',
+    meeting_type: 'virtual' as 'in_person' | 'virtual' | 'phone',
   });
 
   // Fetch tasks for this pair to allow linking
@@ -55,34 +67,53 @@ export function MeetingDialog({
   });
 
   useEffect(() => {
+    if (!open) return; // Only run when opening or open
+
+    // If no initialTaskId and tasks are loaded, find the first pending task
+    let targetTaskId = initialTaskId;
+    if (!targetTaskId && tasks.length > 0) {
+      const firstPending = tasks.find(t => t.status !== 'completed');
+      if (firstPending) targetTaskId = firstPending.id;
+    }
+
     if (meeting) {
       setFormData({
         title: meeting.title,
         date_time: meeting.date_time ? format(new Date(meeting.date_time), "yyyy-MM-dd'T'HH:mm") : '',
         notes: meeting.notes || '',
         pair_task_id: meeting.pair_task_id || '',
+        location: meeting.location || '',
+        meeting_type: meeting.meeting_type as any || 'virtual',
       });
     } else {
       setFormData({
-        title: '',
+        title: targetTaskId ? 'Task Discussion' : '',
         date_time: '',
         notes: '',
-        pair_task_id: initialTaskId || '',
+        pair_task_id: targetTaskId || '',
+        location: '',
+        meeting_type: 'virtual',
       });
     }
-  }, [meeting, initialTaskId, open]);
+  }, [meeting, initialTaskId, open, tasks.length > 0]); // Dependency array focused on opening and data presence
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.date_time) return;
+    if (!formData.title || !formData.date_time || !formData.pair_task_id) return;
 
-    await onSubmit({
+    const submissionData = {
       pair_id: pairId,
       title: formData.title,
       notes: formData.notes,
+      description: formData.notes,
+      scheduled_at: new Date(formData.date_time).toISOString(),
       date_time: new Date(formData.date_time).toISOString(),
-      pair_task_id: formData.pair_task_id === 'none' ? null : formData.pair_task_id || null,
-    });
+      pair_task_id: formData.pair_task_id,
+      location: formData.location,
+      meeting_type: formData.meeting_type,
+    };
+
+    await onSubmit(submissionData);
   };
 
   return (
@@ -93,11 +124,57 @@ export function MeetingDialog({
           <DialogDescription>
             {meeting 
               ? 'Update the meeting details and associated task.' 
-              : 'Set a title, date, and link this meeting to a specific task.'}
+              : `Schedule a meeting with ${participantName}.`}
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-5 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label className="text-gray-900 font-semibold">Program Member</Label>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="size-6 rounded-full bg-primary-light flex items-center justify-center text-[10px] text-primary font-bold">
+                  {participantName.charAt(0)}
+                </div>
+                <span className="text-sm font-medium text-gray-700">{participantName}</span>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold flex items-center gap-1">
+                Link to Task <span className="text-danger">*</span>
+              </Label>
+              <Select
+                value={formData.pair_task_id}
+                onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
+                required
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a task for this meeting" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tasks.map((task) => {
+                    const isCompleted = task.status === 'completed';
+                    return (
+                      <SelectItem key={task.id} value={task.id}>
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span>{task.name}</span>
+                          <Badge 
+                            variant={isCompleted ? 'success' : 'outline'} 
+                            size="xs"
+                            className="ml-auto"
+                          >
+                            {isCompleted ? 'Completed' : 'Pending'}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="grid gap-2">
             <Label htmlFor="title" className="text-gray-900 font-semibold">Meeting Title *</Label>
             <Input
@@ -109,35 +186,44 @@ export function MeetingDialog({
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="date_time" className="text-gray-900 font-semibold">Date & Time *</Label>
-            <Input
-              id="date_time"
-              type="datetime-local"
-              value={formData.date_time}
-              onChange={(e) => setFormData({ ...formData, date_time: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="date_time" className="text-gray-900 font-semibold">Date & Time *</Label>
+              <Input
+                id="date_time"
+                type="datetime-local"
+                value={formData.date_time}
+                onChange={(e) => setFormData({ ...formData, date_time: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="meeting_type" className="text-gray-900 font-semibold">Type</Label>
+              <Select 
+                value={formData.meeting_type} 
+                onValueChange={(value: any) => setFormData({...formData, meeting_type: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_person">In Person</SelectItem>
+                  <SelectItem value="virtual">Virtual</SelectItem>
+                  <SelectItem value="phone">Phone Call</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold">Link to Task</Label>
-            <Select
-              value={formData.pair_task_id || 'none'}
-              onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a task to link (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No specific task</SelectItem>
-                {tasks.map((task) => (
-                  <SelectItem key={task.id} value={task.id}>
-                    {task.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="location" className="text-gray-900 font-semibold">Location / Link</Label>
+            <Input
+              id="location"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              placeholder="Office #204 or Zoom link"
+            />
           </div>
 
           <div className="grid gap-2">
@@ -152,7 +238,7 @@ export function MeetingDialog({
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

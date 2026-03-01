@@ -283,7 +283,7 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
       mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
-    .eq('status', 'active')
+    .in('status', ['active', 'completed'])
     .order('created_at', { ascending: false });
 
   if (error) {

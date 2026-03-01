@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useCallback, useRef, useState, type ChangeEvent, type DragEvent, type InputHTMLAttributes } from 'react';
+import { useCallback, useRef, useState, useEffect, type ChangeEvent, type DragEvent, type InputHTMLAttributes } from 'react';
 
 export type FileMetadata = {
   name: string;
@@ -72,6 +72,12 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Notify parent component when files change, using an effect to avoid 
+  // updating parent state during rendering of this component.
+  useEffect(() => {
+    onFilesChange?.(state.files);
+  }, [state.files]);
+
   const validateFile = useCallback(
     (file: File | FileMetadata): string | null => {
       if (file instanceof File) {
@@ -137,16 +143,13 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
         inputRef.current.value = '';
       }
 
-      const newState = {
+      return {
         ...prev,
         files: [],
         errors: [],
       };
-
-      onFilesChange?.(newState.files);
-      return newState;
     });
-  }, [onFilesChange]);
+  }, []);
 
   const addFiles = useCallback(
     (newFiles: FileList | File[]) => {
@@ -214,7 +217,6 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
 
         setState((prev) => {
           const newFiles = !multiple ? validFiles : [...prev.files, ...validFiles];
-          onFilesChange?.(newFiles);
           return {
             ...prev,
             files: newFiles,
@@ -242,7 +244,6 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
       createPreview,
       generateUniqueId,
       clearFiles,
-      onFilesChange,
       onFilesAdded,
     ],
   );
@@ -261,7 +262,6 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
-        onFilesChange?.(newFiles);
 
         return {
           ...prev,
@@ -270,7 +270,7 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
         };
       });
     },
-    [onFilesChange],
+    [],
   );
 
   const clearErrors = useCallback(() => {

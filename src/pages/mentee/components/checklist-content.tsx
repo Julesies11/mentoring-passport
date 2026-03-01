@@ -212,9 +212,6 @@ export function ChecklistContent() {
                   </span>
                 </div>
               </div>
-              <div className="size-12 rounded-lg bg-primary-light flex items-center justify-center text-primary">
-                <KeenIcon icon="chart-line-star" className="text-2xl" />
-              </div>
             </div>
             <Progress value={stats.completion_percentage} className="h-2.5" />
           </CardContent>

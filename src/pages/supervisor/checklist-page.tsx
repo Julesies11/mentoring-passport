@@ -369,9 +369,6 @@ export function SupervisorChecklistPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="size-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary border border-primary/10">
-                      <KeenIcon icon="chart-line-star" className="text-3xl" />
-                    </div>
                   </div>
                   <Progress value={stats.completion_percentage} className="h-3 bg-white border border-primary/5" />
                   

@@ -1,8 +1,13 @@
-import { useState, useRef } from 'react';
-import { CheckCircle, FileText, Upload, X, Camera, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect, Fragment } from 'react';
+import { CheckCircle, FileText, X, Trash2, Loader2, ImageIcon, CloudUpload, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { FileUpload } from '@/components/ui/file-upload';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchPairEvidence, deleteEvidence, formatBytes } from '@/lib/api/evidence';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -11,16 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { KeenIcon } from '@/components/keenicons';
-
-const statusColors = {
-  not_submitted: 'text-gray-400',
-  awaiting_review: 'text-yellow-500',
-  completed: 'text-green-500',
-};
 
 const statusLabels = {
   not_submitted: 'Not Started',
@@ -46,7 +44,8 @@ interface TaskDialogProps {
   pairId: string;
   onSubmitEvidence?: (
     taskId: string,
-    evidence: { description: string; file?: File },
+    evidence: { description: string; files: File[] },
+    submitForReview: boolean
   ) => void;
   onUpdateStatus?: (
     taskId: string,
@@ -64,321 +63,174 @@ export function TaskDialog({
   onUpdateStatus,
   isSubmitting = false,
 }: TaskDialogProps) {
+  const queryClient = useQueryClient();
   const [evidenceDescription, setEvidenceDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-    if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    } else {
-      setPreviewUrl(null);
+  // 1. Fetch existing evidence
+  const { data: dbEvidence = [], isLoading: isLoadingEvidence } = useQuery({
+    queryKey: ['task-evidence', pairId, task.id],
+    queryFn: () => fetchPairEvidence(pairId, task.id),
+    enabled: open && !!pairId && !!task.id,
+  });
+
+  // 2. Deletion Mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteEvidence(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-evidence', pairId, task.id] });
+      queryClient.invalidateQueries({ queryKey: ['pair-evidence', pairId] });
+      toast.success('File removed from server');
     }
-  };
+  });
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+  // Reset local state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setEvidenceDescription('');
+      setSelectedFiles([]);
     }
-  };
+  }, [open]);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileSelect(files[0]);
-    }
-  };
-
-  const handleSubmit = () => {
-    // Check if evidence submission is required
+  const handleAction = (submitForReview: boolean) => {
     const requiresSubmission = task.evidence_type?.requires_submission;
-
-    // Validate description
-    if (!evidenceDescription.trim()) {
-      alert('Please provide a description for your evidence.');
+    if (submitForReview && requiresSubmission && selectedFiles.length === 0 && dbEvidence.length === 0) {
+      toast.error('Evidence Required', { description: 'Please upload at least one file.' });
       return;
     }
-
-    // Validate file upload if required
-    if (requiresSubmission && !selectedFile) {
-      alert('This task requires evidence submission. Please upload a file.');
-      return;
-    }
-
-    onSubmitEvidence?.(task.id, {
-      description: evidenceDescription,
-      file: selectedFile || undefined,
-    });
-
-    // Reset form will be handled by parent or on success
+    onSubmitEvidence?.(task.id, { description: evidenceDescription, files: selectedFiles }, submitForReview);
   };
 
-  const canSubmit =
-    task.status === 'not_submitted' || task.status === 'awaiting_review';
-  const isCompleted = task.status === 'completed';
+  const isLocked = task.status === 'completed';
+  const requiresSubmission = task.evidence_type?.requires_submission;
+
+  // Unified File Item Component
+  const FileItem = ({ name, size, type, url, onRemove, isDeleting = false, status }: any) => {
+    const isImage = type?.startsWith('image/') || url?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+    const [imgError, setImgError] = useState(false);
+    
+    const getIcon = () => {
+      if (isImage) return <ImageIcon className="size-5 text-primary/40" />;
+      if (type?.includes('pdf')) return <FileText className="size-5 text-danger/40" />;
+      return <FileText className="size-5 text-gray-400" />;
+    };
+
+    return (
+      <div className="flex items-center gap-3 p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm group hover:border-gray-300 transition-all">
+        <div className="size-9 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+          {isImage && url && !imgError ? (
+            <img src={url} alt={name} className="size-full object-cover" onError={() => setImgError(true)} />
+          ) : getIcon()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-gray-900 truncate leading-none" title={name}>{name}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[9px] text-muted-foreground uppercase font-black">{formatBytes(size || 0)}</span>
+            {status && (
+              <Badge variant={status === 'approved' ? 'success' : 'warning'} size="xs" className="h-3 px-1 text-[7px] font-black uppercase">
+                {status}
+              </Badge>
+            )}
+          </div>
+        </div>
+        {!isLocked && (
+          <button onClick={onRemove} disabled={isDeleting} className="size-7 flex items-center justify-center rounded-lg hover:bg-danger/5 text-gray-300 hover:text-danger transition-colors">
+            {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-4" />}
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            {task.name}
-          </DialogTitle>
-          <DialogDescription>
-            Submit evidence and track progress for this task
-          </DialogDescription>
+      <DialogContent className="max-w-xl max-h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+        {/* Compact Header */}
+        <DialogHeader className="px-6 py-2.5 border-b border-gray-100 flex-shrink-0 bg-white mb-0">
+          <div className="flex items-center justify-between">
+
+            <div className="flex items-center gap-3">
+              <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><FileText size={16} /></div>
+              <div>
+                <DialogTitle className="text-base font-bold text-gray-900 leading-none">{task.name}</DialogTitle>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Status:</span>
+                    <Badge className={cn('h-4 px-1.5 rounded-full border-none font-black uppercase text-[7px]', 
+                      task.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                      task.status === 'awaiting_review' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+                    )}>{statusLabels[task.status]}</Badge>
+                  </div>
+                  <div className="flex items-center gap-1.5 border-l border-gray-100 pl-3">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Requirement:</span>
+                    <span className="text-[9px] font-bold text-gray-700">{task.evidence_type?.name || 'N/A'}</span>
+                    {requiresSubmission && <Badge variant="danger" size="xs" className="h-3 text-[6px] font-black px-1">REQUIRED</Badge>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Task Status */}
-          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium">Current Status</p>
-              <Badge
-                className={cn(
-                  'mt-1',
-                  task.status === 'completed' && 'bg-green-100 text-green-800',
-                  task.status === 'awaiting_review' &&
-                    'bg-yellow-100 text-yellow-800',
-                  task.status === 'not_submitted' &&
-                    'bg-gray-100 text-gray-800',
-                )}
-              >
-                {statusLabels[task.status]}
-              </Badge>
-            </div>
+        <div className="flex-1 overflow-y-auto px-6 pt-0 pb-4 kt-scrollable-y-hover">
+          {!isLocked ? (
+            <div className="space-y-2.5 pt-3">
+              {/* Unified File List (Consistent Position Above) */}
 
-            {task.evidence_type && (
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Evidence Type</p>
-                <p className="text-sm font-medium">{task.evidence_type.name}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Evidence Submission */}
-          {!isCompleted && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Label className="text-base font-medium">Submit Evidence</Label>
-                {task.evidence_type?.requires_submission && (
-                  <Badge variant="destructive" className="text-xs">
-                    Required
-                  </Badge>
-                )}
-              </div>
-
-              {/* File Upload */}
-              <div
-                className={cn(
-                  'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
-                  dragActive
-                    ? 'border-primary bg-primary/5'
-                    : 'border-muted-foreground/25',
-                  selectedFile && 'border-primary bg-primary/5',
-                )}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  setDragActive(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  setDragActive(false);
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-              >
-                {selectedFile ? (
-                  <div className="space-y-3">
-                    {previewUrl ? (
-                      <div className="relative mx-auto w-32 h-32 rounded-lg overflow-hidden border">
-                        <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <FileText className="w-12 h-12 mx-auto text-primary" />
-                    )}
-                    <div>
-                      <p className="text-sm font-bold text-gray-900 truncate max-w-[200px] mx-auto">{selectedFile.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-danger hover:bg-danger/5 h-8"
-                      onClick={handleRemoveFile}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Remove File
-                    </Button>
+              {(dbEvidence.length > 0 || selectedFiles.length > 0) && (
+                <div className="space-y-1 animate-fade-in">
+                  <Label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-1 mb-0">Uploaded Evidence ({dbEvidence.length + selectedFiles.length})</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {/* Database Files */}
+                    {dbEvidence.map((e) => (
+                      <FileItem key={e.id} name={e.file_name} size={e.file_size} type={e.mime_type} url={e.file_url} status={e.status}
+                        onRemove={() => confirm('Delete permanently?') && deleteMutation.mutate(e.id)}
+                        isDeleting={deleteMutation.isPending && deleteMutation.variables === e.id} />
+                    ))}
+                    {/* Newly Selected Files */}
+                    {selectedFiles.map((file, i) => (
+                      <FileItem key={i} name={file.name} size={file.size} type={file.type} url={URL.createObjectURL(file)}
+                        onRemove={() => setSelectedFiles(prev => prev.filter((_, idx) => idx !== i))} />
+                    ))}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="size-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 mb-2">
-                        <Upload className="w-6 h-6 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm font-bold text-gray-900">
-                        Upload your evidence
-                      </p>
-                      <p className="text-xs text-muted-foreground max-w-[240px]">
-                        Drag and drop a file here, or use the buttons below
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap justify-center gap-3 pt-2">
-                      <input
-                        type="file"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileSelect(file);
-                        }}
-                      />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        ref={cameraInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileSelect(file);
-                        }}
-                      />
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-white hover:bg-gray-50 gap-2 h-10 px-4"
-                        onClick={() => cameraInputRef.current?.click()}
-                      >
-                        <Camera className="w-4 h-4" />
-                        Take Photo
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-white hover:bg-gray-50 gap-2 h-10 px-4"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                        Select Image
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-white hover:bg-gray-50 gap-2 h-10 px-4"
-                        onClick={() => {
-                          if (fileInputRef.current) {
-                            fileInputRef.current.accept = "*/*";
-                            fileInputRef.current.click();
-                          }
-                        }}
-                      >
-                        <FileText className="w-4 h-4" />
-                        Any File
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe your evidence and how it demonstrates completion of this task..."
-                  value={evidenceDescription}
-                  onChange={(e) => setEvidenceDescription(e.target.value)}
-                  rows={4}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Completed Evidence */}
-          {isCompleted && task.completed_at && (
-            <div className="space-y-4">
-              <Label className="text-base font-medium">
-                Submitted Evidence
-              </Label>
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <p className="text-sm font-medium text-green-800">
-                    Completed
-                  </p>
                 </div>
-                <p className="text-sm text-green-700">
-                  This task was completed on{' '}
-                  {new Date(task.completed_at).toLocaleDateString()}
-                </p>
+              )}
+
+              {/* Dropzone */}
+              <div className="pt-1">
+                <FileUpload onFilesChange={setSelectedFiles} multiple={true} maxFiles={5} showFileList={false} className="py-0" />
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <Label htmlFor="description" className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-1 mb-0">Notes / Description</Label>
+                <Textarea value={evidenceDescription} onChange={(e) => setEvidenceDescription(e.target.value)} rows={2}
+                  placeholder="Add details about your progress..." className="rounded-xl border-gray-200 resize-none p-2.5 bg-white text-sm shadow-sm min-h-[80px]" />
               </div>
             </div>
-          )}
-
-          {/* Status Actions */}
-          {onUpdateStatus && (
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Update Status</Label>
-              <div className="flex gap-2">
-                {task.status !== 'not_submitted' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onUpdateStatus(task.id, 'not_submitted')}
-                  >
-                    Mark as Not Started
-                  </Button>
-                )}
-                {task.status !== 'awaiting_review' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onUpdateStatus(task.id, 'awaiting_review')}
-                  >
-                    Mark as Awaiting Review
-                  </Button>
-                )}
-                {task.status !== 'completed' && (
-                  <Button
-                    size="sm"
-                    onClick={() => onUpdateStatus(task.id, 'completed')}
-                  >
-                    Mark as Completed
-                  </Button>
-                )}
+          ) : (
+            <div className="py-10 flex flex-col items-center justify-center text-center gap-4">
+              <div className="size-20 rounded-full bg-success/10 flex items-center justify-center text-success"><CheckCircle size={48} /></div>
+              <div className="space-y-1">
+                <h4 className="text-2xl font-bold text-gray-900">Task Completed</h4>
+                <p className="text-gray-500">Finalized on {task.completed_at ? format(new Date(task.completed_at), 'MMMM d, yyyy') : 'N/A'}</p>
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          {canSubmit && onSubmitEvidence && (
-            <Button
-              onClick={handleSubmit}
-              disabled={!evidenceDescription.trim() || isSubmitting}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Evidence'}
-            </Button>
+        <DialogFooter className="px-6 py-4 border-t border-gray-100 flex-shrink-0 bg-white gap-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-6 font-bold text-xs">Cancel</Button>
+          {!isLocked && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => handleAction(false)} disabled={isSubmitting} className="rounded-xl h-10 px-6 font-bold text-xs border-primary/20 text-primary hover:bg-primary/5">
+                {isSubmitting ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button onClick={() => handleAction(true)} disabled={isSubmitting} className={cn("rounded-xl h-10 px-8 font-bold text-xs shadow-lg",
+                requiresSubmission ? "shadow-primary/20" : "bg-success text-white shadow-success/20 hover:bg-success-dark")}>
+                {isSubmitting ? 'Processing...' : requiresSubmission ? 'Submit for Review' : 'Mark as Completed'}
+              </Button>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>

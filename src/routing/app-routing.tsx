@@ -26,7 +26,7 @@ export function AppRouting() {
         setFirstLoad(false);
       });
     }
-  });
+  }, [firstLoad, verify, setLoading]);
 
   useEffect(() => {
     if (!firstLoad) {

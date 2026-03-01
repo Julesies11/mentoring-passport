@@ -14,8 +14,10 @@ import { KeenIcon } from '@/components/keenicons';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { TaskDialog } from '@/components/tasks/task-dialog';
+import { MeetingDialog } from '@/components/meetings/meeting-dialog';
+import { PairingSelector } from '@/components/common/pairing-selector';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchPairEvidence } from '@/lib/api/evidence';
+import { fetchPairEvidence, uploadEvidenceFile, createEvidence } from '@/lib/api/evidence';
 import { updateMeeting } from '@/lib/api/meetings';
 import { toast } from 'sonner';
 import {
@@ -46,7 +48,7 @@ export function TasksPage() {
     enabled: !!selectedPair?.id,
   });
 
-  const { meetings = [] } = useAllMeetings();
+  const { meetings = [], createMeeting, isCreating } = useAllMeetings();
   const pairMeetings = useMemo(() => 
     meetings.filter(m => m.pair_id === selectedPair?.id),
     [meetings, selectedPair?.id]
@@ -56,23 +58,10 @@ export function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
-  // Meeting Linking State
-  const [isLinkMeetingOpen, setIsLinkMeetingOpen] = useState(false);
-  const [linkingTaskId, setLinkingTaskId] = useState<string | null>(null);
-
-  // Link Meeting Mutation
-  const linkMeetingMutation = useMutation({
-    mutationFn: ({ meetingId, pairTaskId }: { meetingId: string; pairTaskId: string | null }) =>
-      updateMeeting(meetingId, { pair_task_id: pairTaskId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
-      toast.success('Meeting linked to task successfully');
-      setIsLinkMeetingOpen(false);
-    },
-    onError: () => {
-      toast.error('Failed to link meeting');
-    }
-  });
+  // Meeting Dialog State
+  const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
+  const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
+  const [isEvidenceSubmitting, setIsEvidenceSubmitting] = useState(false);
 
   // Automatically expand all tasks by default
   useEffect(() => {
@@ -120,19 +109,99 @@ export function TasksPage() {
     });
   };
 
+  const handleEvidenceSubmit = async (
+    taskId: string,
+    evidence: { description: string; files: File[] },
+    submitForReview: boolean
+  ) => {
+    if (!selectedPair?.id || !user?.id) return;
+    
+    setIsEvidenceSubmitting(true);
+    try {
+      // 1. Upload each file
+      const uploadPromises = evidence.files.map(file => 
+        uploadEvidenceFile(file, selectedPair.id, user.id)
+      );
+      
+      const fileUrls = await Promise.all(uploadPromises);
+
+      // 2. Create evidence record(s)
+      // For simplicity, we'll create one primary record with all info if notes are provided, 
+      // or multiple if needed. Here we'll create one for each file or one overall if only notes.
+      if (evidence.files.length > 0) {
+        for (let i = 0; i < fileUrls.length; i++) {
+          const file = evidence.files[i];
+          await createEvidence({
+            pair_id: selectedPair.id,
+            pair_task_id: taskId,
+            submitted_by: user.id,
+            type: file.type.startsWith('image/') ? 'photo' : 'file',
+            file_url: fileUrls[i],
+            file_name: file.name,
+            mime_type: file.type,
+            file_size: file.size,
+            description: i === 0 ? evidence.description : `Additional file: ${file.name}`,
+            status: submitForReview ? 'pending' : 'approved'
+          });
+
+        }
+      } else if (evidence.description.trim()) {
+        // Just notes
+        await createEvidence({
+          pair_id: selectedPair.id,
+          pair_task_id: taskId,
+          submitted_by: user.id,
+          type: 'text',
+          description: evidence.description,
+          status: submitForReview ? 'pending' : 'approved'
+        });
+      }
+
+      // 3. Update task status if submitting for review or marking as completed
+      if (submitForReview) {
+        const requiresReview = selectedTask?.evidence_type?.requires_submission;
+        const nextStatus = requiresReview ? 'awaiting_review' : 'completed';
+        
+        await updateStatus(taskId, nextStatus);
+        
+        if (requiresReview) {
+          toast.success('Evidence submitted for review');
+        } else {
+          toast.success('Task marked as completed');
+        }
+      } else {
+        toast.success('Progress saved successfully');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['pair-evidence', selectedPair.id] });
+      setIsTaskDialogOpen(false);
+    } catch (error) {
+      console.error('Error submitting evidence:', error);
+      toast.error('Failed to submit evidence');
+    } finally {
+      setIsEvidenceSubmitting(false);
+    }
+  };
+
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
     setIsTaskDialogOpen(true);
   };
 
-  const handleLinkMeeting = (taskId: string) => {
-    setLinkingTaskId(taskId);
-    setIsLinkMeetingOpen(true);
+  const handleCreateMeeting = (taskId: string) => {
+    setInitialTaskId(taskId);
+    setIsMeetingDialogOpen(true);
   };
 
-  const handleCreateMeeting = (taskId: string) => {
-    // Redirect to meetings page with task ID and pair ID in state or params
-    navigate(`/program-member/meetings?create=true&taskId=${taskId}&pairId=${selectedPair?.id}`);
+  const handleMeetingSubmit = async (data: any) => {
+    try {
+      await createMeeting(data);
+      setIsMeetingDialogOpen(false);
+      setInitialTaskId(null);
+      toast.success('Meeting scheduled successfully');
+    } catch (error) {
+      toast.error('Failed to schedule meeting');
+    }
   };
 
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
@@ -204,13 +273,15 @@ export function TasksPage() {
       <Container>
         <Toolbar>
           <ToolbarHeading
-            title="Tasks"
-            description={`Track progress with ${otherUser?.full_name || 'your partner'}`}
+            title="Mentoring Tasks"
+            description="Track progress and complete requirements for this mentoring relationship"
           />
         </Toolbar>
       </Container>
 
       <Container>
+        <PairingSelector />
+        
         <div className="grid gap-5 lg:gap-7.5">
           {/* Progress Card */}
           {stats && (
@@ -225,9 +296,6 @@ export function TasksPage() {
                         ({stats.completed} of {stats.total} tasks completed)
                       </span>
                     </div>
-                  </div>
-                  <div className="size-12 rounded-lg bg-primary-light flex items-center justify-center text-primary">
-                    <KeenIcon icon="chart-line-star" className="text-2xl" />
                   </div>
                 </div>
                 <Progress value={stats.completion_percentage} className="h-2.5" />
@@ -248,85 +316,12 @@ export function TasksPage() {
                 onViewDetails={handleViewDetails}
                 onToggleTask={handleToggleTask}
                 onToggleSubTask={handleToggleSubTask}
-                onLinkMeeting={handleLinkMeeting}
                 onCreateMeeting={handleCreateMeeting}
               />
             </CardContent>
           </Card>
         </div>
       </Container>
-
-      {/* Link Meeting Dialog */}
-      <Dialog open={isLinkMeetingOpen} onOpenChange={setIsLinkMeetingOpen}>
-        <DialogContent className="max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Link Meeting to Task</DialogTitle>
-            <DialogDescription>
-              Select a meeting to associate with this task. This helps track which meeting the task was discussed in.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 border-dashed"
-              onClick={() => {
-                setIsLinkMeetingOpen(false);
-                handleCreateMeeting(linkingTaskId || '');
-              }}
-            >
-              <KeenIcon icon="plus" />
-              Schedule New Meeting for this Task
-            </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or link existing</span>
-              </div>
-            </div>
-
-            {pairMeetings.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                <p className="text-sm text-muted-foreground">No existing meetings found for this pairing.</p>
-              </div>
-            ) : (
-              <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
-                {pairMeetings.map((meeting) => (
-                  <button
-                    key={meeting.id}
-                    onClick={() => linkMeetingMutation.mutate({ meetingId: meeting.id, pairTaskId: linkingTaskId })}
-                    className={cn(
-                      "w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group",
-                      meeting.pair_task_id === linkingTaskId
-                        ? "bg-primary/5 border-primary"
-                        : "bg-white border-gray-100 hover:border-primary/30"
-                    )}
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-gray-900">{meeting.title}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(meeting.date_time), 'PPP p')}
-                      </span>
-                    </div>
-                    {meeting.pair_task_id === linkingTaskId ? (
-                      <Badge variant="success" size="xs">Linked</Badge>
-                    ) : (
-                      <KeenIcon icon="plus" className="text-gray-300 group-hover:text-primary transition-colors" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLinkMeetingOpen(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Task Dialog */}
       {selectedTask && (
@@ -342,10 +337,21 @@ export function TasksPage() {
             completed_at: selectedTask.completed_at,
           }}
           pairId={selectedPair?.id || ''}
-          onSubmitEvidence={async () => {}}
+          onSubmitEvidence={handleEvidenceSubmit}
           onUpdateStatus={handleToggleTask}
+          isSubmitting={isEvidenceSubmitting}
         />
       )}
+
+      {/* Meeting Dialog */}
+      <MeetingDialog
+        open={isMeetingDialogOpen}
+        onOpenChange={setIsMeetingDialogOpen}
+        pairId={selectedPair?.id || ''}
+        initialTaskId={initialTaskId}
+        onSubmit={handleMeetingSubmit}
+        isSubmitting={isCreating}
+      />
     </Fragment>
   );
 }

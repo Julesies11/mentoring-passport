@@ -35,8 +35,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
             .eq('mentee_id', currentUser.id)
             .eq('status', 'active');
 
-          setIsMentor((mentorCount || 0) > 0);
-          setIsMentee((menteeCount || 0) > 0);
+          const mentorExists = (mentorCount || 0) > 0;
+          const menteeExists = (menteeCount || 0) > 0;
+
+          // Only update if values changed
+          setIsMentor(prev => prev !== mentorExists ? mentorExists : prev);
+          setIsMentee(prev => prev !== menteeExists ? menteeExists : prev);
         } catch (error) {
           console.error('Error checking pairings:', error);
         }

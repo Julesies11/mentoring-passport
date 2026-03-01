@@ -51,10 +51,10 @@ export function useAllMeetings() {
     stats,
     isLoading,
     error,
-    createMeeting: (input: CreateMeetingInput) => createMutation.mutate(input),
+    createMeeting: (input: CreateMeetingInput) => createMutation.mutateAsync(input),
     updateMeeting: (meetingId: string, input: UpdateMeetingInput) =>
-      updateMutation.mutate({ meetingId, input }),
-    deleteMeeting: (meetingId: string) => deleteMutation.mutate(meetingId),
+      updateMutation.mutateAsync({ meetingId, input }),
+    deleteMeeting: (meetingId: string) => deleteMutation.mutateAsync(meetingId),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
@@ -91,9 +91,9 @@ export function usePairMeetings(pairId: string) {
     meetings,
     isLoading,
     error,
-    createMeeting: (input: CreateMeetingInput) => createMutation.mutate(input),
+    createMeeting: (input: CreateMeetingInput) => createMutation.mutateAsync(input),
     updateMeeting: (meetingId: string, input: UpdateMeetingInput) =>
-      updateMutation.mutate({ meetingId, input }),
+      updateMutation.mutateAsync({ meetingId, input }),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
   };

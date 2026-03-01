@@ -40,6 +40,10 @@ export interface PairSubTask {
   sort_order: number;
   is_completed: boolean;
   completed_by_id: string | null;
+  completed_by?: {
+    id: string;
+    full_name: string | null;
+  };
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -59,8 +63,13 @@ export interface PairTask {
   sort_order: number;
   status: 'not_submitted' | 'awaiting_review' | 'completed';
   completed_at: string | null;
-  completed_by_user_id: string | null;
+  completed_by_id: string | null;
+  completed_by?: {
+    id: string;
+    full_name: string | null;
+  };
   created_at: string;
+
   updated_at: string;
   task?: Task;
   subtasks?: PairSubTask[];
@@ -141,6 +150,7 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       status,
       completed_at,
       completed_by_user_id,
+      completed_by:mp_profiles!completed_by_user_id(id, full_name),
       created_at,
       updated_at,
       task:mp_tasks_master(
@@ -306,6 +316,7 @@ export async function updatePairTaskStatus(
       status,
       completed_at,
       completed_by_user_id,
+      completed_by:mp_profiles!completed_by_user_id(id, full_name),
       created_at,
       updated_at,
       evidence_type:mp_evidence_types(id, name, requires_submission)

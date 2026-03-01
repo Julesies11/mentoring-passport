@@ -11,67 +11,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 import { cn } from '@/lib/utils';
 import { usePairing } from '@/providers/pairing-provider';
 import { useSearchParams } from 'react-router-dom';
+import { MeetingDialog } from '@/components/meetings/meeting-dialog';
+import { PairingSelector } from '@/components/common/pairing-selector';
 
 export function MentorMeetingsPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { createMeeting, updateMeeting, deleteMeeting, meetings = [], isLoading } = useAllMeetings();
+  const { createMeeting, updateMeeting, deleteMeeting, meetings = [], isLoading, isCreating } = useAllMeetings();
   const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    pair_id: '',
-    title: '',
-    description: '',
-    scheduled_at: '',
-    location: '',
-    meeting_type: 'in_person' as const,
-    pair_task_id: ''
-  });
-
-  // Fetch tasks for the selected pair in the form
-  const { tasks = [] } = usePairTasks(formData.pair_id);
+  const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
 
   // Handle search params for pre-filling
   useEffect(() => {
     const shouldCreate = searchParams.get('create') === 'true';
     const taskId = searchParams.get('taskId');
-    const pairId = searchParams.get('pairId');
 
     if (shouldCreate) {
       setIsCreateDialogOpen(true);
-      setFormData(prev => ({
-        ...prev,
-        pair_id: pairId || activePair?.id || '',
-        pair_task_id: taskId || '',
-        // If taskId is present, maybe set a default title
-        title: taskId ? 'Task Discussion' : prev.title
-      }));
+      setInitialTaskId(taskId);
       
       // Clear search params after reading
       const newParams = new URLSearchParams(searchParams);
@@ -79,60 +44,19 @@ export function MentorMeetingsPage() {
       newParams.delete('taskId');
       newParams.delete('pairId');
       setSearchParams(newParams);
-    } else if (activePair && !formData.pair_id) {
-      setFormData(prev => ({ ...prev, pair_id: activePair.id }));
     }
-  }, [searchParams, activePair]);
+  }, [searchParams]);
 
-  // Filter meetings for mentor's pairs
+  // Filter meetings for the selected pair
   const mentorMeetings = meetings.filter(meeting => 
-    pairs.some(pair => pair.id === meeting.pair_id)
+    meeting.pair_id === activePair?.id
   );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return <Badge className="bg-blue-500 text-white border-none">Upcoming</Badge>;
-      case 'completed':
-        return <Badge className="bg-success text-white border-none">Completed</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-danger text-white border-none">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'in_person':
-        return <KeenIcon icon="people" className="text-purple-500" />;
-      case 'virtual':
-        return <KeenIcon icon="video" className="text-primary" />;
-      case 'phone':
-        return <KeenIcon icon="phone" className="text-warning" />;
-      default:
-        return <KeenIcon icon="calendar" className="text-gray-400" />;
-    }
-  };
-
-  const handleCreateMeeting = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleCreateMeeting = async (data: any) => {
     try {
-      await createMeeting({
-        ...formData,
-        scheduled_at: new Date(formData.scheduled_at).toISOString(),
-        pair_task_id: formData.pair_task_id === 'none' ? undefined : (formData.pair_task_id || undefined)
-      });
+      await createMeeting(data);
       setIsCreateDialogOpen(false);
-      setFormData({
-        pair_id: activePair?.id || '',
-        title: '',
-        description: '',
-        scheduled_at: '',
-        location: '',
-        meeting_type: 'in_person',
-        pair_task_id: ''
-      });
+      setInitialTaskId(null);
     } catch (error) {
       console.error('Error creating meeting:', error);
     }
@@ -167,149 +91,81 @@ export function MentorMeetingsPage() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'upcoming':
+        return <Badge className="bg-blue-500 text-white border-none">Upcoming</Badge>;
+      case 'completed':
+        return <Badge className="bg-success text-white border-none">Completed</Badge>;
+      case 'cancelled':
+        return <Badge className="bg-danger text-white border-none">Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'in_person':
+        return <KeenIcon icon="people" className="text-purple-500" />;
+      case 'virtual':
+        return <KeenIcon icon="video" className="text-primary" />;
+      case 'phone':
+        return <KeenIcon icon="phone" className="text-warning" />;
+      default:
+        return <KeenIcon icon="calendar" className="text-gray-400" />;
+    }
+  };
+
   return (
     <Fragment>
       <Container>
         <Toolbar>
           <ToolbarHeading
-            title="Meetings"
-            description="Schedule and manage your mentoring meetings"
+            title="Mentoring Meetings"
+            description="Schedule and manage your mentoring sessions"
           />
           <ToolbarActions>
             <div className="flex gap-2">
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <KeenIcon icon="plus" />
-                    Schedule Meeting
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>Schedule New Meeting</DialogTitle>
-                    <DialogDescription>
-                      Schedule a meeting with one of your mentees.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateMeeting} className="grid gap-5 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="pair" className="text-gray-900 font-semibold">Mentee *</Label>
-                        <Select value={formData.pair_id} onValueChange={(value) => setFormData({...formData, pair_id: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select mentee" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {pairs.map((pair) => (
-                              <SelectItem key={pair.id} value={pair.id}>
-                                {pair.mentee?.full_name || pair.mentor?.full_name || 'Unknown'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+              <Button onClick={() => setIsCreateDialogOpen(true)} disabled={!activePair}>
+                <KeenIcon icon="plus" />
+                Schedule Meeting
+              </Button>
 
-                      <div className="grid gap-2">
-                        <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold">Link to Task</Label>
-                        <Select value={formData.pair_task_id} onValueChange={(value) => setFormData({...formData, pair_task_id: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Optional: Select task" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {tasks.map((task) => (
-                              <SelectItem key={task.id} value={task.id}>
-                                {task.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="title" className="text-gray-900 font-semibold">Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
-                        placeholder="e.g., Weekly Progress Review"
-                        required
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="description" className="text-gray-900 font-semibold">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        placeholder="What will you discuss?"
-                        rows={3}
-                        className="resize-none"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="scheduled_at" className="text-gray-900 font-semibold">Date & Time *</Label>
-                        <Input
-                          id="scheduled_at"
-                          type="datetime-local"
-                          value={formData.scheduled_at}
-                          onChange={(e) => setFormData({...formData, scheduled_at: e.target.value})}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="grid gap-2">
-                        <Label htmlFor="meeting_type" className="text-gray-900 font-semibold">Type</Label>
-                        <Select value={formData.meeting_type} onValueChange={(value: any) => setFormData({...formData, meeting_type: value})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="in_person">In Person</SelectItem>
-                            <SelectItem value="virtual">Virtual</SelectItem>
-                            <SelectItem value="phone">Phone Call</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="location" className="text-gray-900 font-semibold">Location / Link</Label>
-                      <Input
-                        id="location"
-                        value={formData.location}
-                        onChange={(e) => setFormData({...formData, location: e.target.value})}
-                        placeholder="Office #204 or Zoom link"
-                      />
-                    </div>
-                    
-                    <DialogFooter className="pt-4 gap-2 sm:gap-0">
-                      <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit">
-                        Schedule Meeting
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <MeetingDialog 
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+                pairId={activePair?.id || ''}
+                initialTaskId={initialTaskId}
+                onSubmit={handleCreateMeeting}
+                isSubmitting={isCreating}
+              />
             </div>
           </ToolbarActions>
         </Toolbar>
       </Container>
 
       <Container>
+        <PairingSelector />
+        
         <div className="grid gap-5 lg:gap-7.5">
           {isLoading ? (
             <div className="text-center py-12 text-muted-foreground">
               <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
               <p>Loading meetings...</p>
             </div>
+          ) : !activePair ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <KeenIcon icon="user" className="text-3xl text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No Relationship Selected</h3>
+                <p className="text-muted-foreground text-center max-w-sm">
+                  Please select a mentoring relationship from the dropdown above to view your meetings.
+                </p>
+              </CardContent>
+            </Card>
           ) : mentorMeetings.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
@@ -318,7 +174,7 @@ export function MentorMeetingsPage() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">No Meetings Scheduled</h3>
                 <p className="text-muted-foreground text-center max-w-sm mb-6">
-                  You haven't scheduled any mentoring meetings yet. Start by scheduling your first session.
+                  You haven't scheduled any mentoring meetings yet for this relationship.
                 </p>
                 <Button onClick={() => setIsCreateDialogOpen(true)}>
                   <KeenIcon icon="plus" />
@@ -398,19 +254,20 @@ export function MentorMeetingsPage() {
           )}
 
           {/* Calendar Section */}
-          <div className="mt-5 lg:mt-7.5">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Meeting Calendar</h3>
-            <MeetingCalendar
-              meetings={mentorMeetings}
-              selectedParticipant={activePair?.id || ''}
-              onMeetingCreate={handleCreateMeeting}
-              onMeetingUpdate={handleCalendarUpdate}
-              onMeetingDelete={handleDeleteMeeting}
-            />
-          </div>
+          {activePair && mentorMeetings.length > 0 && (
+            <div className="mt-5 lg:mt-7.5">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Meeting Calendar</h3>
+              <MeetingCalendar
+                meetings={mentorMeetings}
+                selectedParticipant={activePair?.id || ''}
+                onMeetingCreate={handleCreateMeeting}
+                onMeetingUpdate={handleCalendarUpdate}
+                onMeetingDelete={handleDeleteMeeting}
+              />
+            </div>
+          )}
         </div>
       </Container>
     </Fragment>
   );
 }
-

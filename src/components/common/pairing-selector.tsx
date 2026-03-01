@@ -1,90 +1,80 @@
 import React from 'react';
-import { usePairing } from '@/providers/pairing-provider';
 import { useAuth } from '@/auth/context/auth-context';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { KeenIcon } from '@/components/keenicons';
+import { usePairing } from '@/providers/pairing-provider';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 export function PairingSelector() {
-  const { pairings, selectedPairing, setSelectedPairingId, isLoading } = usePairing();
-  const { user, isMentor, isMentee } = useAuth();
+  const { user, isMentor } = useAuth();
+  const { pairings, selectedPairingId, setSelectedPairingId, isLoading } = usePairing();
 
-  if (isLoading || pairings.length <= 1) {
-    if (pairings.length === 1 && selectedPairing) {
-      const otherUser = isMentor ? selectedPairing.mentee : selectedPairing.mentor;
-      return (
-        <div className="flex items-center gap-2 px-3 py-1.5 border rounded-lg bg-secondary/30">
-          <ProfileAvatar 
-            userId={otherUser?.id || ''} 
-            userName={otherUser?.full_name || otherUser?.email} 
-            size="xs" 
-          />
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold leading-none">{otherUser?.full_name}</span>
-            <span className="text-[10px] text-muted-foreground leading-none mt-1">
-              {isMentor ? 'Mentee' : 'Mentor'}
-            </span>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  }
-
-  const otherUser = isMentor ? selectedPairing?.mentee : selectedPairing?.mentor;
+  if (isLoading || pairings.length === 0) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-2 h-auto py-1.5 px-3 bg-secondary/30 border-primary/20 hover:bg-secondary/50">
-          <ProfileAvatar 
-            userId={otherUser?.id || ''} 
-            userName={otherUser?.full_name || otherUser?.email} 
-            size="xs" 
-          />
-          <div className="flex flex-col items-start text-left">
-            <span className="text-xs font-semibold leading-none">
-              {otherUser?.full_name || 'Select Pairing'}
-            </span>
-            <span className="text-[10px] text-muted-foreground leading-none mt-1">
-              {isMentor ? 'Mentee' : 'Mentor'}
-            </span>
-          </div>
-          <KeenIcon icon="down" className="text-xs ms-1" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[200px]">
-        {pairings.map((pair) => {
-          const pairOtherUser = isMentor ? pair.mentee : pair.mentor;
-          return (
-            <DropdownMenuItem
-              key={pair.id}
-              onClick={() => setSelectedPairingId(pair.id)}
-              className="flex items-center gap-3 cursor-pointer py-2"
-            >
-              <ProfileAvatar 
-                userId={pairOtherUser?.id || ''} 
-                userName={pairOtherUser?.full_name || pairOtherUser?.email} 
-                size="sm" 
-              />
-              <div className="flex flex-col">
-                <span className={`text-sm ${selectedPairing?.id === pair.id ? 'font-bold' : ''}`}>
-                  {pairOtherUser?.full_name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {pair.status}
-                </span>
-              </div>
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex flex-col gap-2 w-full max-w-md mb-6 animate-fade-in">
+      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
+        Mentoring Member
+      </label>
+      <Select 
+        value={selectedPairingId || ''} 
+        onValueChange={(value) => setSelectedPairingId(value)}
+      >
+        <SelectTrigger className="h-auto py-3 px-4 bg-white border-gray-200 hover:border-primary transition-all shadow-sm rounded-xl">
+          <SelectValue placeholder="Choose relationship" />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl border-gray-200 shadow-xl p-1">
+          {pairings.map((pair) => {
+            const isUserMentor = pair.mentor_id === user?.id;
+            const partner = isUserMentor ? pair.mentee : pair.mentor;
+            const partnerName = partner?.full_name || partner?.email || 'Unknown User';
+            const partnerRole = isUserMentor ? 'Mentee' : 'Mentor';
+            const isActive = pair.status === 'active';
+
+            return (
+              <SelectItem 
+                key={pair.id} 
+                value={pair.id}
+                className="rounded-lg py-2 cursor-pointer focus:bg-primary/5 focus:text-primary mb-1 last:mb-0"
+              >
+                <div className="flex items-center gap-3 w-full min-w-[200px]">
+                  <div className="relative shrink-0">
+                    <ProfileAvatar
+                      userId={partner?.id || ''}
+                      currentAvatar={partner?.avatar_url}
+                      userName={partnerName}
+                      size="md"
+                    />
+                    {isActive && (
+                      <span className="absolute bottom-0 right-0 size-2.5 bg-success rounded-full border-2 border-white"></span>
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm truncate">{partnerName}</span>
+                      {!isActive && (
+                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 uppercase font-black tracking-tighter">
+                          Past
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
+                      {partnerRole} • {partner?.job_title || 'Program Participant'}
+                    </span>
+                  </div>
+                </div>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

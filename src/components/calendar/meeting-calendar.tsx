@@ -11,18 +11,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Users, Plus, Edit, Trash2 } from 'lucide-react';
 import type { Meeting, CreateMeetingInput } from '@/lib/api/meetings';
 import type { Pair } from '@/lib/api/pairs';
+import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 
 interface MeetingCalendarProps {
   meetings: Meeting[];
   pairs?: Pair[];
   onMeetingClick?: (meeting: Meeting) => void;
   onDateClick?: (date: Date) => void;
-  onMeetingUpdate?: (meeting: Meeting) => void;
+  onMeetingUpdate?: (meeting: any) => void;
   onMeetingDelete?: (meetingId: string) => void;
-  onMeetingCreate?: (meeting: CreateMeetingInput) => void;
+  onMeetingCreate?: (meeting: any) => void;
   view?: 'month' | 'week';
   onViewChange?: (view: 'month' | 'week') => void;
-  selectedPairId?: string;
+  selectedParticipant?: string; // This is pairId
   onPairFilter?: (pairId: string) => void;
   showFilters?: boolean;
 }
@@ -39,7 +40,7 @@ export function MeetingCalendar({
   onMeetingCreate,
   view: initialView = 'month',
   onViewChange,
-  selectedPairId,
+  selectedParticipant: selectedPairId,
   onPairFilter,
   showFilters = false,
 }: MeetingCalendarProps) {
@@ -383,63 +384,15 @@ export function MeetingCalendar({
       </Dialog>
 
       {/* Create Meeting Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Meeting</DialogTitle>
-            <DialogDescription>
-              Schedule a new meeting for {selectedDate && format(selectedDate, 'PPP')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="pair">Select Pairing *</Label>
-              <Select 
-                value={formData.pair_id} 
-                onValueChange={(val) => setFormData({ ...formData, pair_id: val })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a mentoring pair" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pairs.map(pair => (
-                    <SelectItem key={pair.id} value={pair.id}>
-                      {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Meeting title"
-              />
-            </div>
-            <div>
-              <Label htmlFor="notes">Agenda/Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Meeting agenda and notes"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 pt-4">
-              <Button onClick={handleCreateMeeting} disabled={!formData.title || !formData.pair_id}>
-                Create Meeting
-              </Button>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <MeetingDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        pairId={formData.pair_id || (pairs.length === 1 ? pairs[0].id : '')}
+        onSubmit={async (data) => {
+          onMeetingCreate?.(data);
+          setIsCreateDialogOpen(false);
+        }}
+      />
     </div>
   );
 }

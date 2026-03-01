@@ -43,9 +43,6 @@ export const MENU_PROGRAM_MEMBER: MenuConfig = [
     path: '/program-member/dashboard',
   },
   {
-    heading: 'Mentoring Tools'
-  },
-  {
     title: 'Tasks',
     icon: () => <KeenIcon icon="clipboard" />,
     path: '/program-member/tasks',
@@ -54,11 +51,6 @@ export const MENU_PROGRAM_MEMBER: MenuConfig = [
     title: 'Meetings',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/program-member/meetings',
-  },
-  {
-    title: 'Evidence',
-    icon: () => <KeenIcon icon="eye" />,
-    path: '/program-member/evidence',
   },
 ];
 
