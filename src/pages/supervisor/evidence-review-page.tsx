@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePendingEvidence } from '@/hooks/use-evidence';
 import { Container } from '@/components/common/container';
 import {
@@ -27,6 +28,7 @@ import { toast } from 'sonner';
 import { FileText, ImageIcon, ExternalLink, CheckCircle, XCircle, Clock, Paperclip } from 'lucide-react';
 
 export function EvidenceReviewPage() {
+  const navigate = useNavigate();
   const { evidence, stats, isLoading, reviewEvidence, isReviewing } = usePendingEvidence();
   
   // Review Dialog State
@@ -179,6 +181,14 @@ export function EvidenceReviewPage() {
                               <span className="text-gray-300 mx-2">&</span>
                               <span className="text-success">{item.pair?.mentee?.full_name}</span>
                             </h3>
+                            <Badge 
+                              className={cn(
+                                "rounded-full font-black uppercase text-[8px] px-2 h-4 border-none",
+                                item.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                              )}
+                            >
+                              {item.status === 'rejected' ? 'Revision Required' : item.status}
+                            </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">
@@ -210,6 +220,18 @@ export function EvidenceReviewPage() {
                         </div>
                         <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 italic text-gray-700 leading-relaxed text-sm">
                           "{item.description}"
+                        </div>
+                      </div>
+                    )}
+
+                    {(item.status === 'rejected' || item.rejection_reason) && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-1">
+                          <KeenIcon icon="information-2" className="text-danger text-sm" />
+                          <span className="text-[10px] font-black uppercase text-danger tracking-widest">Your Previous Feedback</span>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-red-50/50 border border-red-100 text-red-800 leading-relaxed text-sm font-medium">
+                          "{item.rejection_reason || 'Changes requested.'}"
                         </div>
                       </div>
                     )}

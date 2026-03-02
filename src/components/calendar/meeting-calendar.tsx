@@ -22,11 +22,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus, Edit, Trash2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus, Edit, Trash2, User, FileText } from 'lucide-react';
 import type { Meeting, CreateMeetingInput } from '@/lib/api/meetings';
 import type { Pair } from '@/lib/api/pairs';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 import { cn } from '@/lib/utils';
+import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
+import { KeenIcon } from '@/components/keenicons';
 
 interface MeetingCalendarProps {
   meetings: Meeting[];
@@ -160,9 +163,14 @@ export function MeetingCalendar({
   };
 
   const getMeetingsForDate = (date: Date) => {
-    return filteredMeetings.filter(meeting => 
-      isSameDay(new Date(meeting.date_time), date)
-    );
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return filteredMeetings.filter(meeting => {
+      try {
+        return format(new Date(meeting.date_time), 'yyyy-MM-dd') === dateStr;
+      } catch (e) {
+        return false;
+      }
+    });
   };
 
   const renderMonthView = () => {
@@ -199,7 +207,7 @@ export function MeetingCalendar({
             return (
               <div
                 key={idx}
-                className={`min-h-[100px] p-2 border-r border-b cursor-pointer transition-colors ${
+                className={`min-h-[120px] p-2 border-r border-b cursor-pointer transition-colors ${
                   !isCurrentMonth ? 'bg-gray-50/50 opacity-50' : 'bg-white'
                 } ${isCurrentDay ? 'bg-primary/[0.03]' : ''} hover:bg-gray-50`}
                 onClick={() => handleDateClick(day)}
@@ -211,13 +219,31 @@ export function MeetingCalendar({
                   {dayMeetings.slice(0, 3).map((meeting, i) => (
                     <div
                       key={meeting.id}
-                      className="text-[10px] p-1 bg-primary-light text-primary rounded-md truncate font-bold border border-primary/10 cursor-pointer hover:bg-primary hover:text-white transition-all"
+                      className="text-[10px] p-1.5 bg-white border border-gray-100 rounded-lg shadow-sm hover:border-primary/30 transition-all group overflow-hidden"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleMeetingClick(meeting);
                       }}
                     >
-                      {format(new Date(meeting.date_time), 'HH:mm')} {meeting.title}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className="flex -space-x-1.5 shrink-0">
+                          <Avatar className="size-4 border border-white">
+                            <AvatarImage src={getAvatarPublicUrl(meeting.mp_pairs?.mentor?.avatar_url, meeting.mp_pairs?.mentor?.id)} />
+                            <AvatarFallback className="text-[6px] font-bold bg-blue-50 text-blue-600">{getInitials(meeting.mp_pairs?.mentor?.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <Avatar className="size-4 border border-white">
+                            <AvatarImage src={getAvatarPublicUrl(meeting.mp_pairs?.mentee?.avatar_url, meeting.mp_pairs?.mentee?.id)} />
+                            <AvatarFallback className="text-[6px] font-bold bg-green-50 text-green-600">{getInitials(meeting.mp_pairs?.mentee?.full_name)}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="font-bold text-gray-900 truncate flex-1">
+                      {meeting.task?.name || meeting.title}
+                    </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-[9px] text-gray-400 font-medium">
+                        <Clock size={8} />
+                        {format(new Date(meeting.date_time), 'HH:mm')}
+                      </div>
                     </div>
                   ))}
                   {dayMeetings.length > 3 && (
@@ -268,15 +294,27 @@ export function MeetingCalendar({
                     {dayMeetings.map(meeting => (
                       <div
                         key={meeting.id}
-                        className="text-[10px] p-1.5 bg-primary-light text-primary rounded-lg border border-primary/10 cursor-pointer hover:shadow-md transition-all font-bold"
+                        className="text-[10px] p-2 bg-white border border-gray-100 rounded-xl shadow-sm cursor-pointer hover:border-primary/30 transition-all font-bold group"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMeetingClick(meeting);
                         }}
                       >
-                        <div className="truncate">{meeting.title}</div>
-                        <div className="text-[9px] opacity-70 mt-0.5 font-medium">
-                          {format(new Date(meeting.date_time), 'HH:mm')}
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <div className="flex -space-x-1.5">
+                            <Avatar className="size-4 border border-white">
+                              <AvatarImage src={getAvatarPublicUrl(meeting.mp_pairs?.mentor?.avatar_url, meeting.mp_pairs?.mentor?.id)} />
+                              <AvatarFallback className="text-[6px] font-bold bg-blue-50 text-blue-600">{getInitials(meeting.mp_pairs?.mentor?.full_name)}</AvatarFallback>
+                            </Avatar>
+                            <Avatar className="size-4 border border-white">
+                              <AvatarImage src={getAvatarPublicUrl(meeting.mp_pairs?.mentee?.avatar_url, meeting.mp_pairs?.mentee?.id)} />
+                              <AvatarFallback className="text-[6px] font-bold bg-green-50 text-green-600">{getInitials(meeting.mp_pairs?.mentee?.full_name)}</AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <span className="text-[9px] text-gray-400 group-hover:text-primary transition-colors">{format(new Date(meeting.date_time), 'HH:mm')}</span>
+                        </div>
+                        <div className="truncate text-gray-900 leading-tight">
+                          {meeting.task?.name || meeting.title}
                         </div>
                       </div>
                     ))}
@@ -347,10 +385,10 @@ export function MeetingCalendar({
               </div>
 
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" className="size-9 rounded-xl border-gray-200 hover:bg-gray-50" onClick={handlePrevious}>
+                <Button variant="outline" size="icon" className="size-9 rounded-xl border-gray-200 hover:bg-50" onClick={handlePrevious}>
                   <ChevronLeft size={16} />
                 </Button>
-                <Button variant="outline" size="icon" className="size-9 rounded-xl border-gray-200 hover:bg-gray-50" onClick={handleNext}>
+                <Button variant="outline" size="icon" className="size-9 rounded-xl border-gray-200 hover:bg-50" onClick={handleNext}>
                   <ChevronRight size={16} />
                 </Button>
               </div>
@@ -371,47 +409,124 @@ export function MeetingCalendar({
 
       {/* Meeting Details Dialog */}
       <Dialog open={!!selectedMeeting} onOpenChange={(open) => !open && setSelectedMeeting(null)}>
-        <DialogContent className="max-w-[450px] rounded-2xl border-none shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Meeting Details</DialogTitle>
-            <DialogDescription className="text-sm">View and manage the scheduled session</DialogDescription>
-          </DialogHeader>
-          {selectedMeeting && (
-            <div className="space-y-5 py-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Meeting Title</Label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="rounded-xl border-gray-200 h-11 font-bold text-sm"
-                />
+        <DialogContent className="max-w-[500px] max-h-[95vh] rounded-2xl border-none shadow-2xl p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="px-8 pt-8 pb-4 border-b border-gray-50 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <DialogTitle className="text-2xl font-black text-gray-900 tracking-tight">Meeting Details</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-gray-400 uppercase tracking-widest">Session Management</DialogDescription>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Notes / Agenda</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={4}
-                  className="rounded-xl border-gray-200 resize-none p-4 text-sm"
-                />
-              </div>
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm"><Clock size={20} /></div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Scheduled for</p>
-                  <p className="text-sm font-bold text-gray-900">{format(new Date(selectedMeeting.date_time), 'PPPP p')}</p>
-                </div>
-              </div>
+              <Badge className={cn("rounded-full font-black uppercase text-[10px] px-3 h-6", 
+                selectedMeeting?.status === 'upcoming' ? 'bg-primary/10 text-primary border-none' : 'bg-success/10 text-success border-none'
+              )}>
+                {selectedMeeting?.status}
+              </Badge>
             </div>
-          )}
-          <DialogFooter className="gap-2">
-            <div className="flex w-full justify-between">
-              <Button variant="outline" onClick={() => setSelectedMeeting(null)} className="rounded-xl h-11 px-6 font-bold">Cancel</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" className="size-11 rounded-xl border-red-100 bg-red-50 text-red-600 hover:bg-red-100 p-0" onClick={handleDeleteMeeting} title="Delete Meeting">
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-8 space-y-6">
+            {selectedMeeting && (
+              <Fragment>
+                {/* Meeting Participants Section */}
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1 flex items-center gap-2">
+                    <User size={12} className="text-primary" />
+                    Program Participants
+                  </Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                      <Avatar className="size-10 border-2 border-white shadow-sm">
+                        <AvatarImage src={getAvatarPublicUrl(selectedMeeting.mp_pairs?.mentor?.avatar_url, selectedMeeting.mp_pairs?.mentor?.id)} />
+                        <AvatarFallback className="bg-blue-50 text-blue-600 font-bold">{getInitials(selectedMeeting.mp_pairs?.mentor?.full_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black text-blue-500 uppercase tracking-tighter leading-none mb-1">Mentor</p>
+                        <p className="text-sm font-bold text-gray-900 truncate leading-none">{selectedMeeting.mp_pairs?.mentor?.full_name || 'Assigned'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                      <Avatar className="size-10 border-2 border-white shadow-sm">
+                        <AvatarImage src={getAvatarPublicUrl(selectedMeeting.mp_pairs?.mentee?.avatar_url, selectedMeeting.mp_pairs?.mentee?.id)} />
+                        <AvatarFallback className="bg-green-50 text-green-600 font-bold">{getInitials(selectedMeeting.mp_pairs?.mentee?.full_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black text-green-500 uppercase tracking-tighter leading-none mb-1">Mentee</p>
+                        <p className="text-sm font-bold text-gray-900 truncate leading-none">{selectedMeeting.mp_pairs?.mentee?.full_name || 'Assigned'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Basic Info Section */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Session Title</Label>
+                    <Input
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="rounded-xl border-gray-200 h-12 font-bold text-gray-900 shadow-sm focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <div className="p-4 bg-primary/[0.03] rounded-2xl border border-primary/10 flex items-center gap-4">
+                    <div className="size-12 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border border-primary/5"><Clock size={24} /></div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none mb-1">Scheduled for</p>
+                      <p className="text-base font-black text-gray-900 leading-tight">
+                        {format(new Date(selectedMeeting.date_time), 'EEEE, MMMM do')}
+                      </p>
+                      <p className="text-sm font-bold text-gray-500">
+                        at {format(new Date(selectedMeeting.date_time), 'p')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Linked Task Section */}
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1 flex items-center gap-2">
+                    <FileText size={12} className="text-gray-400" />
+                    Associated Checklist Task
+                  </Label>
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-lg bg-white flex items-center justify-center text-gray-400 shadow-sm border border-gray-100"><KeenIcon icon="check-square" className="text-sm" /></div>
+                      <span className="text-sm font-bold text-gray-700">
+                        {selectedMeeting.task?.name || 'General Program Sync'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Notes / Agenda</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={4}
+                    placeholder="What will be discussed during this session?"
+                    className="rounded-2xl border-gray-200 resize-none p-4 text-sm bg-white shadow-sm focus:ring-primary/20"
+                  />
+                </div>
+              </Fragment>
+            )}
+          </div>
+          
+          <DialogFooter className="px-8 py-6 bg-gray-50/50 border-t border-gray-100 shrink-0">
+            <div className="flex w-full justify-between items-center">
+              <Button variant="outline" onClick={() => setSelectedMeeting(null)} className="rounded-xl h-11 px-6 font-bold text-xs">Cancel</Button>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="size-11 rounded-xl border-red-100 bg-white text-red-600 hover:bg-red-50 p-0 shadow-sm" 
+                  onClick={handleDeleteMeeting} 
+                  title="Delete Meeting"
+                >
                   <Trash2 size={18} />
                 </Button>
-                <Button onClick={handleUpdateMeeting} className="rounded-xl h-11 px-8 font-bold shadow-lg shadow-primary/20">Save Changes</Button>
+                <Button onClick={handleUpdateMeeting} className="rounded-xl h-11 px-8 font-bold text-xs shadow-lg shadow-primary/20">
+                  Update Session
+                </Button>
               </div>
             </div>
           </DialogFooter>

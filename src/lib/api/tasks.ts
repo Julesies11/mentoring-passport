@@ -61,7 +61,8 @@ export interface PairTask {
   name: string;
   evidence_type_id: string;
   sort_order: number;
-  status: 'not_submitted' | 'awaiting_review' | 'completed';
+  status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
+  last_feedback?: string | null;
   completed_at: string | null;
   completed_by_id: string | null;
   completed_by?: {
@@ -148,6 +149,7 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       evidence_type_id,
       sort_order,
       status,
+      last_feedback,
       completed_at,
       completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
@@ -294,6 +296,11 @@ export async function updatePairTaskStatus(
     updateData.completed_by_user_id = null;
   }
 
+  // Clear feedback when moving back to review or completion
+  if (status === 'awaiting_review' || status === 'completed') {
+    updateData.last_feedback = null;
+  }
+
   const { error: updateError } = await supabase
     .from('mp_pair_tasks')
     .update(updateData)
@@ -314,6 +321,7 @@ export async function updatePairTaskStatus(
       evidence_type_id,
       sort_order,
       status,
+      last_feedback,
       completed_at,
       completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),

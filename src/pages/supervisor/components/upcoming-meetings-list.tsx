@@ -76,25 +76,25 @@ export function UpcomingMeetingsList({ meetings, isLoading }: UpcomingMeetingsLi
                 </div>
               </div>
 
-              <h4 className="font-bold text-sm text-gray-800 truncate mb-4" title={meeting.title}>
-                {meeting.title}
+              <h4 className="font-bold text-sm text-gray-800 truncate mb-4" title={meeting.task?.name || meeting.title}>
+                {meeting.task?.name || meeting.title}
               </h4>
 
               <div className="flex items-center -space-x-2 mb-1">
                 <Avatar className="size-7 border-2 border-white shadow-sm">
-                  <AvatarImage src={getAvatarPublicUrl(meeting.pair?.mentor?.avatar_url, meeting.pair?.mentor?.id)} />
+                  <AvatarImage src={getAvatarPublicUrl(meeting.mp_pairs?.mentor?.avatar_url, meeting.mp_pairs?.mentor?.id)} />
                   <AvatarFallback className="text-[8px] font-bold bg-blue-50 text-blue-600">
-                    {getInitials(meeting.pair?.mentor?.full_name)}
+                    {getInitials(meeting.mp_pairs?.mentor?.full_name)}
                   </AvatarFallback>
                 </Avatar>
                 <Avatar className="size-7 border-2 border-white shadow-sm">
-                  <AvatarImage src={getAvatarPublicUrl(meeting.pair?.mentee?.avatar_url, meeting.pair?.mentee?.id)} />
+                  <AvatarImage src={getAvatarPublicUrl(meeting.mp_pairs?.mentee?.avatar_url, meeting.mp_pairs?.mentee?.id)} />
                   <AvatarFallback className="text-[8px] font-bold bg-green-50 text-green-600">
-                    {getInitials(meeting.pair?.mentee?.full_name)}
+                    {getInitials(meeting.mp_pairs?.mentee?.full_name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="pl-4 text-[10px] font-bold text-gray-500 truncate">
-                  {meeting.pair?.mentor?.full_name?.split(' ')[0]} & {meeting.pair?.mentee?.full_name?.split(' ')[0]}
+                  {meeting.mp_pairs?.mentor?.full_name?.split(' ')[0]} & {meeting.mp_pairs?.mentee?.full_name?.split(' ')[0]}
                 </div>
               </div>
             </CardContent>

@@ -64,12 +64,13 @@ export function ProgramMemberDashboardPage() {
             .filter(m => m.status === 'upcoming' && new Date(m.date_time) > new Date())
             .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
 
-          // Logic for "What to do next"
-          const nextTask = sortedTasks.find((t: any) => t.status === 'not_submitted');
+          // Logic for "What to do next" - Prioritize revisions over new tasks
+          const nextTask = sortedTasks.find((t: any) => t.status === 'revision_required') || 
+                           sortedTasks.find((t: any) => t.status === 'not_submitted');
           
           // Logic for "Recent Activity"
           const recentActivity = sortedTasks
-            .filter((t: any) => t.status === 'completed' || t.status === 'awaiting_review')
+            .filter((t: any) => t.status === 'completed' || t.status === 'awaiting_review' || t.status === 'revision_required')
             .sort((a, b) => {
                 const dateA = new Date(a.updated_at || a.created_at).getTime();
                 const dateB = new Date(b.updated_at || b.created_at).getTime();
@@ -108,9 +109,9 @@ export function ProgramMemberDashboardPage() {
     );
   }
 
-  const goToTasks = (pairId: string) => {
+  const goToTasks = (pairId: string, taskId?: string) => {
     setSelectedPairingId(pairId);
-    navigate('/program-member/tasks');
+    navigate(`/program-member/tasks?pair=${pairId}${taskId ? `&taskId=${taskId}` : ''}`);
   };
 
   const goToMeetings = (pairId: string, openDialog = false) => {
@@ -232,12 +233,12 @@ export function ProgramMemberDashboardPage() {
 
           {/* Action Center (8 cols) */}
           <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-7.5">
-            {/* Tasks Strategy Card */}
+            {/* Action Checklist Card */}
             <Card className="shadow-none border-gray-100 bg-gray-50/30 flex flex-col h-full">
               <CardHeader className="pb-4 flex flex-row items-center justify-between space-y-0 px-6">
                 <CardTitle className="text-xs font-black uppercase tracking-[0.1em] flex items-center gap-2 text-gray-500">
                   <KeenIcon icon="clipboard" className="text-success text-base" />
-                  Tasks Strategy
+                  Action Checklist
                 </CardTitle>
                 <Button 
                   variant="link" 
@@ -254,20 +255,42 @@ export function ProgramMemberDashboardPage() {
                   <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">What to do next</h4>
                   {stat.nextTask ? (
                     <div 
-                      className="p-4 rounded-2xl border border-success/20 bg-success/[0.03] hover:bg-success/[0.06] transition-all cursor-pointer group"
-                      onClick={() => goToTasks(stat.pair.id)}
+                      className={cn(
+                        "p-4 rounded-2xl border transition-all cursor-pointer group",
+                        stat.nextTask.status === 'revision_required' 
+                          ? "border-red-300 bg-red-50/50 hover:bg-red-50" 
+                          : "border-success/20 bg-success/[0.03] hover:bg-success/[0.06]"
+                      )}
+                      onClick={() => goToTasks(stat.pair.id, stat.nextTask.id)}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="size-8 rounded-full bg-success text-white flex items-center justify-center shadow-lg shadow-success/20 group-hover:scale-110 transition-transform shrink-0 mt-0.5">
-                          <KeenIcon icon="rocket" />
+                        <div className={cn(
+                          "size-8 rounded-full text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0 mt-0.5",
+                          stat.nextTask.status === 'revision_required' ? "bg-red-600 shadow-red-200" : "bg-success shadow-success/20"
+                        )}>
+                          <KeenIcon icon={stat.nextTask.status === 'revision_required' ? "information-2" : "rocket"} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900 group-hover:text-success transition-colors break-words">
+                          <p className={cn(
+                            "text-sm font-bold transition-colors break-words",
+                            stat.nextTask.status === 'revision_required' ? "text-red-900 group-hover:text-red-700" : "text-gray-900 group-hover:text-success"
+                          )}>
                             {stat.nextTask.name}
                           </p>
-                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mb-2">Recommended priority</p>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mb-2">
+                            {stat.nextTask.status === 'revision_required' ? 'Requires Attention' : 'Recommended priority'}
+                          </p>
 
-                          {stat.nextTask.subtasks && stat.nextTask.subtasks.length > 0 && (
+                          {stat.nextTask.status === 'revision_required' && stat.nextTask.last_feedback && (
+                            <div className="mt-2 p-2.5 bg-white border border-red-100 rounded-xl">
+                              <p className="text-[8px] font-black text-red-600 uppercase tracking-widest leading-none mb-1.5">Revision Notes</p>
+                              <p className="text-[11px] text-red-800 font-medium italic leading-snug line-clamp-2">
+                                "{stat.nextTask.last_feedback}"
+                              </p>
+                            </div>
+                          )}
+
+                          {stat.nextTask.status !== 'revision_required' && stat.nextTask.subtasks && stat.nextTask.subtasks.length > 0 && (
                             <div className="mt-3 space-y-2 border-t border-success/10 pt-3">
                               {stat.nextTask.subtasks.map((st: any) => (
                                 <div key={st.id} className="flex items-start gap-2">
@@ -311,11 +334,16 @@ export function ProgramMemberDashboardPage() {
                         >
                           <div className={cn(
                               "size-2 rounded-full shrink-0",
-                              task.status === 'completed' ? "bg-success" : "bg-warning"
+                              task.status === 'completed' ? "bg-success" : 
+                              task.status === 'revision_required' ? "bg-danger" : "bg-warning"
                           )} />
                           <span className="flex-1 font-semibold text-gray-700 break-words">{task.name}</span>
-                          <span className="text-[9px] font-black uppercase text-gray-400 whitespace-nowrap">
-                              {task.status === 'completed' ? 'Finished' : 'In Review'}
+                          <span className={cn(
+                            "text-[9px] font-black uppercase whitespace-nowrap",
+                            task.status === 'revision_required' ? "text-danger" : "text-gray-400"
+                          )}>
+                              {task.status === 'completed' ? 'Finished' : 
+                               task.status === 'revision_required' ? 'Needs Revision' : 'In Review'}
                           </span>
                         </div>
                       ))}

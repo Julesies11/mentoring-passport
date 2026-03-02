@@ -86,8 +86,10 @@ export function MeetingDialog({
         meeting_type: meeting.meeting_type as any || 'virtual',
       });
     } else {
+      // Find the name of the selected task to use as the title
+      const selectedTask = tasks.find(t => t.id === targetTaskId);
       setFormData({
-        title: targetTaskId ? 'Task Discussion' : '',
+        title: selectedTask ? selectedTask.name : '',
         date_time: '',
         notes: '',
         pair_task_id: targetTaskId || '',
@@ -95,11 +97,21 @@ export function MeetingDialog({
         meeting_type: 'virtual',
       });
     }
-  }, [meeting, initialTaskId, open, tasks.length > 0]); // Dependency array focused on opening and data presence
+  }, [meeting, initialTaskId, open, tasks.length > 0]);
+
+  // Update title when task selection changes (only for new meetings)
+  useEffect(() => {
+    if (!meeting && open && formData.pair_task_id && formData.pair_task_id !== 'none') {
+      const selectedTask = tasks.find(t => t.id === formData.pair_task_id);
+      if (selectedTask && (!formData.title || tasks.some(t => t.name === formData.title))) {
+        setFormData(prev => ({ ...prev, title: selectedTask.name }));
+      }
+    }
+  }, [formData.pair_task_id, tasks, meeting, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.date_time) return;
+    if (!formData.title || !formData.date_time || !formData.pair_task_id || formData.pair_task_id === 'none') return;
 
     const submissionData = {
       pair_id: pairId,
@@ -108,7 +120,7 @@ export function MeetingDialog({
       description: formData.notes,
       scheduled_at: new Date(formData.date_time).toISOString(),
       date_time: new Date(formData.date_time).toISOString(),
-      pair_task_id: formData.pair_task_id === 'none' || !formData.pair_task_id ? null : formData.pair_task_id,
+      pair_task_id: formData.pair_task_id,
       location: formData.location,
       meeting_type: formData.meeting_type,
     };
@@ -142,27 +154,27 @@ export function MeetingDialog({
 
             <div className="grid gap-2">
               <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold flex items-center gap-1">
-                Link to Task (Optional)
+                Link to Task <span className="text-danger">*</span>
               </Label>
               <Select
                 value={formData.pair_task_id}
                 onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
+                required
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a task for this meeting" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No associated task</SelectItem>
+                <SelectContent className="max-w-[calc(100vw-40px)] sm:max-w-[450px]">
                   {tasks.map((task) => {
                     const isCompleted = task.status === 'completed';
                     return (
                       <SelectItem key={task.id} value={task.id}>
-                        <div className="flex items-center justify-between w-full gap-4">
-                          <span>{task.name}</span>
+                        <div className="flex items-center justify-between w-full gap-4 min-w-0">
+                          <span className="truncate">{task.name}</span>
                           <Badge 
                             variant={isCompleted ? 'success' : 'outline'} 
                             size="xs"
-                            className="ml-auto"
+                            className="ml-auto shrink-0"
                           >
                             {isCompleted ? 'Completed' : 'Pending'}
                           </Badge>

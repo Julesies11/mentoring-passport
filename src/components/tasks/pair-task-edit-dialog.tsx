@@ -35,7 +35,7 @@ import { KeenIcon } from '@/components/keenicons';
 interface PairTaskEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: (PairTask & { evidence?: any[] }) | null;
+  task: (PairTask & { evidence?: any[]; meetings?: any[] }) | null;
   onUpdateTask: (taskId: string, updates: Partial<PairTask>) => void;
   onDeleteTask: (taskId: string) => void;
   onCreateSubTask: (
@@ -132,6 +132,18 @@ export function PairTaskEditDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto kt-scrollable-y-hover px-6 py-6 space-y-8">
+          {task.status === 'revision_required' && task.last_feedback && (
+            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl space-y-2">
+              <div className="flex items-center gap-2 text-red-700">
+                <KeenIcon icon="information-2" className="text-lg" />
+                <span className="text-xs font-black uppercase tracking-widest">Revision Previously Requested</span>
+              </div>
+              <p className="text-sm text-red-800 leading-relaxed font-medium pl-7">
+                "{task.last_feedback}"
+              </p>
+            </div>
+          )}
+
           {/* Evidence Section (Show if exists) */}
           {task.evidence && task.evidence.length > 0 && (
             <div className="space-y-4">
@@ -195,6 +207,46 @@ export function PairTaskEditDialog({
                       <KeenIcon icon="eye" />
                       View Evidence File
                     </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Meeting Notes Section */}
+          {task.meetings && task.meetings.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-1 border-b border-gray-50">
+                <div className="size-8 rounded-lg bg-info/10 flex items-center justify-center">
+                  <KeenIcon
+                    icon="calendar"
+                    className="text-info text-base"
+                  />
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
+                  Associated Meeting Notes
+                </h4>
+              </div>
+
+              <div className="space-y-3">
+                {task.meetings.map((meeting: any) => (
+                  <div
+                    key={meeting.id}
+                    className="p-4 bg-blue-50/30 rounded-2xl border border-blue-100 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-sm font-bold text-gray-900">{meeting.title}</h5>
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {new Date(meeting.date_time).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {meeting.notes ? (
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {meeting.notes}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No notes recorded for this session.</p>
+                    )}
                   </div>
                 ))}
               </div>

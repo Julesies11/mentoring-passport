@@ -100,7 +100,7 @@ export async function fetchAllEvidence(): Promise<Evidence[]> {
 }
 
 /**
- * Fetch pending evidence (supervisor only)
+ * Fetch pending and rejected evidence (supervisor only)
  */
 export async function fetchPendingEvidence(): Promise<Evidence[]> {
   const { data, error } = await supabase
@@ -115,7 +115,7 @@ export async function fetchPendingEvidence(): Promise<Evidence[]> {
         mentee:mentee_id(id, full_name, avatar_url, job_title)
       )
     `)
-    .eq('status', 'pending')
+    .in('status', ['pending', 'rejected'])
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -262,8 +262,20 @@ export async function reviewEvidence(
 
   if (data.pair_task_id) {
     try {
-      const newStatus = input.status === 'approved' ? 'completed' : 'not_submitted';
-      await updatePairTaskStatus(data.pair_task_id, newStatus, user.id);
+      if (input.status === 'approved') {
+        await updatePairTaskStatus(data.pair_task_id, 'completed', user.id);
+      } else {
+        // Revision Required flow
+        const { error: taskUpdateError } = await supabase
+          .from('mp_pair_tasks')
+          .update({ 
+            status: 'revision_required',
+            last_feedback: input.rejection_reason || 'Changes requested by supervisor.'
+          })
+          .eq('id', data.pair_task_id);
+          
+        if (taskUpdateError) throw taskUpdateError;
+      }
     } catch (updateError) {
       console.error(`Error updating task status:`, updateError);
     }

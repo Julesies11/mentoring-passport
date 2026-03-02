@@ -32,7 +32,8 @@ interface TaskDialogProps {
   task: {
     id: string;
     name: string;
-    status: 'not_submitted' | 'awaiting_review' | 'completed';
+    status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
+    last_feedback?: string | null;
     description?: string;
     evidence_type?: {
       id?: string;
@@ -173,6 +174,18 @@ export function TaskDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 pt-0 pb-4 kt-scrollable-y-hover">
+          {task.status === 'revision_required' && task.last_feedback && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-2 text-red-700">
+                <KeenIcon icon="information-2" className="text-lg" />
+                <span className="text-xs font-black uppercase tracking-widest">Revision Required</span>
+              </div>
+              <p className="text-sm text-red-800 leading-relaxed font-medium pl-7">
+                "{task.last_feedback}"
+              </p>
+            </div>
+          )}
+
           {!isLocked ? (
             <div className="space-y-2.5 pt-3">
               {/* Unified File List (Consistent Position Above) */}
@@ -228,7 +241,9 @@ export function TaskDialog({
               </Button>
               <Button onClick={() => handleAction(true)} disabled={isSubmitting} className={cn("rounded-xl h-10 px-8 font-bold text-xs shadow-lg",
                 requiresSubmission ? "shadow-primary/20" : "bg-success text-white shadow-success/20 hover:bg-success-dark")}>
-                {isSubmitting ? 'Processing...' : requiresSubmission ? 'Submit for Review' : 'Mark as Completed'}
+                {isSubmitting ? 'Processing...' : 
+                 task.status === 'revision_required' ? 'Resubmit for Review' :
+                 requiresSubmission ? 'Submit for Review' : 'Mark as Completed'}
               </Button>
             </div>
           )}

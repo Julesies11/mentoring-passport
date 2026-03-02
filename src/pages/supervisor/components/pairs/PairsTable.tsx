@@ -135,7 +135,8 @@ export function PairsTable({ pairs, isLoading, filterStatus, onShowMatchmaker }:
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery('')}
-              className="h-9 w-[300px]"
+              containerClassName="w-[300px]"
+              className="h-9"
             />
             <Button size="sm" onClick={onShowMatchmaker}>
               <KeenIcon icon="plus-squared" />

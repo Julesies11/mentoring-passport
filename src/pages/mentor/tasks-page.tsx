@@ -37,10 +37,38 @@ import { usePairing } from '@/providers/pairing-provider';
 export function TasksPage() {
   const { user, isMentor } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { selectedPairing: selectedPair, isLoading: pairsLoading } = usePairing();
+  const { selectedPairing: selectedPair, pairings, isLoading: pairsLoading, setSelectedPairingId } = usePairing();
   
   const { tasks, stats, isLoading: tasksLoading, updateStatus, updateSubTask } = usePairTasks(selectedPair?.id || '');
+
+  // Handle URL parameters for pair selection and task scrolling
+  useEffect(() => {
+    const pairIdFromUrl = searchParams.get('pair');
+    const taskIdFromUrl = searchParams.get('taskId');
+
+    // 1. Sync pair selection if needed
+    if (pairIdFromUrl && pairIdFromUrl !== selectedPair?.id) {
+      const exists = pairings.find(p => p.id === pairIdFromUrl);
+      if (exists) {
+        setSelectedPairingId(pairIdFromUrl);
+      }
+    }
+
+    // 2. Scroll to task if specified and loaded
+    if (taskIdFromUrl && tasks.length > 0 && !tasksLoading) {
+      // Small delay to ensure DOM is ready after potential re-renders
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`task-${taskIdFromUrl}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Highlight it briefly? Maybe just scroll is enough for now
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, tasks, tasksLoading, pairings, selectedPair?.id, setSelectedPairingId]);
 
   const { data: pairEvidence = [] } = useQuery({
     queryKey: ['pair-evidence', selectedPair?.id],
@@ -205,6 +233,16 @@ export function TasksPage() {
   };
 
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
+    const task = enrichedTasks.find(t => t.id === taskId);
+    const requiresSubmission = task?.evidence_type?.requires_submission;
+
+    if (currentStatus !== 'completed' && requiresSubmission) {
+      // If task requires evidence, open the dialog instead of just marking as completed
+      setSelectedTask(task);
+      setIsTaskDialogOpen(true);
+      return;
+    }
+
     const newStatus = currentStatus === 'completed' ? 'not_submitted' : 'completed';
     try {
       updateStatus(taskId, newStatus);
@@ -333,6 +371,7 @@ export function TasksPage() {
             id: selectedTask.id,
             name: selectedTask.name,
             status: selectedTask.status,
+            last_feedback: selectedTask.last_feedback,
             description: selectedTask.task?.description,
             evidence_type: selectedTask.evidence_type,
             completed_at: selectedTask.completed_at,

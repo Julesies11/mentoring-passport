@@ -181,3 +181,14 @@ execute FUNCTION mp_notify_pair_created ();
 create trigger mp_update_pairs_updated_at BEFORE
 update on mp_pairs for EACH row
 execute FUNCTION mp_update_updated_at_column ();
+
+create table public.mp_meeting_subtasks (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  meeting_id uuid not null,
+  name text not null,
+  completed boolean not null default false,
+  sort_order integer not null,
+  created_at timestamp with time zone not null default now(),
+  constraint mp_meeting_subtasks_pkey primary key (id),
+  constraint mp_meeting_subtasks_meeting_id_fkey foreign KEY (meeting_id) references mp_meetings (id) on delete CASCADE
+) TABLESPACE pg_default;

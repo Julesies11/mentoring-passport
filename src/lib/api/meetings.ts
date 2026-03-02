@@ -10,7 +10,11 @@ export interface Meeting {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  pair?: {
+  task?: {
+    id: string;
+    name: string;
+  };
+  mp_pairs?: {
     id: string;
     mentor?: {
       id: string;
@@ -51,11 +55,12 @@ export async function fetchAllMeetings(): Promise<Meeting[]> {
     .from('mp_meetings')
     .select(`
       *,
-      pair:mp_pairs!pair_id(
+      mp_pairs(
         id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
-      )
+      ),
+      task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .order('date_time', { ascending: false });
 
@@ -75,11 +80,12 @@ export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
     .from('mp_meetings')
     .select(`
       *,
-      pair:mp_pairs!pair_id(
+      mp_pairs(
         id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
-      )
+      ),
+      task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .eq('pair_id', pairId)
     .order('date_time', { ascending: false });
@@ -100,11 +106,12 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
     .from('mp_meetings')
     .select(`
       *,
-      pair:mp_pairs!inner(
+      mp_pairs(
         id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
-      )
+      ),
+      task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`, { foreignTable: 'mp_pairs' })
     .eq('status', 'upcoming')
@@ -136,11 +143,12 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     })
     .select(`
       *,
-      pair:mp_pairs!pair_id(
+      mp_pairs(
         id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
-      )
+      ),
+      task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .single();
 
@@ -165,11 +173,12 @@ export async function updateMeeting(
     .eq('id', meetingId)
     .select(`
       *,
-      pair:mp_pairs!pair_id(
+      mp_pairs(
         id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
-      )
+      ),
+      task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .single();
 
