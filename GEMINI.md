@@ -88,6 +88,8 @@ This ensures:
   - Remove outer card borders on mobile (`border-0 sm:border`).
 
 - **Table Layout & Containment:**
+  - **STRICT RULE:** NEVER use `table-fixed` without a desktop override. Always use `table-fixed md:table-auto` to ensure tables are contained on mobile but return to a natural, balanced layout on desktop.
+  - **STRICT RULE:** Any width percentages applied to `<th>` or `<td>` MUST be mobile-only (e.g., `w-[45%] md:w-auto`). NEVER lock column widths on desktop.
   - Use `table-fixed` on mobile to prevent horizontal overflow; switch to `table-auto` on desktop (`table-fixed md:table-auto`).
   - Implement **Priority Hiding**: Keep only the most critical 2-3 columns on mobile (e.g., Names, Role, Pairings). Hide secondary data like Contact Info, Status Badges, and Dates.
   - Hide the "Actions" column on mobile if the row itself is made clickable.
