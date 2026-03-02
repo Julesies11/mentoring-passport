@@ -77,3 +77,31 @@ This ensures:
 - Keep components pure.
 - Prefer custom hooks for data logic.
 - Keep JSX minimal, clean, and Metronic-compliant.
+
+# ===============================
+# 3. MOBILE UI STANDARDS (Supervisor Section)
+# ===============================
+- **Header & Global Spacing:**
+  - Hide the top title/toolbar (Breadcrumbs, Page Title, Description) on mobile (`hidden sm:block`).
+  - Hide dashboard-style summary/stats cards on mobile (`hidden sm:grid`).
+  - Reduce vertical gaps between components (`gap-2 sm:gap-5`).
+  - Remove outer card borders on mobile (`border-0 sm:border`).
+
+- **Table Layout & Containment:**
+  - Use `table-fixed` on mobile to prevent horizontal overflow; switch to `table-auto` on desktop (`table-fixed md:table-auto`).
+  - Implement **Priority Hiding**: Keep only the most critical 2-3 columns on mobile (e.g., Names, Role, Pairings). Hide secondary data like Contact Info, Status Badges, and Dates.
+  - Hide the "Actions" column on mobile if the row itself is made clickable.
+  - Use `truncate` and `block` on all text-heavy cells to ensure ellipses (...) instead of wrapping or horizontal stretching.
+  - Avatars should scale down on mobile (`size-7 md:size-8`).
+
+- **Filtering & Interactivity:**
+  - Default status filters to **'active'**.
+  - Hide the 'All Statuses' option from dropdowns on mobile to maintain context (since status badges are hidden).
+  - Implement auto-correction: if a user is on 'All Statuses' and enters mobile view, force switch to 'Active'.
+  - Hide redundant or low-priority filters (like Role filters) on mobile to declutter the toolbar.
+  - Make entire table rows clickable on mobile to open details/edit dialogs.
+
+- **Pagination:**
+  - Force pagination footers to stay on a **single row** (`flex-row` always).
+  - Use compact components (`h-7`, `text-[10px]`) and condensed indicators (e.g., "1 / 10" instead of "1 of 10").
+  - Use responsive labeling: hide "Show" and "per page" text on small mobile screens.
