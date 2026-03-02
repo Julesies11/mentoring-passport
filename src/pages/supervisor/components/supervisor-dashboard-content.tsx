@@ -12,14 +12,16 @@ import { format, differenceInDays } from 'date-fns';
 import { fetchPairTasks } from '@/lib/api/tasks';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function SupervisorDashboardContent() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { data: participants = [] } = useAllParticipants();
   const { pairs = [] } = usePairs();
   const { evidence: pendingEvidenceList = [] } = usePendingEvidence();
 
-  const [pairProgress, setPairProgress] = useState<Record<string, number>>({});
+  const [pairStats, setPairStats] = useState<Record<string, { completed: number, total: number, formatted: string }>>({});
 
   // Fetch detailed progress for all active pairs
   useEffect(() => {
@@ -28,17 +30,21 @@ export function SupervisorDashboardContent() {
         return;
       }
 
-      const progressMap: Record<string, number> = {};
+      const statsMap: Record<string, { completed: number, total: number, formatted: string }> = {};
       try {
         await Promise.all(pairs.map(async (pair) => {
           if (pair.status === 'active') {
             const tasks = await fetchPairTasks(pair.id);
             const completed = tasks.filter((t: any) => t.status === 'completed').length;
             const total = tasks.length;
-            progressMap[pair.id] = total > 0 ? Math.round((completed / total) * 100) : 0;
+            statsMap[pair.id] = { 
+              completed, 
+              total, 
+              formatted: `${completed}/${total}` 
+            };
           }
         }));
-        setPairProgress(progressMap);
+        setPairStats(statsMap);
       } catch (error) {
         console.error('Error fetching pair progress:', error);
       }
@@ -64,15 +70,18 @@ export function SupervisorDashboardContent() {
     
     // 4. Program Pulse: Average completion percentage of all active relationships
     const activePairProgress = pairs
-      .filter(p => p.status === 'active' && pairProgress[p.id] !== undefined)
-      .map(p => pairProgress[p.id]);
+      .filter(p => p.status === 'active' && pairStats[p.id] !== undefined)
+      .map(p => {
+        const s = pairStats[p.id];
+        return s.total > 0 ? (s.completed / s.total) * 100 : 0;
+      });
       
     const avgProgress = activePairProgress.length > 0 
       ? Math.round(activePairProgress.reduce((a, b) => a + b, 0) / activePairProgress.length) 
       : 0;
 
     return { active, pending, unpaired, avgProgress };
-  }, [pairs, pendingEvidenceList, participants, pairProgress]);
+  }, [pairs, pendingEvidenceList, participants, pairStats]);
 
   // Stale Pairings (No activity in 14 days)
   const stalePairings = useMemo(() => {
@@ -83,9 +92,9 @@ export function SupervisorDashboardContent() {
   }, [pairs]);
 
   return (
-    <div className="grid gap-5 lg:gap-7.5">
+    <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
       {/* 1. Executive Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
+      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
         <Card className="border-none shadow-sm bg-primary text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -146,15 +155,15 @@ export function SupervisorDashboardContent() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7.5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-5 lg:gap-7.5 items-start">
         {/* 2. Priority Review Queue */}
-        <Card className="lg:col-span-8 shadow-none border-gray-200">
-          <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
+        <Card className="lg:col-span-8 shadow-none border-0 sm:border border-gray-200">
+          <CardHeader className="flex flex-row items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
             <div>
-              <CardTitle className="text-lg font-bold text-gray-900">Priority Review Queue</CardTitle>
-              <CardDescription>Latest evidence submissions awaiting your approval</CardDescription>
+              <CardTitle className="text-base sm:text-lg font-bold text-gray-900">Priority Review Queue</CardTitle>
+              <CardDescription className="hidden sm:block">Latest evidence submissions awaiting your approval</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-xl font-bold text-xs h-9">
+            <Button variant="outline" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-xl font-bold text-[10px] sm:text-xs h-8 sm:h-9">
               View All
             </Button>
           </CardHeader>
@@ -162,35 +171,35 @@ export function SupervisorDashboardContent() {
             {pendingEvidenceList.length > 0 ? (
               <div className="divide-y divide-gray-100">
                 {pendingEvidenceList.slice(0, 5).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-4 min-w-0">
+                  <div key={item.id} className="flex items-center justify-between p-3 px-3 sm:p-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                       <div className="flex -space-x-2 shrink-0">
-                        <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
+                        <div className="size-7 sm:size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
                           {item.pair?.mentor?.id && (
                             <ProfileAvatar userId={item.pair.mentor.id} currentAvatar={item.pair.mentor.avatar_url} userName={item.pair.mentor.full_name || undefined} size="sm" />
                           )}
                         </div>
-                        <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
+                        <div className="size-7 sm:size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
                           {item.pair?.mentee?.id && (
                             <ProfileAvatar userId={item.pair.mentee.id} currentAvatar={item.pair.mentee.avatar_url} userName={item.pair.mentee.full_name || undefined} size="sm" />
                           )}
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">
+                        <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">
                           {item.task?.name || 'Task Evidence'}
                         </p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5 uppercase font-bold">
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center gap-1 sm:gap-1.5 mt-0.5 uppercase font-bold truncate">
                           <span className="text-primary">{item.pair?.mentor?.full_name}</span>
-                          <KeenIcon icon="dots" className="text-[8px]" />
+                          <KeenIcon icon="dots" className="text-[6px] sm:text-[8px]" />
                           <span className="text-success">{item.pair?.mentee?.full_name}</span>
-                          <span className="size-1 rounded-full bg-gray-300 ml-1"></span>
-                          <span>{format(new Date(item.created_at), 'MMM d')}</span>
+                          <span className="size-1 rounded-full bg-gray-300 ml-1 hidden xs:block"></span>
+                          <span className="hidden xs:block">{format(new Date(item.created_at), 'MMM d')}</span>
                         </p>
                       </div>
                     </div>
-                    <Button variant="primary" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-lg h-8 px-4 font-bold text-[11px]">
-                      Quick Review
+                    <Button variant="primary" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-lg h-7 sm:h-8 px-2 sm:px-4 font-bold text-[10px] sm:text-[11px] shrink-0">
+                      {isMobile ? 'Review' : 'Quick Review'}
                     </Button>
                   </div>
                 ))}
@@ -210,37 +219,37 @@ export function SupervisorDashboardContent() {
         </Card>
 
         {/* 3. Stale Pairings Alerts */}
-        <Card className="lg:col-span-4 shadow-none border-gray-200">
-          <CardHeader className="px-6 py-4 border-b border-gray-100">
-            <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <KeenIcon icon="notification-status" className="text-warning text-xl" />
+        <Card className="lg:col-span-4 shadow-none border-0 sm:border border-gray-200">
+          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
+            <CardTitle className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+              <KeenIcon icon="notification-status" className="text-warning text-lg sm:text-xl" />
               Stale Pairings
             </CardTitle>
-            <CardDescription>Relationships with no activity for 14+ days</CardDescription>
+            <CardDescription className="hidden sm:block">Relationships with no activity for 14+ days</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 px-6">
+          <CardContent className="p-3 sm:p-4 px-3 sm:px-6">
             {stalePairings.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {stalePairings.map((p) => (
-                  <div key={p.id} className="p-3 rounded-xl border border-warning/20 bg-warning/[0.02] space-y-2">
+                  <div key={p.id} className="p-2 sm:p-3 rounded-xl border border-warning/20 bg-warning/[0.02] space-y-1 sm:space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex -space-x-2">
-                        <div className="size-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
+                        <div className="size-6 sm:size-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
                           {p.mentor?.id && (
                             <ProfileAvatar userId={p.mentor.id} currentAvatar={p.mentor.avatar_url} userName={p.mentor.full_name || undefined} size="sm" />
                           )}
                         </div>
-                        <div className="size-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
+                        <div className="size-6 sm:size-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
                           {p.mentee?.id && (
                             <ProfileAvatar userId={p.mentee.id} currentAvatar={p.mentee.avatar_url} userName={p.mentee.full_name || undefined} size="sm" />
                           )}
                         </div>
                       </div>
-                      <span className="text-[10px] font-black text-warning uppercase">
+                      <span className="text-[9px] sm:text-[10px] font-black text-warning uppercase">
                         {differenceInDays(new Date(), new Date(p.updated_at))} Days Inactive
                       </span>
                     </div>
-                    <p className="text-xs font-bold text-gray-800 leading-tight">
+                    <p className="text-[11px] sm:text-xs font-bold text-gray-800 leading-tight truncate">
                       {p.mentor?.full_name} & {p.mentee?.full_name}
                     </p>
                   </div>
@@ -257,27 +266,26 @@ export function SupervisorDashboardContent() {
       </div>
 
       {/* 4. Relationship Progress Tracker */}
-      <Card className="shadow-none border-gray-200">
-        <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
+      <Card className="shadow-none border-0 sm:border border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
           <div>
-            <CardTitle className="text-lg font-bold text-gray-900">Relationship Progress Tracker</CardTitle>
-            <CardDescription>Monitor program health across all mentoring pairs</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-bold text-gray-900">Relationship Progress Tracker</CardTitle>
+            <CardDescription className="hidden sm:block">Monitor program health across all mentoring pairs</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/supervisor/pairs')} className="rounded-xl font-bold text-xs h-9">
+            <Button variant="outline" size="sm" onClick={() => navigate('/supervisor/pairs')} className="rounded-xl font-bold text-[10px] sm:text-xs h-8 sm:h-9">
               Manage Pairs
             </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="w-full overflow-x-auto overflow-y-hidden">
+            <table className="table-fixed md:table-auto w-full min-w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left py-3 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Mentor / Mentee</th>
-                  <th className="text-left py-3 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Progress</th>
-                  <th className="text-left py-3 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Last Update</th>
-                  <th className="text-right py-3 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Status</th>
+                  <th className="w-[45%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Mentor / Mentee</th>
+                  <th className="w-[25%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Progress</th>
+                  <th className="w-[30%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Last Update</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -287,47 +295,53 @@ export function SupervisorDashboardContent() {
                     className="hover:bg-primary/[0.02] transition-colors text-sm cursor-pointer group"
                     onClick={() => navigate(`/supervisor/checklist?pair=${p.id}`)}
                   >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
+                    <td className="py-3 sm:py-4 px-3 sm:px-6 overflow-hidden">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <div className="flex -space-x-2 shrink-0">
-                          <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
+                          <div className="size-7 sm:size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
                             {p.mentor?.id && (
                               <ProfileAvatar userId={p.mentor.id} currentAvatar={p.mentor.avatar_url} userName={p.mentor.full_name || undefined} size="sm" />
                             )}
                           </div>
-                          <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
+                          <div className="size-7 sm:size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
                             {p.mentee?.id && (
                               <ProfileAvatar userId={p.mentee.id} currentAvatar={p.mentee.avatar_url} userName={p.mentee.full_name || undefined} size="sm" />
                             )}
                           </div>
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-gray-900 truncate group-hover:text-primary transition-colors">
+                          <span className="font-bold text-gray-900 truncate group-hover:text-primary transition-colors text-xs sm:text-sm">
                             <span className="text-primary">{p.mentor?.full_name}</span> & <span className="text-success">{p.mentee?.full_name}</span>
                           </span>
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Active Relationship</span>
+                          <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-tighter truncate">
+                            {p.mentor?.job_title || 'N/A'} • {p.mentee?.job_title || 'N/A'}
+                          </span>
+                        </div>
+
+                      </div>
+                    </td>
+                    <td className="py-3 sm:py-4 px-3 sm:px-6 min-w-0">
+                      <div className="flex flex-col gap-1 min-w-[80px] lg:min-w-[120px]">
+                        <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-black uppercase text-gray-400">
+                          <span>{pairStats[p.id]?.formatted || '0/0'}</span>
+                          <span>{pairStats[p.id]?.total > 0 ? Math.round((pairStats[p.id]?.completed / pairStats[p.id]?.total) * 100) : 0}%</span>
+                        </div>
+                        <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all duration-500" 
+                            style={{ width: `${pairStats[p.id]?.total > 0 ? (pairStats[p.id]?.completed / pairStats[p.id]?.total) * 100 : 0}%` }}
+                          />
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 min-w-[200px]">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                          <span className="text-primary">{pairProgress[p.id] || 0}%</span>
-                        </div>
-                        <Progress value={pairProgress[p.id] || 0} className="h-1.5" />
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-xs text-gray-600 font-medium">
-                      {format(new Date(p.updated_at), 'MMM d, yyyy')}
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <Badge variant="outline" className="bg-success-light text-success border-none text-[9px] uppercase font-black px-2">Active</Badge>
+                    <td className="py-3 sm:py-4 px-3 sm:px-6 text-[10px] sm:text-xs text-gray-600 font-medium">
+                      {format(new Date(p.updated_at), 'MMM d')}
                     </td>
                   </tr>
                 ))}
                 {pairs.filter(p => p.status === 'active').length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-gray-400 italic">
+                    <td colSpan={3} className="py-12 text-center text-gray-400 italic">
                       No active relationships found.
                     </td>
                   </tr>

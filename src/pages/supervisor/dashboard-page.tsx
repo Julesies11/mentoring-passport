@@ -12,18 +12,20 @@ export function SupervisorDashboardPage() {
 
   return (
     <>
-      <Container>
-        <Toolbar>
-          <ToolbarHeading
-            title="Supervisor Dashboard"
-            description={`Welcome back, ${user?.full_name || user?.email}`}
-          />
-          <ToolbarActions>
-            {/* Add any actions here if needed in the future */}
-          </ToolbarActions>
-        </Toolbar>
-      </Container>
-      <Container>
+      <div className="hidden sm:block">
+        <Container>
+          <Toolbar>
+            <ToolbarHeading
+              title="Supervisor Dashboard"
+              description={`Welcome back, ${user?.full_name || user?.email}`}
+            />
+            <ToolbarActions>
+              {/* Add any actions here if needed in the future */}
+            </ToolbarActions>
+          </Toolbar>
+        </Container>
+      </div>
+      <Container className="sm:mt-0">
         <SupervisorDashboardContent />
       </Container>
     </>
