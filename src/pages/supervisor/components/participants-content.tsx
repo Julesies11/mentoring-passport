@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParticipants } from '@/hooks/use-participants';
+import { usePairs } from '@/hooks/use-pairs';
 import { CreateParticipantInput, UpdateParticipantInput, Participant } from '@/lib/api/participants';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +33,7 @@ import { CredentialsDialog } from '@/components/participants/credentials-dialog'
 import { toast } from 'sonner';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { cn } from '@/lib/utils';
+import { KeenIcon } from '@/components/keenicons';
 
 export function ParticipantsContent() {
   const { 
@@ -45,15 +48,32 @@ export function ParticipantsContent() {
     isUpdating
   } = useParticipants();
 
+  const { pairs = [] } = usePairs();
+
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'supervisor' | 'program-member'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
   const [newCredentials, setNewCredentials] = useState({ email: '', password: '', name: '', role: '' as any });
+
+  // If we are on mobile and status is 'all', force it to 'active'
+  useEffect(() => {
+    if (isMobile && statusFilter === 'all') {
+      setStatusFilter('active');
+    }
+  }, [isMobile, statusFilter]);
+
+  // Reset to first page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, statusFilter, itemsPerPage]);
 
   const filteredParticipants = useMemo(() => {
     return participants.filter(p => {
@@ -68,6 +88,15 @@ export function ParticipantsContent() {
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [participants, searchTerm, roleFilter, statusFilter]);
+
+  const { paginatedParticipants, totalPages } = useMemo(() => {
+    const pages = Math.ceil(filteredParticipants.length / itemsPerPage);
+    const paginated = filteredParticipants.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+    return { paginatedParticipants: paginated, totalPages: pages };
+  }, [filteredParticipants, currentPage, itemsPerPage]);
 
   const handleCreate = async (data: any) => {
     try {
@@ -134,10 +163,10 @@ export function ParticipantsContent() {
   }
 
   return (
-    <div className="space-y-5 lg:space-y-7.5">
+    <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
       {/* Stats Summary */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
+        <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
           <Card>
             <CardContent className="p-5 flex items-center gap-4">
               <div className="size-12 rounded-xl bg-primary-light flex items-center justify-center text-primary">
@@ -188,119 +217,145 @@ export function ParticipantsContent() {
         </div>
       )}
 
-      <Card>
-        <CardHeader className="flex-wrap gap-4 px-6 py-4 border-b border-gray-100">
-          <CardTitle className="text-lg font-bold">Manage Participants</CardTitle>
-          <CardToolbar className="gap-2.5">
-            <div className="relative">
+      <Card className="border-0 sm:border">
+        <CardHeader className="flex-wrap gap-3 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
+          <CardTitle className="text-sm sm:text-lg font-bold">Manage Participants</CardTitle>
+          <CardToolbar className="gap-2 sm:gap-2.5 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input 
                 placeholder="Search..." 
-                className="pl-9 h-10 w-[200px] lg:w-[250px] rounded-xl font-medium"
+                className="pl-9 h-9 sm:h-10 w-full sm:w-[200px] lg:w-[250px] rounded-xl font-medium"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             
-            <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val)}>
-              <SelectTrigger className="w-[140px] h-10 rounded-xl font-bold text-xs uppercase tracking-tight">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="supervisor">Supervisors</SelectItem>
-                <SelectItem value="program-member">Program Members</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {!isMobile && (
+                <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val)}>
+                  <SelectTrigger className="w-full sm:w-[140px] h-9 sm:h-10 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="supervisor">Supervisors</SelectItem>
+                    <SelectItem value="program-member">Program Members</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
 
-            <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
-              <SelectTrigger className="w-[120px] h-10 rounded-xl font-bold text-xs uppercase tracking-tight">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+                <SelectTrigger className="w-full sm:w-[120px] h-9 sm:h-10 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {!isMobile && <SelectItem value="all">All Status</SelectItem>}
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Button onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} className="h-10 rounded-xl font-bold gap-2">
-              <UserPlus size={18} />
-              Add Member
-            </Button>
+              <Button onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} className="h-9 sm:h-10 rounded-xl font-bold gap-1 sm:gap-2 shrink-0">
+                <UserPlus size={16} className="sm:size-[18px]" />
+                <span className="hidden sm:inline">Add Member</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </div>
           </CardToolbar>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="w-full overflow-x-auto overflow-y-hidden">
+            <Table className="table-fixed md:table-auto w-full min-w-full">
               <TableHeader className="bg-gray-50/50">
                 <TableRow>
-                  <TableHead className="w-[300px] px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Participant</TableHead>
-                  <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Contact & Info</TableHead>
-                  <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
-                  <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
-                  <TableHead className="w-[100px] px-6"></TableHead>
+                  <TableHead className="w-[45%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Participant</TableHead>
+                  <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Contact & Info</TableHead>
+                  <TableHead className="w-[30%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Pairings</TableHead>
+                  <TableHead className="w-[25%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
+                  <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
+                  <TableHead className="hidden md:table-cell w-[80px] px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredParticipants.length === 0 ? (
+                {paginatedParticipants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium italic">
+                    <TableCell colSpan={isMobile ? 3 : 6} className="text-center py-20 text-muted-foreground font-medium italic">
                       No participants found matching your criteria.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredParticipants.map((p) => (
-                    <TableRow key={p.id} className="hover:bg-primary/[0.01] transition-colors group">
-                      <TableCell className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <ProfileAvatar 
-                            userId={p.id} 
-                            currentAvatar={p.avatar_url} 
-                            userName={p.full_name || p.email} 
-                            size="md" 
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-gray-900 truncate leading-tight mb-0.5">
-                              {p.full_name || 'No Name Set'}
-                            </span>
-                            <span className="text-[11px] text-gray-500 font-medium truncate flex items-center gap-1">
-                              <Briefcase size={10} className="text-gray-400" />
-                              {p.job_title || 'No Job Title'}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-4">
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                            <Mail size={12} className="text-gray-400" />
-                            {p.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                            <Building2 size={12} className="text-gray-400" />
-                            {p.department || 'General'}
-                          </div>
-                          {p.phone && (
-                            <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                              <Phone size={12} className="text-gray-400" />
-                              {p.phone}
+                  paginatedParticipants.map((p) => {
+                    const activePairings = pairs.filter(pair => 
+                      pair.status === 'active' && (pair.mentor_id === p.id || pair.mentee_id === p.id)
+                    ).length;
+                    
+                    return (
+                      <TableRow 
+                        key={p.id} 
+                        className="hover:bg-primary/[0.01] transition-colors group cursor-pointer"
+                        onClick={() => openEditDialog(p)}
+                      >
+                        <TableCell className="px-3 sm:px-6 py-3 sm:py-4 overflow-hidden">
+                          <div className="flex items-center gap-2 sm:gap-4">
+                            <ProfileAvatar 
+                              userId={p.id} 
+                              currentAvatar={p.avatar_url} 
+                              userName={p.full_name || p.email} 
+                              size={isMobile ? "sm" : "md"} 
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-gray-900 truncate leading-tight mb-0.5 text-xs sm:text-sm">
+                                {p.full_name || 'No Name Set'}
+                              </span>
+                              <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium truncate flex items-center gap-1">
+                                <Briefcase size={10} className="text-gray-400 shrink-0" />
+                                <span className="truncate">{p.job_title || 'No Job Title'}</span>
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-4">
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                            p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
-                          )}
-                        >
-                          {p.role === 'supervisor' ? 'Supervisor' : 'Member'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-6 py-4 text-center">
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell px-6 py-4">
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                              <Mail size={12} className="text-gray-400" />
+                              {p.email}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                              <Building2 size={12} className="text-gray-400" />
+                              {p.department || 'General'}
+                            </div>
+                            {p.phone && (
+                              <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                <Phone size={12} className="text-gray-400" />
+                                {p.phone}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "rounded-full font-black text-[10px] px-2.5 h-6 border-none",
+                              activePairings > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                            )}
+                          >
+                            {activePairings}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-3 sm:py-4">
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
+                              p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                            )}
+                          >
+                            {p.role === 'supervisor' ? 'Supervisor' : 'Member'}
+                          </Badge>
+                        </TableCell>
+                      <TableCell className="hidden md:table-cell px-6 py-4 text-center">
                         <Badge 
                           variant="outline" 
                           className={cn(
@@ -311,39 +366,114 @@ export function ParticipantsContent() {
                           {p.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" mode="icon" className="size-9 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreVertical size={18} />
+                      <TableCell className="hidden md:table-cell px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            mode="icon" 
+                            className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all text-gray-400" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditDialog(p);
+                            }}
+                            title="Edit Member"
+                          >
+                            <KeenIcon icon="pencil" className="text-lg" />
+                          </Button>
+                          
+                          {p.status === 'active' ? (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              mode="icon" 
+                              className="size-9 rounded-full hover:bg-danger/10 hover:text-danger transition-all text-gray-400" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchive(p.id);
+                              }}
+                              title="Archive Member"
+                            >
+                              <KeenIcon icon="trash" className="text-lg" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[180px] rounded-xl shadow-xl border-gray-100">
-                            <DropdownMenuItem onClick={() => openEditDialog(p)} className="gap-2.5 py-2.5 font-bold text-xs uppercase tracking-tight">
-                              <Edit size={14} className="text-gray-400" />
-                              Edit Member
-                            </DropdownMenuItem>
-                            {p.status === 'active' ? (
-                              <DropdownMenuItem onClick={() => handleArchive(p.id)} className="gap-2.5 py-2.5 font-bold text-xs uppercase tracking-tight text-danger focus:text-danger">
-                                <UserX size={14} className="text-danger/60" />
-                                Archive Member
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem onClick={() => handleRestore(p.id)} className="gap-2.5 py-2.5 font-bold text-xs uppercase tracking-tight text-success focus:text-success">
-                                <UserCheck size={14} className="text-success/60" />
-                                Restore Member
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              mode="icon" 
+                              className="size-9 rounded-full hover:bg-success/10 hover:text-success transition-all text-gray-400" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRestore(p.id);
+                              }}
+                              title="Restore Member"
+                            >
+                              <KeenIcon icon="check-circle" className="text-lg" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
+                      );
+                      })
+                      )}
+                      </TableBody>
+
             </Table>
           </div>
         </CardContent>
+
+        {filteredParticipants.length > 0 && (
+          <div className="border-t border-gray-100 px-3 sm:px-5 py-3 sm:py-4 flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-sm text-muted-foreground">
+              <span className="hidden xs:inline">Show</span>
+              <select 
+                className="h-7 sm:h-8 w-[50px] sm:w-[70px] bg-gray-50 border border-gray-200 rounded-md px-0.5 sm:px-1 outline-none focus:ring-2 focus:ring-primary/20 text-[10px] sm:text-xs"
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="hidden xs:inline">per page</span>
+            </div>
+
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <Button
+                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-md"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentPage(prev => Math.max(1, prev - 1));
+                }}
+                disabled={currentPage === 1}
+              >
+                <KeenIcon icon="black-left" className="text-xs" />
+              </Button>
+              
+              <div className="flex items-center gap-1 mx-1 sm:mx-2">
+                <span className="text-[10px] sm:text-xs font-bold text-gray-900">{currentPage}</span>
+                <span className="text-[10px] sm:text-xs text-gray-400">/</span>
+                <span className="text-[10px] sm:text-xs font-bold text-gray-900">{totalPages || 1}</span>
+              </div>
+
+              <Button
+                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-md"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                }}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                <KeenIcon icon="black-right" className="text-xs" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <ParticipantDialog
