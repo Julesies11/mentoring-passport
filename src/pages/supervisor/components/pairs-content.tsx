@@ -52,7 +52,7 @@ export function PairsContent() {
   };
 
   return (
-    <div className="grid gap-5 lg:gap-7.5">
+    <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
       <PairsStats 
         stats={stats}
         unpairedCount={unpairedCount}

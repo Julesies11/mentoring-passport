@@ -13,7 +13,7 @@ export interface ToolbarHeadingProps {
 
 function Toolbar({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-5 pb-7.5">
+    <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-5 pb-1 sm:pb-7.5">
       {children}
     </div>
   );

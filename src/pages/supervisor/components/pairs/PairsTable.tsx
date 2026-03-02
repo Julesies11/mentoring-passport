@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KeenIcon } from '@/components/keenicons';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { useAllPairTaskStatuses } from '@/hooks/use-tasks';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,8 +32,9 @@ interface PairsTableProps {
 }
 
 export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTableProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('active');
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,36 +127,39 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
   }, [searchQuery, filterStatus, itemsPerPage]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Mentoring Pairings</CardTitle>
-        <CardToolbar>
-          <div className="flex items-center gap-4">
+    <Card className="border-0 sm:border">
+      <CardHeader className="px-3 sm:px-5 py-3 sm:py-4 min-h-0 sm:min-h-14 gap-2 sm:gap-2.5">
+        <CardTitle className="text-sm sm:text-base">Mentoring Pairings</CardTitle>
+        <CardToolbar className="w-full sm:w-auto mt-1 sm:mt-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
             <SearchInput
               placeholder="Search by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery('')}
-              containerClassName="w-[200px] lg:w-[300px]"
-              className="h-9"
+              containerClassName="w-full sm:w-[200px] lg:w-[300px]"
+              className="h-8 sm:h-9"
             />
             
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger size="sm" className="w-[120px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger size="sm" className="h-8 sm:h-8.5 w-full sm:w-[120px] text-[10px] sm:text-[0.8125rem]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Button size="sm" onClick={onShowMatchmaker}>
-              <KeenIcon icon="plus-squared" />
-              Create Pair
-            </Button>
+              <Button size="sm" onClick={onShowMatchmaker} className="h-8 sm:h-9 shrink-0 text-[10px] sm:text-xs">
+                <KeenIcon icon="plus-squared" />
+                <span className="hidden sm:inline">Create Pair</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
+            </div>
           </div>
         </CardToolbar>
       </CardHeader>
@@ -171,84 +175,85 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
             <p>No pairings found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="w-full overflow-x-auto overflow-y-hidden">
+            <Table className="table-fixed md:table-auto w-full min-w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('mentor')}>
+                  <TableHead className="w-[45%] md:w-auto cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('mentor')}>
                     <div className="flex items-center">
                       Mentor
                       <SortIcon field="mentor" currentField={sortField} currentOrder={sortOrder} />
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('mentee')}>
+                  <TableHead className="w-[45%] md:w-auto cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('mentee')}>
                     <div className="flex items-center">
                       Mentee
                       <SortIcon field="mentee" currentField={sortField} currentOrder={sortOrder} />
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('progress')}>
+                  <TableHead className="hidden md:table-cell cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('progress')}>
                     <div className="flex items-center">
                       Progress
                       <SortIcon field="progress" currentField={sortField} currentOrder={sortOrder} />
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>
+                  <TableHead className="hidden lg:table-cell cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>
                     <div className="flex items-center">
                       Status
                       <SortIcon field="status" currentField={sortField} currentOrder={sortOrder} />
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('created_at')}>
+                  <TableHead className="hidden xl:table-cell cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('created_at')}>
                     <div className="flex items-center">
                       Created
                       <SortIcon field="created_at" currentField={sortField} currentOrder={sortOrder} />
                     </div>
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="hidden md:table-cell text-right w-[10%] md:w-auto">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedPairs.map((pair) => {
                   const progress = getProgress(pair.id);
                   return (
-                    <TableRow key={pair.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="size-8">
+                    <TableRow 
+                      key={pair.id} 
+                      className="cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => navigate(`/supervisor/checklist?pair=${pair.id}`)}
+                    >
+                      <TableCell className="overflow-hidden">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <Avatar className="size-7 md:size-8 shrink-0">
                             <AvatarImage src={getAvatarPublicUrl(pair.mentor?.avatar_url, pair.mentor?.id)} alt={pair.mentor?.full_name || ''} />
                             <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                               {getInitials(pair.mentor?.full_name || pair.mentor?.email)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-gray-900">{pair.mentor?.full_name || 'No name'}</span>
-                            {pair.mentor?.job_title && (
-                              <span className="text-[10px] text-muted-foreground uppercase font-medium">{pair.mentor.job_title}</span>
-                              )}
-                              <span className="text-xs text-muted-foreground hidden sm:block">{pair.mentor?.email}</span>
-                              </div>
-                              </div>
-                              </TableCell>
-                              <TableCell>
-                              <div className="flex items-center gap-3">
-                              <Avatar className="size-8">
-                              <AvatarImage src={getAvatarPublicUrl(pair.mentee?.avatar_url, pair.mentee?.id)} alt={pair.mentee?.full_name || ''} />
-                              <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentor?.full_name || 'No name'}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentor?.job_title || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="overflow-hidden">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <Avatar className="size-7 md:size-8 shrink-0">
+                            <AvatarImage src={getAvatarPublicUrl(pair.mentee?.avatar_url, pair.mentee?.id)} alt={pair.mentee?.full_name || ''} />
+                            <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                               {getInitials(pair.mentee?.full_name || pair.mentee?.email)}
-                              </AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col">
-                              <span className="font-semibold text-gray-900">{pair.mentee?.full_name || 'No name'}</span>
-                              {pair.mentee?.job_title && (
-                              <span className="text-[10px] text-muted-foreground uppercase font-medium">{pair.mentee.job_title}</span>
-                              )}
-                              <span className="text-xs text-muted-foreground hidden sm:block">{pair.mentee?.email}</span>
-                              </div>
-                              </div>
-                              </TableCell>
-                              <TableCell>
-                              <div className="flex flex-col gap-1 min-w-[80px]">                          <div className="flex items-center justify-between text-[10px] font-black uppercase text-gray-400">
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentee?.full_name || 'No name'}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentee?.job_title || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-col gap-1 min-w-[80px] lg:min-w-[120px]">
+                          <div className="flex items-center justify-between text-[10px] font-black uppercase text-gray-400">
                             <span>{progress.formatted}</span>
                             <span>{progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0}%</span>
                           </div>
@@ -260,20 +265,30 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn('capitalize font-medium', statusColors[pair.status as keyof typeof statusColors])}>
+
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge variant="outline" className={cn('capitalize font-medium text-[10px]', statusColors[pair.status as keyof typeof statusColors])}>
                           {pair.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-600">
+
+                      <TableCell className="hidden xl:table-cell text-xs text-gray-600">
                         {new Date(pair.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" mode="icon" asChild title="Manage Pair">
-                            <Link to={`/supervisor/checklist?pair=${pair.id}`}>
-                              <KeenIcon icon="setting-2" />
-                            </Link>
+
+                      <TableCell className="hidden md:table-cell text-right">
+                        <div className="flex items-center justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            mode="icon" 
+                            className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click when clicking button
+                              navigate(`/supervisor/checklist?pair=${pair.id}`);
+                            }}
+                          >
+                            <KeenIcon icon="setting-2" className="text-lg" />
                           </Button>
                         </div>
                       </TableCell>

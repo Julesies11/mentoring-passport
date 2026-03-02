@@ -15,7 +15,7 @@ export function PairsStats({
   if (!stats) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="hidden sm:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       <Card 
         className="bg-white border-2 border-transparent hover:border-zinc-300/30 hover:bg-zinc-50 transition-all duration-300 shadow-sm"
       >

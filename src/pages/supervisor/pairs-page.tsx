@@ -9,18 +9,20 @@ import { PairsContent } from './components/pairs-content';
 export function PairsPage() {
   return (
     <>
-      <Container>
-        <Toolbar>
-          <ToolbarHeading
-            title="Mentoring Pairs"
-            description="Manage mentor-mentee pairings and track their progress"
-          />
-          <ToolbarActions>
-            {/* Action buttons are handled inside PairsContent or can be moved here */}
-          </ToolbarActions>
-        </Toolbar>
-      </Container>
-      <Container>
+      <div className="hidden sm:block">
+        <Container>
+          <Toolbar>
+            <ToolbarHeading
+              title="Mentoring Pairs"
+              description="Manage mentor-mentee pairings and track their progress"
+            />
+            <ToolbarActions>
+              {/* Action buttons are handled inside PairsContent or can be moved here */}
+            </ToolbarActions>
+          </Toolbar>
+        </Container>
+      </div>
+      <Container className="sm:mt-0">
         <PairsContent />
       </Container>
     </>
