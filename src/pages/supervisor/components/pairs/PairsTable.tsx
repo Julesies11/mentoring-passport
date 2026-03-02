@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { useAllPairTaskStatuses } from '@/hooks/use-tasks';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const statusColors = {
   active: 'bg-green-100 text-green-800 border-green-200',
@@ -33,6 +34,7 @@ interface PairsTableProps {
 
 export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTableProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [sortField, setSortField] = useState<string>('created_at');
@@ -41,6 +43,13 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { data: allStatuses = [] } = useAllPairTaskStatuses();
+
+  // If we are on mobile and status is 'all', force it to 'active'
+  useEffect(() => {
+    if (isMobile && filterStatus === 'all') {
+      setFilterStatus('active');
+    }
+  }, [isMobile, filterStatus]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -147,7 +156,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  {!isMobile && <SelectItem value="all">All Statuses</SelectItem>}
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
