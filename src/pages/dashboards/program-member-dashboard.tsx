@@ -383,7 +383,7 @@ export function ProgramMemberDashboardPage() {
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors truncate pr-2">
+                            <span className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors pr-2 leading-tight">
                               {meeting.task?.name || meeting.title}
                             </span>
                             <Badge variant="outline" className="text-[9px] uppercase font-black border-gray-100 h-5 px-2 bg-gray-50/50">

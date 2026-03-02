@@ -311,21 +311,6 @@ export function SupervisorChecklistPage() {
             title="Pair Management"
             description={selectedPair ? `Managing progress and setup for ${selectedPair.mentor?.full_name} ↔ ${selectedPair.mentee?.full_name}` : "View and manage checklist progress for mentoring pairs"}
           />
-          <ToolbarActions>
-            {selectedPair && (
-              <div className="flex items-center gap-2">
-                <select 
-                  className={cn("h-9 border border-gray-200 font-bold uppercase text-[10px] w-[130px] rounded-md px-2 outline-none focus:ring-2 focus:ring-primary/20", pairStatusColors[selectedPair.status as keyof typeof pairStatusColors])}
-                  value={selectedPair.status} 
-                  onChange={(e) => handlePairStatusChange(e.target.value as any)}
-                >
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </div>
-            )}
-          </ToolbarActions>
         </Toolbar>
       </Container>
 

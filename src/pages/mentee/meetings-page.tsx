@@ -82,16 +82,18 @@ export function MenteeMeetingsPage() {
                 {menteeMeetings.filter(m => m.status === 'upcoming').slice(0, 3).map((meeting) => (
                   <Card key={meeting.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-5 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
                           {getTypeIcon(meeting.meeting_type)}
-                          <span className="text-base font-bold text-gray-900 truncate max-w-[150px]">
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-base font-bold text-gray-900 leading-tight">
                             {meeting.task?.name || meeting.title}
                           </span>
+                          <Badge variant="outline" className="bg-primary-light text-primary border-none text-[10px] uppercase font-bold w-fit mt-1">
+                            Upcoming
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="bg-primary-light text-primary border-none text-[10px] uppercase font-bold">
-                          Upcoming
-                        </Badge>
                       </div>
 
                       <div className="flex items-center gap-3">

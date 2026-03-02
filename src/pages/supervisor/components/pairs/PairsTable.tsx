@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { useAllPairTaskStatuses } from '@/hooks/use-tasks';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const statusColors = {
   active: 'bg-green-100 text-green-800 border-green-200',
@@ -27,12 +28,12 @@ const SortIcon = ({ field, currentField, currentOrder }: { field: string, curren
 interface PairsTableProps {
   pairs: any[];
   isLoading: boolean;
-  filterStatus: string;
   onShowMatchmaker: () => void;
 }
 
-export function PairsTable({ pairs, isLoading, filterStatus, onShowMatchmaker }: PairsTableProps) {
+export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -135,9 +136,22 @@ export function PairsTable({ pairs, isLoading, filterStatus, onShowMatchmaker }:
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery('')}
-              containerClassName="w-[300px]"
+              containerClassName="w-[200px] lg:w-[300px]"
               className="h-9"
             />
+            
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger size="sm" className="w-[120px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button size="sm" onClick={onShowMatchmaker}>
               <KeenIcon icon="plus-squared" />
               Create Pair

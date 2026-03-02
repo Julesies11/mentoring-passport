@@ -13,7 +13,6 @@ export function PairsContent() {
   const { pairs = EMPTY_ARRAY, stats, isLoading, createPairAsync, isCreating } = usePairs();
   const { data: participants = EMPTY_ARRAY } = useParticipantsByRole('program-member');
   
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed' | 'archived'>('active');
   const [matchmakerOpen, setMatchmakerOpen] = useState(false);
   const [unpairedOpen, setUnpairedOpen] = useState(false);
   const [selectedInitialMentorId, setSelectedInitialMentorId] = useState('');
@@ -57,15 +56,12 @@ export function PairsContent() {
       <PairsStats 
         stats={stats}
         unpairedCount={unpairedCount}
-        filterStatus={filterStatus}
-        onFilterChange={setFilterStatus}
         onShowUnpaired={() => setUnpairedOpen(true)}
       />
 
       <PairsTable 
         pairs={pairs}
         isLoading={isLoading}
-        filterStatus={filterStatus}
         onShowMatchmaker={() => {
           setSelectedInitialMentorId('');
           setMatchmakerOpen(true);
