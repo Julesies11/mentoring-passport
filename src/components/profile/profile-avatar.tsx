@@ -25,13 +25,14 @@ interface ProfileAvatarProps {
   userId: string;
   currentAvatar?: string | null;
   userName?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   showEditButton?: boolean;
   className?: string;
   onAvatarChange?: (avatarUrl: string | null) => void;
 }
 
 const sizeClasses = {
+  xs: 'h-6 w-6',
   sm: 'h-8 w-8',
   md: 'h-10 w-10',
   lg: 'h-12 w-12',
@@ -103,7 +104,7 @@ export function ProfileAvatar({
 
       if (updateError) throw updateError;
 
-      onAvatarChange?.(fileName.split('/').pop());
+      onAvatarChange?.(fileName.split('/').pop() || null);
       setDialogOpen(false);
       setSelectedFile(null);
       setPreviewUrl('');

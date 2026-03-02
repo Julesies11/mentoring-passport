@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -9,7 +8,7 @@ import { MenteesListContent } from './components/mentees-list-content';
 
 export function MentorMenteesPage() {
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -24,6 +23,6 @@ export function MentorMenteesPage() {
       <Container>
         <MenteesListContent />
       </Container>
-    </Fragment>
+    </>
   );
 }

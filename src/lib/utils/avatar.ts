@@ -21,7 +21,7 @@ export const getAvatarPublicUrl = (avatarUrl?: string | null, userId?: string | 
 /**
  * Generates initials from a name for avatar fallbacks.
  */
-export const getInitials = (name?: string) => {
+export const getInitials = (name?: string | null) => {
   if (!name) return 'U';
   return name
     .split(' ')

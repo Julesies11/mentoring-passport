@@ -62,7 +62,7 @@ export function PairSubTasksDisplay({
           Subtasks ({completedCount}/{totalCount})
         </Button>
         <Badge
-          variant={completedCount === totalCount ? 'default' : 'secondary'}
+          variant={completedCount === totalCount ? 'primary' : 'secondary'}
           className="text-xs"
         >
           {Math.round((completedCount / totalCount) * 100)}%

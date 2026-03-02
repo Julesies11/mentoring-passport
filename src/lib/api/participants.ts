@@ -36,6 +36,7 @@ export interface UpdateParticipantInput {
   department?: string;
   bio?: string;
   phone?: string;
+  avatar_url?: string | null;
   status?: 'active' | 'archived';
 }
 

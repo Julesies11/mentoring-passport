@@ -1,472 +1,357 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/auth/context/auth-context';
+import { useState, useMemo } from 'react';
 import { useParticipants } from '@/hooks/use-participants';
-import { useAllPairs } from '@/hooks/use-pairs';
-import { CreateParticipantDialog } from '@/components/participants/participant-dialog-create';
-import { ParticipantDialog } from '@/components/participants/participant-dialog';
-import { CredentialsDialog } from '@/components/participants/credentials-dialog';
-import { Button } from '@/components/ui/button';
-import { SearchInput } from '@/components/common/search-input';
+import { CreateParticipantInput, UpdateParticipantInput, Participant } from '@/lib/api/participants';
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { KeenIcon } from '@/components/keenicons';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { 
+  Search, 
+  UserPlus, 
+  MoreVertical, 
+  Edit, 
+  UserCheck, 
+  UserX,
+  Mail,
+  Briefcase,
+  Building2,
+  Phone,
+  Users
+} from 'lucide-react';
+import { ParticipantDialog } from '@/components/participants/participant-dialog';
+import { CredentialsDialog } from '@/components/participants/credentials-dialog';
+import { toast } from 'sonner';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
-import type { Participant, CreateParticipantInput, UpdateParticipantInput } from '@/lib/api/participants';
-
-const roleColors = {
-  supervisor: 'bg-purple-100 text-purple-800 border-purple-200',
-  'program-member': 'bg-blue-100 text-blue-800 border-blue-200',
-  mentor: 'bg-blue-100 text-blue-800 border-blue-200',
-  mentee: 'bg-green-100 text-green-800 border-green-200',
-};
-
-const statusColors = {
-  active: 'bg-green-100 text-green-800 border-green-200',
-  archived: 'bg-gray-100 text-gray-800 border-gray-200',
-};
+import { cn } from '@/lib/utils';
 
 export function ParticipantsContent() {
-  const { user } = useAuth();
   const { 
     participants, 
     stats, 
-    isLoading: participantsLoading, 
+    isLoading, 
     createParticipant, 
     updateParticipant, 
     archiveParticipant, 
     restoreParticipant,
     isCreating,
-    isUpdating,
+    isUpdating
   } = useParticipants();
-  const { data: allPairs = [], isLoading: pairsLoading } = useAllPairs();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'supervisor' | 'program-member'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
   
-  const isLoading = participantsLoading || pairsLoading;
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'supervisor' | 'program-member'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'archived'>('active');
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  // Dialog States
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
-  const [newCredentials, setNewCredentials] = useState({ email: '', password: '', name: '', role: '' });
+  const [newCredentials, setNewCredentials] = useState({ email: '', password: '', name: '', role: '' as any });
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Business Logic: Calculate pairing statistics for each participant
-  const participantsWithStats = useMemo(() => {
-    return participants.map(participant => {
-      const activeMentorCount = allPairs.filter(p => p.mentor_id === participant.id && p.status === 'active').length;
-      const activeMenteeCount = allPairs.filter(p => p.mentee_id === participant.id && p.status === 'active').length;
-      const inactiveMentorCount = allPairs.filter(p => p.mentor_id === participant.id && p.status !== 'active').length;
-      const inactiveMenteeCount = allPairs.filter(p => p.mentee_id === participant.id && p.status !== 'active').length;
-
-      return {
-        ...participant,
-        active_mentor_count: activeMentorCount,
-        active_mentee_count: activeMenteeCount,
-        inactive_mentor_count: inactiveMentorCount,
-        inactive_mentee_count: inactiveMenteeCount
-      };
-    });
-  }, [participants, allPairs]);
-
-  const handleCreate = async (data: CreateParticipantInput) => {
-    await createParticipant(data);
-    setNewCredentials({
-      email: data.email,
-      password: data.password,
-      name: data.full_name || data.email,
-      role: data.role,
-    });
-    setShowCredentials(true);
-  };
-
-  const handleUpdate = async (data: UpdateParticipantInput & { avatar_file?: File; delete_avatar?: boolean }) => {
-    if (editingParticipant) {
-      let avatarUrl = editingParticipant.avatar_url;
-
-      if (data.delete_avatar) {
-        avatarUrl = null;
-      } else if (data.avatar_file) {
-        try {
-          const file = data.avatar_file;
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${editingParticipant.id}-${Date.now()}.${fileExt}`;
-          const filePath = `${editingParticipant.id}/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('mp-avatars')
-            .upload(filePath, file, { upsert: true });
-
-          if (uploadError) throw uploadError;
-          avatarUrl = fileName;
-        } catch (error) {
-          console.error('Error uploading avatar:', error);
-        }
-      }
-
-      const { avatar_file, delete_avatar, ...apiData } = data;
-      await updateParticipant(editingParticipant.id, { ...apiData, avatar_url: avatarUrl });
+  const filteredParticipants = useMemo(() => {
+    return participants.filter(p => {
+      const matchesSearch = 
+        p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.job_title?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Close dialog and clear selection on success
-      setEditDialogOpen(false);
+      const matchesRole = roleFilter === 'all' || p.role === roleFilter;
+      const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [participants, searchTerm, roleFilter, statusFilter]);
+
+  const handleCreate = async (data: any) => {
+    try {
+      await createParticipant(data);
+      setNewCredentials({
+        email: data.email,
+        password: data.password,
+        name: data.full_name || 'New User',
+        role: data.role
+      });
+      setIsDialogOpen(false);
+      setShowCredentials(true);
+      toast.success('Participant created successfully');
+    } catch (err) {
+      console.error('Error creating participant:', err);
+      toast.error('Failed to create participant');
+    }
+  };
+
+  const handleUpdate = async (data: any) => {
+    if (!editingParticipant) return;
+    try {
+      await updateParticipant(editingParticipant.id, data);
+      setIsDialogOpen(false);
       setEditingParticipant(null);
+      toast.success('Participant updated successfully');
+    } catch (err) {
+      console.error('Error updating participant:', err);
+      toast.error('Failed to update participant');
     }
   };
 
-  const handleOpenEdit = (participant: Participant) => {
+  const handleArchive = async (id: string) => {
+    if (window.confirm('Are you sure you want to archive this participant? They will no longer be able to log in.')) {
+      try {
+        await archiveParticipant(id);
+        toast.success('Participant archived');
+      } catch (err) {
+        toast.error('Failed to archive participant');
+      }
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreParticipant(id);
+      toast.success('Participant restored');
+    } catch (err) {
+      toast.error('Failed to restore participant');
+    }
+  };
+
+  const openEditDialog = (participant: Participant) => {
     setEditingParticipant(participant);
-    setEditDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
-  const filteredParticipants = participantsWithStats.filter((participant) => {
-    // Hide currently logged in supervisor
-    if (participant.id === user?.id) return false;
-
-    const matchesSearch =
-      participant.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      participant.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      participant.department?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesRole = filterRole === 'all' || participant.role === filterRole || 
-      (filterRole === 'program-member' && (participant.role === 'mentor' || participant.role === 'mentee' || participant.role === 'program-member'));
-    const matchesStatus = filterStatus === 'all' || participant.status === filterStatus;
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
-  }, [searchQuery, filterRole, filterStatus, itemsPerPage]);
-
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredParticipants.length / itemsPerPage);
-  const paginatedParticipants = filteredParticipants.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid gap-5 lg:gap-7.5">
-      {/* Stats Cards */}
+    <div className="space-y-5 lg:space-y-7.5">
+      {/* Stats Summary */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
           <Card>
-            <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-primary-light flex items-center justify-center text-primary">
+                <Users size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-none mb-1">Total Members</p>
+                <p className="text-2xl font-black text-gray-900">{stats.total}</p>
+              </div>
             </CardContent>
           </Card>
+          
           <Card>
-            <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1 text-success">Active</p>
-                <p className="text-2xl font-bold text-success">{stats.active}</p>
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                <Briefcase size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-none mb-1">Program Members</p>
+                <p className="text-2xl font-black text-gray-900">{stats['program-members'] || 0}</p>
+              </div>
             </CardContent>
           </Card>
+
           <Card>
-            <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1 text-purple-600">Supervisors</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.supervisors}</p>
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                <UserCheck size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-none mb-1">Supervisors</p>
+                <p className="text-2xl font-black text-gray-900">{stats.supervisors}</p>
+              </div>
             </CardContent>
           </Card>
+
           <Card>
-            <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground mb-1 text-blue-600">Program Members</p>
-                <p className="text-2xl font-bold text-blue-600">{(stats.mentors || 0) + (stats.mentees || 0)}</p>
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="size-12 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
+                <UserX size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest leading-none mb-1">Archived</p>
+                <p className="text-2xl font-black text-gray-900">{stats.archived}</p>
+              </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Filters */}
       <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <SearchInput
-                placeholder="Search by name, email, or department..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onClear={() => setSearchQuery('')}
+        <CardHeader className="flex-wrap gap-4 px-6 py-4 border-b border-gray-100">
+          <CardTitle className="text-lg font-bold">Manage Participants</CardTitle>
+          <CardToolbar className="gap-2.5">
+            <div className="relative">
+              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input 
+                placeholder="Search..." 
+                className="pl-9 h-10 w-[200px] lg:w-[250px] rounded-xl font-medium"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            
+            <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val)}>
+              <SelectTrigger className="w-[140px] h-10 rounded-xl font-bold text-xs uppercase tracking-tight">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="supervisor">Supervisors</SelectItem>
+                <SelectItem value="program-member">Program Members</SelectItem>
+              </SelectContent>
+            </Select>
 
-            {/* Role Filter */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant={filterRole === 'all' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setFilterRole('all')}
-              >
-                All Roles
-              </Button>
-              <Button
-                variant={filterRole === 'supervisor' ? 'primary' : 'outline'}
-                size="sm"
-                className={filterRole === 'supervisor' ? 'bg-purple-600 border-purple-600 text-white hover:bg-purple-700' : ''}
-                onClick={() => setFilterRole('supervisor')}
-              >
-                Supervisors
-              </Button>
-              <Button
-                variant={filterRole === 'program-member' ? 'primary' : 'outline'}
-                size="sm"
-                className={filterRole === 'program-member' ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700' : ''}
-                onClick={() => setFilterRole('program-member')}
-              >
-                Program Members
-              </Button>
-            </div>
+            <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+              <SelectTrigger className="w-[120px] h-10 rounded-xl font-bold text-xs uppercase tracking-tight">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
 
-            {/* Status Filter */}
-            <div className="flex gap-2">
-              <Button
-                variant={filterStatus === 'active' ? 'primary' : 'outline'}
-                size="sm"
-                className={filterStatus === 'active' ? 'bg-green-600 border-green-600 text-white hover:bg-green-700' : ''}
-                onClick={() => setFilterStatus('active')}
-              >
-                Active
-              </Button>
-              <Button
-                variant={filterStatus === 'archived' ? 'primary' : 'outline'}
-                size="sm"
-                className={filterStatus === 'archived' ? 'bg-gray-600 border-gray-600 text-white hover:bg-gray-700' : ''}
-                onClick={() => setFilterStatus('archived')}
-              >
-                Archived
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Participants Table */}
-      <Card>
-        <CardHeader>
-            <CardTitle>Program Participants</CardTitle>
+            <Button onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} className="h-10 rounded-xl font-bold gap-2">
+              <UserPlus size={18} />
+              Add Member
+            </Button>
+          </CardToolbar>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">
-                <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
-                <p>Loading participants...</p>
-            </div>
-          ) : filteredParticipants.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <KeenIcon icon="user" className="text-4xl mb-2 opacity-20" />
-              <p>No participants found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow>
+                  <TableHead className="w-[300px] px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Participant</TableHead>
+                  <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Contact & Info</TableHead>
+                  <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
+                  <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
+                  <TableHead className="w-[100px] px-6"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredParticipants.length === 0 ? (
                   <TableRow>
-                    <TableHead className="w-[300px]">Participant</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Pairings</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium italic">
+                      No participants found matching your criteria.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedParticipants.map((participant) => (
-                    <TableRow key={participant.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <ProfileAvatar
-                            userId={participant.id}
-                            currentAvatar={participant.avatar_url}
-                            userName={participant.full_name || participant.email}
-                            size="sm"
+                ) : (
+                  filteredParticipants.map((p) => (
+                    <TableRow key={p.id} className="hover:bg-primary/[0.01] transition-colors group">
+                      <TableCell className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <ProfileAvatar 
+                            userId={p.id} 
+                            currentAvatar={p.avatar_url} 
+                            userName={p.full_name || p.email} 
+                            size="md" 
                           />
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-gray-900">{participant.full_name || 'No name'}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                              {participant.job_title || 'No Job Title'}
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-gray-900 truncate leading-tight mb-0.5">
+                              {p.full_name || 'No Name Set'}
+                            </span>
+                            <span className="text-[11px] text-gray-500 font-medium truncate flex items-center gap-1">
+                              <Briefcase size={10} className="text-gray-400" />
+                              {p.job_title || 'No Job Title'}
                             </span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-700">{participant.department || '-'}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn('capitalize font-medium', roleColors[participant.role as keyof typeof roleColors])}>
-                          {participant.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const totalActive = participant.active_mentor_count + participant.active_mentee_count;
-                          return (
-                            <Badge 
-                              variant="outline" 
-                              className={cn(
-                                'font-bold min-w-[3rem] justify-center',
-                                totalActive > 0 
-                                  ? 'bg-green-50 text-green-700 border-green-200' 
-                                  : 'bg-red-50 text-red-700 border-red-200'
-                              )}
-                            >
-                              {totalActive}
-                            </Badge>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn('capitalize font-medium', statusColors[participant.status as keyof typeof statusColors])}>
-                          {participant.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            mode="icon"
-                            onClick={() => handleOpenEdit(participant)}
-                            title="Edit Participant"
-                          >
-                            <KeenIcon icon="pencil" />
-                          </Button>
-                          
-                          {participant.status === 'active' ? (
-                            <Button
-                              variant="destructive"
-                              appearance="light"
-                              size="sm"
-                              mode="icon"
-                              onClick={() => archiveParticipant(participant.id)}
-                              title="Archive Participant"
-                            >
-                              <KeenIcon icon="archive" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="primary"
-                              appearance="light"
-                              size="sm"
-                              mode="icon"
-                              onClick={() => restoreParticipant(participant.id)}
-                              title="Restore Participant"
-                            >
-                              <KeenIcon icon="arrows-loop" />
-                            </Button>
+                      <TableCell className="px-6 py-4">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                            <Mail size={12} className="text-gray-400" />
+                            {p.email}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                            <Building2 size={12} className="text-gray-400" />
+                            {p.department || 'General'}
+                          </div>
+                          {p.phone && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                              <Phone size={12} className="text-gray-400" />
+                              {p.phone}
+                            </div>
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
+                            p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                          )}
+                        >
+                          {p.role === 'supervisor' ? 'Supervisor' : 'Member'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-center">
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
+                            p.status === 'active' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                          )}
+                        >
+                          {p.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" mode="icon" className="size-9 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical size={18} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[180px] rounded-xl shadow-xl border-gray-100">
+                            <DropdownMenuItem onClick={() => openEditDialog(p)} className="gap-2.5 py-2.5 font-bold text-xs uppercase tracking-tight">
+                              <Edit size={14} className="text-gray-400" />
+                              Edit Member
+                            </DropdownMenuItem>
+                            {p.status === 'active' ? (
+                              <DropdownMenuItem onClick={() => handleArchive(p.id)} className="gap-2.5 py-2.5 font-bold text-xs uppercase tracking-tight text-danger focus:text-danger">
+                                <UserX size={14} className="text-danger/60" />
+                                Archive Member
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => handleRestore(p.id)} className="gap-2.5 py-2.5 font-bold text-xs uppercase tracking-tight text-success focus:text-success">
+                                <UserCheck size={14} className="text-success/60" />
+                                Restore Member
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-        
-        {/* Pagination Footer */}
-        {filteredParticipants.length > 0 && (
-          <div className="border-t border-gray-100 px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground order-2 sm:order-1">
-              <span>Show</span>
-              <select 
-                className="h-8 w-[70px] bg-gray-50 border border-gray-200 rounded-md px-1 outline-none focus:ring-2 focus:ring-primary/20"
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span>per page</span>
-              <span className="mx-2 text-gray-200">|</span>
-              <span>
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredParticipants.length)} of {filteredParticipants.length}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 order-1 sm:order-2">
-              <Button
-                variant="outline"
-                size="sm"
-                mode="icon"
-                className="size-8 rounded-md"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                <KeenIcon icon="black-left" />
-              </Button>
-              
-              <div className="flex items-center px-2">
-                <span className="text-sm font-bold text-gray-900">Page {currentPage} of {totalPages || 1}</span>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                mode="icon"
-                className="size-8 rounded-md"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                <KeenIcon icon="black-right" />
-              </Button>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        )}
+        </CardContent>
       </Card>
 
-      <CreateParticipantDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSubmit={handleCreate}
-        isLoading={isCreating}
-      />
-
       <ParticipantDialog
-        open={editDialogOpen}
-        onOpenChange={(open) => {
-          setEditDialogOpen(open);
-          if (!open) setEditingParticipant(null);
-        }}
-        participant={editingParticipant}
-        onSubmit={handleUpdate}
-        isLoading={isUpdating}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSubmit={editingParticipant ? handleUpdate : handleCreate}
+        participant={editingParticipant || undefined}
+        isLoading={isCreating || isUpdating}
       />
 
       <CredentialsDialog

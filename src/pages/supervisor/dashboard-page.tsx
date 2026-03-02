@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { Container } from '@/components/common/container';
 import {
@@ -12,7 +11,7 @@ export function SupervisorDashboardPage() {
   const { user } = useAuth();
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -27,6 +26,6 @@ export function SupervisorDashboardPage() {
       <Container>
         <SupervisorDashboardContent />
       </Container>
-    </Fragment>
+    </>
   );
 }

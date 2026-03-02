@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserNotes } from '@/hooks/use-notes';
 import { Container } from '@/components/common/container';
@@ -118,7 +118,7 @@ export function MenteeNotesPage() {
   };
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -142,7 +142,7 @@ export function MenteeNotesPage() {
               <p>Loading notes...</p>
             </div>
           ) : (
-            <Fragment>
+            <>
               {/* Stats Section */}
               <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
                 <Card>
@@ -229,11 +229,11 @@ export function MenteeNotesPage() {
                           </div>
                           
                           <div className="flex gap-2 mt-4">
-                            <Button size="xs" variant="outline" className="flex-1" onClick={() => handleEdit(note)}>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(note)}>
                               <KeenIcon icon="pencil" />
                               Edit
                             </Button>
-                            <Button size="xs" variant="ghost" mode="icon" onClick={() => handleDelete(note.id)}>
+                            <Button size="sm" variant="ghost" mode="icon" onClick={() => handleDelete(note.id)}>
                               <KeenIcon icon="trash" />
                             </Button>
                           </div>
@@ -243,7 +243,7 @@ export function MenteeNotesPage() {
                   </div>
                 )}
               </div>
-            </Fragment>
+            </>
           )}
         </div>
       </Container>
@@ -382,6 +382,6 @@ export function MenteeNotesPage() {
           )}
         </DialogContent>
       </Dialog>
-    </Fragment>
+    </>
   );
 }

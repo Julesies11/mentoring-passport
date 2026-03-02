@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { addDays, format } from 'date-fns';
 import { CalendarDays, Download } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
-import { Helmet } from 'react-helmet-async';
+
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { MENU_SIDEBAR } from '@/config/menu.config';
 import { useBodyClass } from '@/hooks/use-body-class';
@@ -44,9 +44,7 @@ const Demo7Layout = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{item?.title}</title>
-      </Helmet>
+
       <div className="flex grow flex-col in-data-[sticky-header=on]:pt-(--header-height-default)">
         <Header />
 

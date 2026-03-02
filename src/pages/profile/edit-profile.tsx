@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,11 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useQueryClient } from '@tanstack/react-query';
-import { updateProfile, getAvatarUrl } from '@/lib/api/profiles';
+import { getAvatarUrl } from '@/lib/api/profiles';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { ImageInput, type ImageInputFile } from '@/components/image-input';
-import { toAbsoluteUrl } from '@/lib/helpers';
 import { KeenIcon } from '@/components/keenicons';
 import { X } from 'lucide-react';
 
@@ -34,7 +33,7 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 export function EditProfilePage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateProfile } = useAuth();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [avatar, setAvatar] = useState<ImageInputFile[]>([]);
@@ -80,10 +79,10 @@ export function EditProfilePage() {
 
     setIsLoading(true);
     try {
-      let finalAvatarUrl = user.avatar_url;
+      let finalAvatarUrl: string | undefined = user.avatar_url;
 
       if (deleteAvatar) {
-        finalAvatarUrl = null;
+        finalAvatarUrl = undefined;
       } else if (avatar.length > 0 && avatar[0].file) {
         const file = avatar[0].file;
         const fileExt = file.name.split('.').pop();
@@ -98,7 +97,7 @@ export function EditProfilePage() {
         finalAvatarUrl = fileName;
       }
 
-      await updateProfile(user.id, {
+      await updateProfile({
         ...data,
         avatar_url: finalAvatarUrl,
       });
@@ -107,15 +106,6 @@ export function EditProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['auth'] });
       
-      // Update user context
-      if (updateUser) {
-        updateUser({
-          ...user,
-          ...data,
-          avatar_url: finalAvatarUrl,
-        });
-      }
-
       // Refresh local avatar state from new URL
       if (finalAvatarUrl) {
         setAvatar([{ dataURL: getAvatarUrl(user.id, finalAvatarUrl) }]);
@@ -134,7 +124,7 @@ export function EditProfilePage() {
   };
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -148,9 +138,9 @@ export function EditProfilePage() {
             </Button>
             <Button onClick={handleSubmit(handleFormSubmit)} disabled={isLoading}>
               {isLoading ? (
-                <Fragment><KeenIcon icon="loading" className="animate-spin mr-2" /> Saving...</Fragment>
+                <><KeenIcon icon="loading" className="animate-spin mr-2" /> Saving...</>
               ) : (
-                <Fragment><KeenIcon icon="check" /> Save Changes</Fragment>
+                <><KeenIcon icon="check" /> Save Changes</>
               )}
             </Button>
           </ToolbarActions>
@@ -327,6 +317,6 @@ export function EditProfilePage() {
           </div>
         </div>
       </Container>
-    </Fragment>
+    </>
   );
 }

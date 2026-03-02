@@ -8,11 +8,28 @@ export interface Meeting {
   date_time: string;
   status: 'upcoming' | 'completed' | 'cancelled';
   notes: string | null;
+  location: string | null;
+  meeting_type: 'in_person' | 'virtual' | 'phone' | null;
   created_at: string;
   updated_at: string;
   task?: {
     id: string;
     name: string;
+  };
+  pair?: {
+    id: string;
+    mentor?: {
+      id: string;
+      full_name: string | null;
+      job_title?: string | null;
+      avatar_url?: string | null;
+    };
+    mentee?: {
+      id: string;
+      full_name: string | null;
+      job_title?: string | null;
+      avatar_url?: string | null;
+    };
   };
   mp_pairs?: {
     id: string;
@@ -37,6 +54,8 @@ export interface CreateMeetingInput {
   title: string;
   notes?: string;
   date_time: string;
+  location?: string | null;
+  meeting_type?: 'in_person' | 'virtual' | 'phone' | null;
 }
 
 export interface UpdateMeetingInput {
@@ -45,6 +64,8 @@ export interface UpdateMeetingInput {
   status?: 'upcoming' | 'completed' | 'cancelled';
   notes?: string;
   pair_task_id?: string | null;
+  location?: string | null;
+  meeting_type?: 'in_person' | 'virtual' | 'phone' | null;
 }
 
 /**
@@ -69,7 +90,7 @@ export async function fetchAllMeetings(): Promise<Meeting[]> {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(m => ({ ...m, pair: m.mp_pairs }));
 }
 
 /**
@@ -95,7 +116,7 @@ export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(m => ({ ...m, pair: m.mp_pairs }));
 }
 
 /**
@@ -124,7 +145,7 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(m => ({ ...m, pair: m.mp_pairs }));
 }
 
 /**
@@ -139,6 +160,8 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       title: input.title,
       notes: input.notes,
       date_time: input.date_time,
+      location: input.location,
+      meeting_type: input.meeting_type,
       status: 'upcoming',
     })
     .select(`
@@ -157,7 +180,7 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     throw error;
   }
 
-  return data;
+  return { ...data, pair: data.mp_pairs };
 }
 
 /**
@@ -187,7 +210,7 @@ export async function updateMeeting(
     throw error;
   }
 
-  return data;
+  return { ...data, pair: data.mp_pairs };
 }
 
 /**

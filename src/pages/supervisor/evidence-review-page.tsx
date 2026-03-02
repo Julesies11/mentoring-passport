@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePendingEvidence } from '@/hooks/use-evidence';
 import { Container } from '@/components/common/container';
@@ -25,7 +25,7 @@ import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { FileText, ImageIcon, ExternalLink, CheckCircle, XCircle, Clock, Paperclip } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle, XCircle, Clock, Paperclip } from 'lucide-react';
 
 export function EvidenceReviewPage() {
   const navigate = useNavigate();
@@ -105,7 +105,7 @@ export function EvidenceReviewPage() {
   };
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -159,17 +159,17 @@ export function EvidenceReviewPage() {
                         <div className="flex -space-x-3 shrink-0">
                           <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
                             <ProfileAvatar 
-                              userId={item.pair?.mentor?.id} 
+                              userId={item.pair?.mentor?.id || ''} 
                               currentAvatar={item.pair?.mentor?.avatar_url} 
-                              userName={item.pair?.mentor?.full_name} 
+                              userName={item.pair?.mentor?.full_name || undefined} 
                               size="lg" 
                             />
                           </div>
                           <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
                             <ProfileAvatar 
-                              userId={item.pair?.mentee?.id} 
+                              userId={item.pair?.mentee?.id || ''} 
                               currentAvatar={item.pair?.mentee?.avatar_url} 
-                              userName={item.pair?.mentee?.full_name} 
+                              userName={item.pair?.mentee?.full_name || undefined} 
                               size="lg" 
                             />
                           </div>
@@ -321,24 +321,24 @@ export function EvidenceReviewPage() {
               disabled={isReviewing || (reviewAction === 'reject' && !rejectionReason.trim())}
               className={cn(
                 "rounded-xl h-11 px-8 font-bold shadow-lg",
-                reviewAction === 'approve' ? 'bg-success hover:bg-success-dark text-white shadow-success/20' : 'bg-primary hover:bg-primary-dark text-white shadow-primary/20'
+                reviewAction === 'approve' ? "bg-green-600 hover:bg-green-700 text-white" : "bg-primary hover:bg-primary-dark text-white shadow-primary/20"
               )}
             >
               {isReviewing ? (
-                <Fragment>
+                <>
                   <KeenIcon icon="loading" className="animate-spin mr-2" />
                   Processing...
-                </Fragment>
+                </>
               ) : (
-                <Fragment>
+                <>
                   {reviewAction === 'approve' ? 'Approve Now' : 'Send Feedback'}
-                </Fragment>
+                </>
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Fragment>
+    </>
   );
 }
 

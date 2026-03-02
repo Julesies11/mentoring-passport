@@ -22,7 +22,6 @@ const MentorMenteesPage = lazy(() => import('@/pages/mentor/mentees-page').then(
 const MentorMeetingsPage = lazy(() => import('@/pages/mentor/meetings-page').then(m => ({ default: m.MentorMeetingsPage })));
 const MentorNotesPage = lazy(() => import('@/pages/mentor/notes-page').then(m => ({ default: m.MentorNotesPage })));
 
-const MenteeDashboardPage = lazy(() => import('@/pages/mentee/dashboard-page').then(m => ({ default: m.MenteeDashboardPage })));
 const ChecklistPage = lazy(() => import('@/pages/mentee/checklist-page').then(m => ({ default: m.ChecklistPage })));
 const MenteeMentorPage = lazy(() => import('@/pages/mentee/mentor-page').then(m => ({ default: m.MenteeMentorPage })));
 const MenteeMeetingsPage = lazy(() => import('@/pages/mentee/meetings-page').then(m => ({ default: m.MenteeMeetingsPage })));
@@ -45,8 +44,6 @@ function RoleBasedRedirect() {
     case 'supervisor':
       return <Navigate to="/supervisor/dashboard" replace />;
     case 'program-member':
-    case 'mentor': // Fallback for transition
-    case 'mentee': // Fallback for transition
       return <Navigate to="/program-member/dashboard" replace />;
     default:
       return <Navigate to="/auth/signin" replace />;
@@ -56,12 +53,10 @@ function RoleBasedRedirect() {
 // Program Member Route Switcher
 function ProgramMemberRoute({ 
   mentorElement: MentorElement, 
-  menteeElement: MenteeElement,
-  requiresSingleRole = false
+  menteeElement: MenteeElement
 }: { 
   mentorElement: React.ElementType, 
-  menteeElement: React.ElementType,
-  requiresSingleRole?: boolean
+  menteeElement: React.ElementType
 }) {
   const { isMentor, isMentee } = useAuth();
 
@@ -92,7 +87,6 @@ export function AppRoutingSetup() {
                 </RequireRole>
               }
             />
-            {/* ... other supervisor routes remain same ... */}
             <Route
               path="/supervisor/participants"
               element={
@@ -146,7 +140,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/dashboard"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <ProgramMemberDashboardPage />
                 </RequireRole>
               }
@@ -154,7 +148,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/tasks"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <TasksPage />
                 </RequireRole>
               }
@@ -162,7 +156,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/mentees"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <MentorMenteesPage />
                 </RequireRole>
               }
@@ -170,7 +164,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/mentor"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <MenteeMentorPage />
                 </RequireRole>
               }
@@ -178,7 +172,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/checklist"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <ChecklistPage />
                 </RequireRole>
               }
@@ -186,7 +180,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/meetings"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <ProgramMemberRoute 
                     mentorElement={MentorMeetingsPage} 
                     menteeElement={MenteeMeetingsPage} 
@@ -197,7 +191,7 @@ export function AppRoutingSetup() {
             <Route
               path="/program-member/notes"
               element={
-                <RequireRole allowedRoles={['program-member', 'mentor', 'mentee']}>
+                <RequireRole allowedRoles={['program-member']}>
                   <ProgramMemberRoute 
                     mentorElement={MentorNotesPage} 
                     menteeElement={MenteeNotesPage} 

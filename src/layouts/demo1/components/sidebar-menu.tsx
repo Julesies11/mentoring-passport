@@ -74,7 +74,15 @@ export function SidebarMenu() {
 
   const buildMenuItemRoot = (item: MenuItem, index: number): JSX.Element => {
     const Icon = item.icon;
-    const iconElement = Icon ? (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />) : null;
+    const iconElement = Icon ? (
+      typeof Icon === 'function' ? (
+        <Icon />
+      ) : (
+        <span className="flex items-center justify-center size-5">
+          <Icon data-slot="accordion-menu-icon" />
+        </span>
+      )
+    ) : null;
 
     if (item.children) {
       return (
@@ -119,7 +127,15 @@ export function SidebarMenu() {
     index: number,
   ): JSX.Element => {
     const Icon = item.icon;
-    const iconElement = Icon ? (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />) : null;
+    const iconElement = Icon ? (
+      typeof Icon === 'function' ? (
+        <Icon />
+      ) : (
+        <span className="flex items-center justify-center size-5">
+          <Icon data-slot="accordion-menu-icon" />
+        </span>
+      )
+    ) : null;
 
     return (
       <AccordionMenuItem
@@ -157,7 +173,15 @@ export function SidebarMenu() {
     level: number = 0,
   ): JSX.Element => {
     const Icon = item.icon;
-    const iconElement = Icon ? (typeof Icon === 'function' ? <Icon /> : <Icon data-slot="accordion-menu-icon" />) : null;
+    const iconElement = Icon ? (
+      typeof Icon === 'function' ? (
+        <Icon />
+      ) : (
+        <span className="flex items-center justify-center size-5">
+          <Icon data-slot="accordion-menu-icon" />
+        </span>
+      )
+    ) : null;
 
     if (item.children) {
       return (

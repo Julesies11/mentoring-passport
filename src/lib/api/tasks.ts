@@ -34,7 +34,7 @@ export interface MasterSubTask {
 export interface PairSubTask {
   id: string;
   pair_task_id: string;
-  master_subtask_id: string;
+  master_subtask_id: string | null;
   name: string;
   evidence_type_id: string | null;
   sort_order: number;
@@ -57,9 +57,9 @@ export interface PairSubTask {
 export interface PairTask {
   id: string;
   pair_id: string;
-  master_task_id: string;
+  master_task_id: string | null;
   name: string;
-  evidence_type_id: string;
+  evidence_type_id: string | null;
   sort_order: number;
   status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
   last_feedback?: string | null;
@@ -70,7 +70,6 @@ export interface PairTask {
     full_name: string | null;
   };
   created_at: string;
-
   updated_at: string;
   task?: Task;
   subtasks?: PairSubTask[];
@@ -145,13 +144,14 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
     .select(`
       id,
       pair_id,
+      master_task_id,
       name,
       evidence_type_id,
       sort_order,
       status,
       last_feedback,
       completed_at,
-      completed_by_user_id,
+      completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
       created_at,
       updated_at,
@@ -180,22 +180,23 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       )
     `)
     .eq('pair_id', pairId)
-    .order('sort_order', { ascending: true })
-    .order('sort_order', { referencedTable: 'mp_pair_subtasks', ascending: true });
+    .order('sort_order', { ascending: true });
 
   if (error) {
     console.error('Error fetching pair tasks:', error);
     throw error;
   }
 
-  return data || [];
+  return (data || []).map((t: any) => ({
+    ...t,
+    completed_by: Array.isArray(t.completed_by) ? t.completed_by[0] : t.completed_by
+  })) as PairTask[];
 }
 
 /**
  * Reorder pair tasks in batch
  */
 export async function reorderPairTasks(tasks: { id: string; sort_order: number }[]): Promise<void> {
-  // Use a loop of updates instead of upsert to avoid requiring mandatory columns like 'name'
   const promises = tasks.map(task => 
     supabase
       .from('mp_pair_tasks')
@@ -216,7 +217,6 @@ export async function reorderPairTasks(tasks: { id: string; sort_order: number }
  * Reorder master tasks in batch
  */
 export async function reorderMasterTasks(tasks: { id: string; sort_order: number }[]): Promise<void> {
-  // Use a loop of updates instead of upsert to avoid requiring mandatory columns like 'name'
   const promises = tasks.map(task => 
     supabase
       .from('mp_tasks_master')
@@ -238,65 +238,20 @@ export async function reorderMasterTasks(tasks: { id: string; sort_order: number
  */
 export async function updatePairTaskStatus(
   taskId: string,
-  status: 'not_submitted' | 'awaiting_review' | 'completed',
+  status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required',
   userId?: string
 ): Promise<PairTask> {
-  // If marking as completed, check if evidence submission is required
-  if (status === 'completed') {
-    // First, fetch the task with evidence type information
-    const { data: taskData, error: taskError } = await supabase
-      .from('mp_pair_tasks')
-      .select(`
-        id,
-        pair_id,
-        evidence_type_id,
-        evidence_type:mp_evidence_types(id, name, requires_submission)
-      `)
-      .eq('id', taskId)
-      .single();
-
-    if (taskError) {
-      console.error('Error fetching task for validation:', taskError);
-      throw new Error('Failed to fetch task for validation');
-    }
-
-    // Check if evidence submission is required
-    if (taskData.evidence_type?.requires_submission) {
-      // Check if evidence exists for this task
-      const { data: evidenceData, error: evidenceError } = await supabase
-        .from('mp_evidence_uploads')
-        .select('id')
-        .eq('task_id', taskId)
-        .eq('pair_id', taskData.pair_id)
-        .in('status', ['pending', 'approved'])
-        .limit(1);
-
-      if (evidenceError) {
-        console.error('Error checking evidence submission:', evidenceError);
-        throw new Error('Failed to check evidence submission');
-      }
-
-      // If evidence is required but doesn't exist, throw an error
-      if (!evidenceData || evidenceData.length === 0) {
-        throw new Error('Cannot mark task as completed. Evidence submission is required for this task type.');
-      }
-    }
-  }
-
   const updateData: any = { status };
   
   if (status === 'completed') {
     updateData.completed_at = new Date().toISOString();
-    // Set the user who completed the task
     if (userId) {
       updateData.completed_by_user_id = userId;
     }
   } else {
-    // Clear the completed_by_user_id if status is changed from completed
     updateData.completed_by_user_id = null;
   }
 
-  // Clear feedback when moving back to review or completion
   if (status === 'awaiting_review' || status === 'completed') {
     updateData.last_feedback = null;
   }
@@ -317,13 +272,14 @@ export async function updatePairTaskStatus(
     .select(`
       id,
       pair_id,
+      master_task_id,
       name,
       evidence_type_id,
       sort_order,
       status,
       last_feedback,
       completed_at,
-      completed_by_user_id,
+      completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
       created_at,
       updated_at,
@@ -337,7 +293,11 @@ export async function updatePairTaskStatus(
     throw fetchError;
   }
 
-  return data;
+  const task = data as any;
+  return {
+    ...task,
+    completed_by: Array.isArray(task.completed_by) ? task.completed_by[0] : task.completed_by
+  } as PairTask;
 }
 
 /**
@@ -567,7 +527,6 @@ export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 
  * Update an existing task for a pair
  */
 export async function updatePairTask(taskId: string, updates: Partial<PairTask>): Promise<PairTask> {
-  // Remove fields that shouldn't be updated directly or are relational
   const { id, pair_id, created_at, updated_at, task, subtasks, evidence_type, ...cleanUpdates } = updates as any;
 
   const { error: updateError } = await supabase
@@ -580,7 +539,6 @@ export async function updatePairTask(taskId: string, updates: Partial<PairTask>)
     throw updateError;
   }
 
-  // Fetch updated data with joins
   const { data, error: fetchError } = await supabase
     .from('mp_pair_tasks')
     .select(`
@@ -650,7 +608,6 @@ export async function updatePairSubTask(subtaskId: string, updates: Partial<Pair
     throw updateError;
   }
 
-  // Fetch updated data with joins
   const { data, error: fetchError } = await supabase
     .from('mp_pair_subtasks')
     .select(`

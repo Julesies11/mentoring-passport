@@ -230,7 +230,7 @@ export function ChecklistContent() {
             onViewDetails={handleViewDetails}
             onToggleTask={handleToggleTask}
             onToggleSubTask={handleToggleSubTask}
-            onLinkMeeting={handleLinkMeeting}
+            onCreateMeeting={handleLinkMeeting}
           />
         </CardContent>
       </Card>

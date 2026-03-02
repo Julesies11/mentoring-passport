@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { usePairTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
@@ -11,32 +11,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { KeenIcon } from '@/components/keenicons';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { TaskDialog } from '@/components/tasks/task-dialog';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 import { PairingSelector } from '@/components/common/pairing-selector';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPairEvidence, uploadEvidenceFile, createEvidence } from '@/lib/api/evidence';
-import { updateMeeting } from '@/lib/api/meetings';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { usePairing } from '@/providers/pairing-provider';
 
 export function TasksPage() {
   const { user, isMentor } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { selectedPairing: selectedPair, pairings, isLoading: pairsLoading, setSelectedPairingId } = usePairing();
@@ -63,7 +49,6 @@ export function TasksPage() {
         const element = document.getElementById(`task-${taskIdFromUrl}`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          // Highlight it briefly? Maybe just scroll is enough for now
         }
       }, 300);
       return () => clearTimeout(timer);
@@ -148,22 +133,18 @@ export function TasksPage() {
     try {
       // 1. Upload each file
       const uploadPromises = evidence.files.map(file => 
-        uploadEvidenceFile(file, selectedPair.id, user.id)
+        uploadEvidenceFile(file, selectedPair.id)
       );
       
       const fileUrls = await Promise.all(uploadPromises);
 
       // 2. Create evidence record(s)
-      // For simplicity, we'll create one primary record with all info if notes are provided, 
-      // or multiple if needed. Here we'll create one for each file or one overall if only notes.
       if (evidence.files.length > 0) {
         for (let i = 0; i < fileUrls.length; i++) {
           const file = evidence.files[i];
           await createEvidence({
             pair_id: selectedPair.id,
             pair_task_id: taskId,
-            submitted_by: user.id,
-            type: file.type.startsWith('image/') ? 'photo' : 'file',
             file_url: fileUrls[i],
             file_name: file.name,
             mime_type: file.type,
@@ -178,8 +159,7 @@ export function TasksPage() {
         await createEvidence({
           pair_id: selectedPair.id,
           pair_task_id: taskId,
-          submitted_by: user.id,
-          type: 'text',
+          file_url: '', // Empty for text only
           description: evidence.description,
           status: submitForReview ? 'pending' : 'approved'
         });
@@ -263,7 +243,7 @@ export function TasksPage() {
 
   if (pairsLoading || tasksLoading) {
     return (
-      <Fragment>
+      <>
         <Container>
           <Toolbar>
             <ToolbarHeading title="Tasks" description="Loading mentoring tasks..." />
@@ -275,13 +255,13 @@ export function TasksPage() {
             <p>Loading tasks...</p>
           </div>
         </Container>
-      </Fragment>
+      </>
     );
   }
 
   if (!selectedPair) {
     return (
-      <Fragment>
+      <>
         <Container>
           <Toolbar>
             <ToolbarHeading title="Tasks" description="No mentoring relationship found" />
@@ -301,20 +281,19 @@ export function TasksPage() {
             </CardContent>
           </Card>
         </Container>
-      </Fragment>
+      </>
     );
   }
 
-  const otherUser = isMentor ? selectedPair.mentee : selectedPair.mentor;
-
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
             title="Mentoring Tasks"
             description="Track progress and complete requirements for this mentoring relationship"
           />
+          <ToolbarActions />
         </Toolbar>
       </Container>
 
@@ -392,6 +371,6 @@ export function TasksPage() {
         onSubmit={handleMeetingSubmit}
         isSubmitting={isCreating}
       />
-    </Fragment>
+    </>
   );
 }

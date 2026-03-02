@@ -402,7 +402,6 @@ export function PairTaskEditDialog({
                   onValueChange={handleSubTaskReorder}
                   getItemValue={(item) => item.id}
                   className="space-y-3"
-                  disabled={readOnly}
                 >
                   {localSubTasks.map((subtask) => (
                     <SortableItem key={subtask.id} value={subtask.id}>
@@ -555,7 +554,6 @@ export function PairTaskEditDialog({
             <Fragment>
               <Button
                 variant="destructive"
-                appearance="light"
                 className="h-11 px-6 rounded-xl font-bold"
                 onClick={() => task && onDeleteTask(task.id)}
               >

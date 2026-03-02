@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Download } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
+
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { MENU_SIDEBAR } from '@/config/menu.config';
 import { useBodyClass } from '@/hooks/use-body-class';
@@ -36,9 +36,7 @@ export function Demo3Layout() {
 
   return (
     <>
-      <Helmet>
-        <title>{item?.title}</title>
-      </Helmet>
+
       <div className="flex grow">
         <Header />
 

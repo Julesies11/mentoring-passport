@@ -17,19 +17,17 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Icons } from '@/components/common/icons';
 import { getSigninSchema, SigninSchemaType } from '../forms/signin-schema';
 import { LoaderCircleIcon } from 'lucide-react';
 
 export function SignInPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Quick test login function
   const handleTestLogin = async (email = 'admin@test.com', password = 'Admin123!') => {
@@ -164,37 +162,6 @@ export function SignInPage() {
     }
   }
 
-  // Handle Google Sign In with Supabase OAuth
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsGoogleLoading(true);
-      setError(null);
-
-      // Get the next path if available
-      const nextPath = searchParams.get('next');
-
-      // Calculate the redirect URL
-      const redirectTo = nextPath
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
-        : `${window.location.origin}/auth/callback`;
-
-      console.log('Initiating Google sign-in with redirect:', redirectTo);
-
-      // Use our adapter to initiate the OAuth flow
-      await SupabaseAdapter.signInWithOAuth('google', { redirectTo });
-
-      // The browser will be redirected automatically
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to sign in with Google. Please try again.',
-      );
-      setIsGoogleLoading(false);
-    }
-  };
-
   return (
     <Form {...form}>
       <form
@@ -208,7 +175,7 @@ export function SignInPage() {
           </p>
         </div>
 
-        <Alert appearance="light" size="sm" close={false}>
+        <Alert variant="primary" size="sm" close={false}>
           <AlertIcon>
             <AlertCircle className="text-primary" />
           </AlertIcon>
@@ -219,7 +186,7 @@ export function SignInPage() {
 
         <div className="flex flex-col gap-2">
           <Button
-            variant="default"
+            variant="primary"
             type="button"
             onClick={() => handleTestLogin('admin@test.com', 'Admin123!')}
             disabled={isProcessing}
@@ -236,7 +203,7 @@ export function SignInPage() {
 
           <div className="flex flex-row gap-2">
             <Button
-              variant="default"
+              variant="primary"
               type="button"
               onClick={() => handleTestLogin('jackie@test.com', 'U12345678')}
               disabled={isProcessing}
@@ -245,7 +212,7 @@ export function SignInPage() {
               Participant (Jackie)
             </Button>
             <Button
-              variant="default"
+              variant="primary"
               type="button"
               onClick={() => handleTestLogin('bill@test.com', 'U12345678')}
               disabled={isProcessing}
@@ -268,7 +235,6 @@ export function SignInPage() {
         {error && (
           <Alert
             variant="destructive"
-            appearance="light"
             onClose={() => setError(null)}
           >
             <AlertIcon>
@@ -279,7 +245,7 @@ export function SignInPage() {
         )}
 
         {successMessage && (
-          <Alert appearance="light" onClose={() => setSuccessMessage(null)}>
+          <Alert onClose={() => setSuccessMessage(null)}>
             <AlertIcon>
               <Check />
             </AlertIcon>

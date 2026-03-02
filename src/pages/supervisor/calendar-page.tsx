@@ -1,8 +1,7 @@
-import { Fragment, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { useAllPairs } from '@/hooks/use-pairs';
-import { useQueryClient } from '@tanstack/react-query';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -14,21 +13,53 @@ import { UpcomingMeetingsList } from './components/upcoming-meetings-list';
 import { SearchInput } from '@/components/common/search-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { KeenIcon } from '@/components/keenicons';
-import type { Meeting, CreateMeetingInput } from '@/lib/api/meetings';
+import type { CreateMeetingInput } from '@/lib/api/meetings';
 
 export function SupervisorCalendarPage() {
   const { user } = useAuth();
-  const { meetings = [], stats, isLoading, error, createMeeting, updateMeeting, deleteMeeting } = useAllMeetings();
+  const { meetings = [], stats, isLoading, createMeeting, updateMeeting, deleteMeeting } = useAllMeetings();
   const { data: pairs = [] } = useAllPairs();
-  const queryClient = useQueryClient();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Log user role for debugging if needed, but remove from component state to avoid unused var
+  if (user) {
+    // user is available if needed
+  }
+
   const handlePairFilter = (pairId: string) => {
     setSelectedPairId(pairId);
+  };
+
+  const handleMeetingCreate = async (data: CreateMeetingInput) => {
+    try {
+      await createMeeting(data);
+      toast.success('Meeting scheduled successfully');
+    } catch (err) {
+      console.error('Error creating meeting:', err);
+      toast.error('Failed to schedule meeting');
+    }
+  };
+
+  const handleMeetingUpdate = async (meeting: any) => {
+    try {
+      const { id, ...updates } = meeting;
+      await updateMeeting(id, updates);
+      toast.success('Meeting updated successfully');
+    } catch (err) {
+      console.error('Error updating meeting:', err);
+      toast.error('Failed to update meeting');
+    }
+  };
+
+  const handleMeetingDelete = async (meetingId: string) => {
+    try {
+      await deleteMeeting(meetingId);
+      toast.success('Meeting deleted successfully');
+    } catch (err) {
+      console.error('Error deleting meeting:', err);
+      toast.error('Failed to delete meeting');
+    }
   };
 
   // Filter meetings based on pair selection and search query
@@ -50,7 +81,7 @@ export function SupervisorCalendarPage() {
   }, [meetings, selectedPairId, searchQuery]);
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -115,8 +146,6 @@ export function SupervisorCalendarPage() {
           />
         </div>
       </Container>
-    </Fragment>
+    </>
   );
 }
-
-

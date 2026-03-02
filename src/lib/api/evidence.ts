@@ -15,6 +15,7 @@ export interface Evidence {
   mime_type: string | null;
   file_size: number | null;
   description: string | null;
+  rejection_reason: string | null;
   status: 'pending' | 'approved' | 'rejected';
   reviewed_by: string | null;
   reviewed_at: string | null;
@@ -24,8 +25,8 @@ export interface Evidence {
   subtask?: { id: string; name: string };
   pair?: {
     id: string;
-    mentor?: { id: string; full_name: string | null; job_title: string | null };
-    mentee?: { id: string; full_name: string | null; job_title: string | null };
+    mentor?: { id: string; full_name: string | null; job_title: string | null; avatar_url?: string | null };
+    mentee?: { id: string; full_name: string | null; job_title: string | null; avatar_url?: string | null };
   };
   reviewer?: { id: string; full_name: string | null };
 }

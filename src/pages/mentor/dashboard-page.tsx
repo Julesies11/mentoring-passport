@@ -1,5 +1,3 @@
-import { Fragment } from 'react';
-import { useAuth } from '@/auth/context/auth-context';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -7,12 +5,13 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { MentorDashboardContent } from './components/mentor-dashboard-content';
+import { useAuth } from '@/auth/context/auth-context';
 
 export function MentorDashboardPage() {
   const { user } = useAuth();
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -27,6 +26,6 @@ export function MentorDashboardPage() {
       <Container>
         <MentorDashboardContent />
       </Container>
-    </Fragment>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
@@ -16,7 +16,6 @@ import { format } from 'date-fns';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 
@@ -184,7 +183,7 @@ export function ProgramMemberDashboardPage() {
                 <CardDescription className="font-medium text-gray-500">{partner?.job_title || 'Program Member'}</CardDescription>
                 
                 <div className="flex justify-center mt-4 gap-2">
-                    <Badge variant="outline" className={cn(
+                    <Badge variant="primary" className={cn(
                       "font-bold uppercase text-[9px] tracking-widest px-2 py-0.5",
                       isMentorView ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-green-50 text-green-700 border-green-200"
                     )}>
@@ -241,7 +240,8 @@ export function ProgramMemberDashboardPage() {
                   Action Checklist
                 </CardTitle>
                 <Button 
-                  variant="link" 
+                  variant="ghost" 
+                  mode="link"
                   size="sm" 
                   className="text-success font-black uppercase text-[10px] hover:bg-success/5 h-7 px-0"
                   onClick={() => goToTasks(stat.pair.id)}
@@ -363,7 +363,8 @@ export function ProgramMemberDashboardPage() {
                   Upcoming Meetings
                 </CardTitle>
                 <Button 
-                  variant="link" 
+                  variant="ghost" 
+                  mode="link"
                   size="sm" 
                   className="text-primary font-black uppercase text-[10px] hover:bg-primary/5 h-7 px-0"
                   onClick={() => goToMeetings(stat.pair.id)}
@@ -383,7 +384,7 @@ export function ProgramMemberDashboardPage() {
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors truncate pr-2">
-                              {meeting.title}
+                              {meeting.task?.name || meeting.title}
                             </span>
                             <Badge variant="outline" className="text-[9px] uppercase font-black border-gray-100 h-5 px-2 bg-gray-50/50">
                               {meeting.meeting_type?.replace('_', ' ')}
@@ -410,7 +411,8 @@ export function ProgramMemberDashboardPage() {
                     </div>
                     <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">No sessions scheduled</p>
                     <Button 
-                      variant="link" 
+                      variant="ghost" 
+                      mode="link"
                       size="sm" 
                       className="mt-2 text-primary font-black uppercase text-[10px]"
                       onClick={() => goToMeetings(stat.pair.id, true)}
@@ -428,7 +430,7 @@ export function ProgramMemberDashboardPage() {
   };
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -451,7 +453,7 @@ export function ProgramMemberDashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <Fragment>
+            <>
               {/* Mentor Relationships */}
               {menteePairings.length > 0 && (
                 <div className="mb-4">
@@ -479,10 +481,10 @@ export function ProgramMemberDashboardPage() {
                   }
                 </div>
               )}
-            </Fragment>
+            </>
           )}
         </div>
       </Container>
-    </Fragment>
+    </>
   );
 }

@@ -1,8 +1,7 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   type Meeting, 
-  type CreateMeetingInput,
 } from '@/lib/api/meetings';
 import { fetchPairTasks } from '@/lib/api/tasks';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,7 @@ export function MeetingDialog({
   onSubmit,
   isSubmitting = false,
 }: MeetingDialogProps) {
-  const { user, isMentor } = useAuth();
+  const { isMentor } = useAuth();
   const { pairings } = usePairing();
   
   const currentPair = pairings.find(p => p.id === pairId);
@@ -67,9 +66,8 @@ export function MeetingDialog({
   });
 
   useEffect(() => {
-    if (!open) return; // Only run when opening or open
+    if (!open) return;
 
-    // If no initialTaskId and tasks are loaded, find the first pending task
     let targetTaskId = initialTaskId;
     if (!targetTaskId && tasks.length > 0) {
       const firstPending = tasks.find(t => t.status !== 'completed');
@@ -83,10 +81,9 @@ export function MeetingDialog({
         notes: meeting.notes || '',
         pair_task_id: meeting.pair_task_id || '',
         location: meeting.location || '',
-        meeting_type: meeting.meeting_type as any || 'virtual',
+        meeting_type: (meeting.meeting_type as any) || 'virtual',
       });
     } else {
-      // Find the name of the selected task to use as the title
       const selectedTask = tasks.find(t => t.id === targetTaskId);
       setFormData({
         title: selectedTask ? selectedTask.name : '',
@@ -97,9 +94,8 @@ export function MeetingDialog({
         meeting_type: 'virtual',
       });
     }
-  }, [meeting, initialTaskId, open, tasks.length > 0]);
+  }, [meeting, initialTaskId, open, tasks]);
 
-  // Update title when task selection changes (only for new meetings)
   useEffect(() => {
     if (!meeting && open && formData.pair_task_id && formData.pair_task_id !== 'none') {
       const selectedTask = tasks.find(t => t.id === formData.pair_task_id);
@@ -130,7 +126,7 @@ export function MeetingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[500px]">
+      <DialogContent className="max-w-[500px] w-[95vw]">
         <DialogHeader>
           <DialogTitle>{meeting ? 'Edit Meeting' : 'Schedule New Meeting'}</DialogTitle>
           <DialogDescription>
@@ -140,50 +136,52 @@ export function MeetingDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-5 py-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-5 py-4 overflow-hidden">
+          <div className="space-y-4">
             <div className="grid gap-2">
               <Label className="text-gray-900 font-semibold">Program Member</Label>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="size-6 rounded-full bg-primary-light flex items-center justify-center text-[10px] text-primary font-bold">
                   {participantName.charAt(0)}
                 </div>
-                <span className="text-sm font-medium text-gray-700">{participantName}</span>
+                <span className="text-sm font-medium text-gray-700 truncate">{participantName}</span>
               </div>
             </div>
 
-            <div className="grid gap-2">
+            <div className="grid gap-2 min-w-0">
               <Label htmlFor="pair_task_id" className="text-gray-900 font-semibold flex items-center gap-1">
                 Link to Task <span className="text-danger">*</span>
               </Label>
-              <Select
-                value={formData.pair_task_id}
-                onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a task for this meeting" />
-                </SelectTrigger>
-                <SelectContent className="max-w-[calc(100vw-40px)] sm:max-w-[450px]">
-                  {tasks.map((task) => {
-                    const isCompleted = task.status === 'completed';
-                    return (
-                      <SelectItem key={task.id} value={task.id}>
-                        <div className="flex items-center justify-between w-full gap-4 min-w-0">
-                          <span className="truncate">{task.name}</span>
-                          <Badge 
-                            variant={isCompleted ? 'success' : 'outline'} 
-                            size="xs"
-                            className="ml-auto shrink-0"
-                          >
-                            {isCompleted ? 'Completed' : 'Pending'}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <div className="w-full">
+                <Select
+                  value={formData.pair_task_id}
+                  onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
+                  required
+                >
+                  <SelectTrigger className="w-full max-w-full overflow-hidden">
+                    <SelectValue placeholder="Select a task" className="truncate" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-60px)] sm:max-w-[460px]">
+                    {tasks.map((task) => {
+                      const isCompleted = task.status === 'completed';
+                      return (
+                        <SelectItem key={task.id} value={task.id} className="max-w-full">
+                          <div className="flex items-center justify-between w-full gap-4 pr-2 overflow-hidden">
+                            <span className="truncate flex-1 min-w-0">{task.name}</span>
+                            <Badge 
+                              variant={isCompleted ? 'success' : 'outline'} 
+                              size="xs"
+                              className="shrink-0"
+                            >
+                              {isCompleted ? 'Completed' : 'Pending'}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -256,9 +254,9 @@ export function MeetingDialog({
             </Button>
             <Button type="submit" disabled={isSubmitting || !formData.title || !formData.date_time}>
               {isSubmitting ? (
-                <Fragment><KeenIcon icon="loading" className="animate-spin mr-2" /> Saving...</Fragment>
+                <><KeenIcon icon="loading" className="animate-spin mr-2" /> Saving...</>
               ) : (
-                <Fragment><KeenIcon icon="check" className="mr-2" /> {meeting ? 'Update Meeting' : 'Schedule Meeting'}</Fragment>
+                <><KeenIcon icon="check" className="mr-2" /> {meeting ? 'Update Meeting' : 'Schedule Meeting'}</>
               )}
             </Button>
           </DialogFooter>

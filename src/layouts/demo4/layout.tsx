@@ -3,7 +3,7 @@ import { StoreClientTopbar } from '@/pages/store-client/components/common/topbar
 import { SearchDialog } from '@/partials/dialogs/search/search-dialog';
 import { NotificationsSheet } from '@/partials/topbar/notifications-sheet';
 import { Download, MessageSquareDot, Search } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
+
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { MENU_SIDEBAR } from '@/config/menu.config';
 import { useBodyClass } from '@/hooks/use-body-class';
@@ -37,9 +37,7 @@ export function Demo4Layout() {
 
   return (
     <>
-      <Helmet>
-        <title>{item?.title}</title>
-      </Helmet>
+
       <div className="flex grow">
         {isMobileMode && <Header />}
 

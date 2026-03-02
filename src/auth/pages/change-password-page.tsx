@@ -125,11 +125,8 @@ export function ChangePasswordPage() {
             case 'supervisor':
               navigate('/supervisor/dashboard');
               break;
-            case 'mentor':
-              navigate('/mentor/dashboard');
-              break;
-            case 'mentee':
-              navigate('/mentee/dashboard');
+            case 'program-member':
+              navigate('/program-member/dashboard');
               break;
             default:
               navigate('/');

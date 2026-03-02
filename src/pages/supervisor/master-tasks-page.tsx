@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -277,7 +277,6 @@ export function SupervisorMasterTasksPage() {
     setFormData({
       name: task.name,
       evidence_type_id: task.evidence_type_id || '',
-      sort_order: task.sort_order,
       is_active: task.is_active,
     });
     const fallback =
@@ -294,7 +293,7 @@ export function SupervisorMasterTasksPage() {
 
   if (user?.role !== 'supervisor') {
     return (
-      <Fragment>
+      <>
         <Container>
           <Toolbar>
             <ToolbarHeading
@@ -322,12 +321,12 @@ export function SupervisorMasterTasksPage() {
             </CardContent>
           </Card>
         </Container>
-      </Fragment>
+      </>
     );
   }
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -706,7 +705,6 @@ export function SupervisorMasterTasksPage() {
           <DialogFooter className="px-6 py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30 justify-between">
             <Button
               variant="destructive"
-              appearance="light"
               className="h-11 px-6 rounded-xl font-bold"
               onClick={() => selectedTask && handleDeleteTask(selectedTask.id)}
               disabled={deleteTaskMutation.isPending}
@@ -733,20 +731,20 @@ export function SupervisorMasterTasksPage() {
                 }
               >
                 {updateTaskMutation.isPending ? (
-                  <Fragment>
+                  <>
                     <KeenIcon icon="loading" className="animate-spin mr-2" />{' '}
                     Saving...
-                  </Fragment>
+                  </>
                 ) : (
-                  <Fragment>
+                  <>
                     <KeenIcon icon="check" className="mr-2" /> Save Changes
-                  </Fragment>
+                  </>
                 )}
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Fragment>
+    </>
   );
 }

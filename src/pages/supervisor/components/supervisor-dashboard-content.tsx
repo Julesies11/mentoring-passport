@@ -15,18 +15,16 @@ import { cn } from '@/lib/utils';
 
 export function SupervisorDashboardContent() {
   const navigate = useNavigate();
-  const { participants = [] } = useAllParticipants();
-  const { pairs = [], isLoading: pairsLoading } = usePairs();
-  const { evidence: pendingEvidenceList = [], isLoading: evidenceLoading } = usePendingEvidence();
+  const { data: participants = [] } = useAllParticipants();
+  const { pairs = [] } = usePairs();
+  const { evidence: pendingEvidenceList = [] } = usePendingEvidence();
 
   const [pairProgress, setPairProgress] = useState<Record<string, number>>({});
-  const [loadingProgress, setLoadingProgress] = useState(true);
 
   // Fetch detailed progress for all active pairs
   useEffect(() => {
     const fetchProgress = async () => {
-      if (pairs.length === 0) {
-        setLoadingProgress(false);
+      if (!pairs || pairs.length === 0) {
         return;
       }
 
@@ -43,8 +41,6 @@ export function SupervisorDashboardContent() {
         setPairProgress(progressMap);
       } catch (error) {
         console.error('Error fetching pair progress:', error);
-      } finally {
-        setLoadingProgress(false);
       }
     };
 
@@ -53,22 +49,32 @@ export function SupervisorDashboardContent() {
 
   // Statistics
   const stats = useMemo(() => {
+    // 1. Active Relationships: Pairs with status 'active'
     const active = pairs.filter(p => p.status === 'active').length;
+    
+    // 2. Pending Reviews: Number of pending evidence items
     const pending = pendingEvidenceList.length;
-    const unpaired = participants.filter(p => 
+    
+    // 3. Unpaired Members: Active participants with role 'program-member' not in an active pair
+    const activeParticipants = participants.filter(p => p.status === 'active');
+    const unpaired = activeParticipants.filter(p => 
       p.role === 'program-member' && 
       !pairs.some(pair => (pair.mentor_id === p.id || pair.mentee_id === p.id) && pair.status === 'active')
     ).length;
     
-    const progressValues = Object.values(pairProgress);
-    const avgProgress = progressValues.length > 0 
-      ? Math.round(progressValues.reduce((a, b) => a + b, 0) / progressValues.length) 
+    // 4. Program Pulse: Average completion percentage of all active relationships
+    const activePairProgress = pairs
+      .filter(p => p.status === 'active' && pairProgress[p.id] !== undefined)
+      .map(p => pairProgress[p.id]);
+      
+    const avgProgress = activePairProgress.length > 0 
+      ? Math.round(activePairProgress.reduce((a, b) => a + b, 0) / activePairProgress.length) 
       : 0;
 
     return { active, pending, unpaired, avgProgress };
   }, [pairs, pendingEvidenceList, participants, pairProgress]);
 
-  // Stale Pairings (No activity in 14 days - using created_at/updated_at as proxy for now)
+  // Stale Pairings (No activity in 14 days)
   const stalePairings = useMemo(() => {
     return pairs
       .filter(p => p.status === 'active')
@@ -99,7 +105,7 @@ export function SupervisorDashboardContent() {
           {stats.pending > 0 && <div className="absolute top-0 bottom-0 left-0 w-1 bg-red-600"></div>}
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className={cn("size-10 rounded-lg flex items-center justify-center", stats.pending > 0 ? "bg-gray-100" : "bg-gray-50")}>
+              <div className={cn("size-10 rounded-lg flex items-center justify-center", stats.pending > 0 ? "bg-red-50" : "bg-gray-50")}>
                 <KeenIcon icon="notification-on" className={cn("text-xl", stats.pending > 0 ? "text-red-600" : "text-gray-400")} />
               </div>
             </div>
@@ -160,10 +166,14 @@ export function SupervisorDashboardContent() {
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="flex -space-x-2 shrink-0">
                         <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
-                          <ProfileAvatar userId={item.pair?.mentor?.id} currentAvatar={item.pair?.mentor?.avatar_url} userName={item.pair?.mentor?.full_name} size="xs" />
+                          {item.pair?.mentor?.id && (
+                            <ProfileAvatar userId={item.pair.mentor.id} currentAvatar={item.pair.mentor.avatar_url} userName={item.pair.mentor.full_name || undefined} size="sm" />
+                          )}
                         </div>
                         <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
-                          <ProfileAvatar userId={item.pair?.mentee?.id} currentAvatar={item.pair?.mentee?.avatar_url} userName={item.pair?.mentee?.full_name} size="xs" />
+                          {item.pair?.mentee?.id && (
+                            <ProfileAvatar userId={item.pair.mentee.id} currentAvatar={item.pair.mentee.avatar_url} userName={item.pair.mentee.full_name || undefined} size="sm" />
+                          )}
                         </div>
                       </div>
                       <div className="min-w-0">
@@ -216,10 +226,14 @@ export function SupervisorDashboardContent() {
                     <div className="flex items-center justify-between">
                       <div className="flex -space-x-2">
                         <div className="size-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
-                          <ProfileAvatar userId={p.mentor?.id} currentAvatar={p.mentor?.avatar_url} userName={p.mentor?.full_name} size="xs" />
+                          {p.mentor?.id && (
+                            <ProfileAvatar userId={p.mentor.id} currentAvatar={p.mentor.avatar_url} userName={p.mentor.full_name || undefined} size="sm" />
+                          )}
                         </div>
                         <div className="size-7 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
-                          <ProfileAvatar userId={p.mentee?.id} currentAvatar={p.mentee?.avatar_url} userName={p.mentee?.full_name} size="xs" />
+                          {p.mentee?.id && (
+                            <ProfileAvatar userId={p.mentee.id} currentAvatar={p.mentee.avatar_url} userName={p.mentee.full_name || undefined} size="sm" />
+                          )}
                         </div>
                       </div>
                       <span className="text-[10px] font-black text-warning uppercase">
@@ -277,10 +291,14 @@ export function SupervisorDashboardContent() {
                       <div className="flex items-center gap-3">
                         <div className="flex -space-x-2 shrink-0">
                           <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
-                            <ProfileAvatar userId={p.mentor?.id} currentAvatar={p.mentor?.avatar_url} userName={p.mentor?.full_name} size="xs" />
+                            {p.mentor?.id && (
+                              <ProfileAvatar userId={p.mentor.id} currentAvatar={p.mentor.avatar_url} userName={p.mentor.full_name || undefined} size="sm" />
+                            )}
                           </div>
                           <div className="size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
-                            <ProfileAvatar userId={p.mentee?.id} currentAvatar={p.mentee?.avatar_url} userName={p.mentee?.full_name} size="xs" />
+                            {p.mentee?.id && (
+                              <ProfileAvatar userId={p.mentee.id} currentAvatar={p.mentee.avatar_url} userName={p.mentee.full_name || undefined} size="sm" />
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col min-w-0">
@@ -307,6 +325,13 @@ export function SupervisorDashboardContent() {
                     </td>
                   </tr>
                 ))}
+                {pairs.filter(p => p.status === 'active').length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-gray-400 italic">
+                      No active relationships found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

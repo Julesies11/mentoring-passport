@@ -20,7 +20,7 @@ export function SidebarHeader() {
       <Link to="/">
         <div className="dark:hidden">
           <img
-            src={toAbsoluteUrl('/media/app/default-logo.svg')}
+            src={toAbsoluteUrl('/media/app/default-logo.png')}
             className="default-logo h-[22px] max-w-none"
             alt="Default Logo"
           />
@@ -32,7 +32,7 @@ export function SidebarHeader() {
         </div>
         <div className="hidden dark:block">
           <img
-            src={toAbsoluteUrl('/media/app/default-logo-dark.svg')}
+            src={toAbsoluteUrl('/media/app/default-logo-dark.png')}
             className="default-logo h-[22px] max-w-none"
             alt="Default Dark Logo"
           />

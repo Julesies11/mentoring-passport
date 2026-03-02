@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,10 +14,7 @@ import {
   Calendar as CalendarIcon, 
   Clock, 
   MapPin, 
-  Users, 
   Plus, 
-  Edit, 
-  Trash2,
   UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,7 +28,7 @@ interface MetronicCalendarProps {
   onDateClick?: (date: Date) => void;
   onMeetingUpdate?: (meeting: Meeting) => void;
   onMeetingDelete?: (meetingId: string) => void;
-  onMeetingCreate?: (meeting: Omit<Meeting, 'id'>) => void;
+  onMeetingCreate?: (meeting: any) => void;
   view?: 'month' | 'week';
   onViewChange?: (view: 'month' | 'week') => void;
   selectedParticipant?: string;
@@ -43,16 +40,11 @@ type ViewMode = 'month' | 'week';
 
 export function MetronicCalendar({
   meetings,
-  participants = [],
   onMeetingClick,
   onDateClick,
-  onMeetingUpdate,
   onMeetingDelete,
-  onMeetingCreate,
   view: initialView = 'month',
-  onViewChange,
   selectedParticipant,
-  onParticipantFilter,
   showFilters = false,
 }: MetronicCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -67,7 +59,7 @@ export function MetronicCalendar({
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const filteredMeetings = selectedParticipant
-    ? meetings.filter(meeting => meeting.participant_id === selectedParticipant)
+    ? meetings.filter(meeting => meeting.pair_id === selectedParticipant)
     : meetings;
 
   const getDaysInMonth = () => {
@@ -293,9 +285,9 @@ export function MetronicCalendar({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <h4 className="font-medium text-sm">{meeting.title}</h4>
-                        {meeting.description && (
+                        {meeting.notes && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {meeting.description}
+                            {meeting.notes}
                           </p>
                         )}
                         {meeting.location && (
@@ -404,10 +396,10 @@ export function MetronicCalendar({
                 <p className="font-medium">{selectedMeeting.title}</p>
               </div>
               
-              {selectedMeeting.description && (
+              {selectedMeeting.notes && (
                 <div>
                   <Label>Description</Label>
-                  <p className="text-sm text-muted-foreground">{selectedMeeting.description}</p>
+                  <p className="text-sm text-muted-foreground">{selectedMeeting.notes}</p>
                 </div>
               )}
               

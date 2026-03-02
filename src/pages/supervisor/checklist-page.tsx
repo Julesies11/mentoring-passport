@@ -1,13 +1,13 @@
-import { Fragment, useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useAllPairs, usePairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
-import { useAllMeetings, useMeetings } from '@/hooks/use-meetings';
+import { useAllMeetings } from '@/hooks/use-meetings';
 import { useSearchParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchEvidenceTypes, type PairTask, type PairSubTask } from '@/lib/api/tasks';
 import { fetchPairEvidence } from '@/lib/api/evidence';
-import { createMeeting, updateMeeting } from '@/lib/api/meetings';
+import { createMeeting } from '@/lib/api/meetings';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -304,7 +304,7 @@ export function SupervisorChecklistPage() {
   }, [selectedTaskId, enrichedTasks]);
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -431,7 +431,7 @@ export function SupervisorChecklistPage() {
               <p>Loading details...</p>
             </div>
           ) : selectedPair ? (
-            <Fragment>
+            <>
               <Tabs defaultValue="setup" value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-5">
                   <TabsTrigger value="setup" className="font-bold uppercase text-[10px] tracking-widest">
@@ -499,7 +499,7 @@ export function SupervisorChecklistPage() {
                           expandedTasks={expandedTasks}
                           onToggleExpand={handleToggleExpand}
                           onViewDetails={handleViewDetails}
-                          onLinkMeeting={handleAddMeetingToTask}
+                          onCreateMeeting={handleAddMeetingToTask}
                           readOnly={true}
                         />
                       )}
@@ -507,7 +507,7 @@ export function SupervisorChecklistPage() {
                   </Card>
                 </TabsContent>
               </Tabs>
-            </Fragment>
+            </>
           ) : activePairs.length === 0 ? (
             <Card className="border-dashed border-2 border-gray-200 bg-gray-50/30">
               <CardContent className="flex flex-col items-center justify-center py-20">
@@ -566,6 +566,6 @@ export function SupervisorChecklistPage() {
         isUpdating={isUpdating}
         readOnly={isReadOnly}
       />
-    </Fragment>
+    </>
   );
 }

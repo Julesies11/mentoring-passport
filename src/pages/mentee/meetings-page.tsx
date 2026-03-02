@@ -1,193 +1,147 @@
-import { Fragment, useState, useEffect } from 'react';
-import { useAuth } from '@/auth/context/auth-context';
+import { useState } from 'react';
 import { useAllMeetings } from '@/hooks/use-meetings';
-import { usePairTasks } from '@/hooks/use-tasks';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { KeenIcon } from '@/components/keenicons';
 import { format } from 'date-fns';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
-import { cn } from '@/lib/utils';
-import { usePairing } from '@/providers/pairing-provider';
-import { useSearchParams } from 'react-router-dom';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
-import { PairingSelector } from '@/components/common/pairing-selector';
+import { toast } from 'sonner';
+import { usePairing } from '@/providers/pairing-provider';
 
 export function MenteeMeetingsPage() {
-  const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { createMeeting, updateMeeting, deleteMeeting, meetings = [], isLoading, isCreating } = useAllMeetings();
   const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
+  const { createMeeting, meetings = [], isLoading, isCreating } = useAllMeetings();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
 
-  // Handle search params for pre-filling
-  useEffect(() => {
-    const shouldCreate = searchParams.get('create') === 'true';
-    const taskId = searchParams.get('taskId');
-
-    if (shouldCreate) {
-      setIsCreateDialogOpen(true);
-      setInitialTaskId(taskId);
-      
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('create');
-      newParams.delete('taskId');
-      newParams.delete('pairId');
-      setSearchParams(newParams);
-    }
-  }, [searchParams]);
-
-  // Filter meetings for the selected pair
-  const menteeMeetings = meetings.filter(meeting => 
-    meeting.pair_id === activePair?.id
+  // Filter meetings for the mentee
+  const menteeMeetings = meetings.filter(m => 
+    pairs.some(p => p.id === m.pair_id)
   );
 
   const handleCreateMeeting = async (data: any) => {
     try {
       await createMeeting(data);
       setIsCreateDialogOpen(false);
-      setInitialTaskId(null);
+      toast.success('Meeting scheduled successfully');
     } catch (error) {
       console.error('Error creating meeting:', error);
+      toast.error('Failed to schedule meeting');
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return <Badge className="bg-primary text-white border-none">Upcoming</Badge>;
-      case 'completed':
-        return <Badge className="bg-success text-white border-none">Completed</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-danger text-white border-none">Cancelled</Badge>;
+  const getTypeIcon = (type?: string | null) => {
+    switch (type) {
+      case 'in_person':
+        return <KeenIcon icon="geolocation" className="text-primary" />;
+      case 'virtual':
+        return <KeenIcon icon="video" className="text-primary" />;
+      case 'phone':
+        return <KeenIcon icon="phone" className="text-primary" />;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <KeenIcon icon="calendar" className="text-gray-400" />;
     }
   };
 
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
             title="Mentoring Meetings"
-            description="Schedule and manage your mentoring sessions"
+            description="View and schedule your mentoring sessions"
           />
           <ToolbarActions>
-            <Button onClick={() => setIsCreateDialogOpen(true)} disabled={!activePair}>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
               <KeenIcon icon="plus" />
               Schedule Meeting
             </Button>
-
-            <MeetingDialog 
-              open={isCreateDialogOpen}
-              onOpenChange={setIsCreateDialogOpen}
-              pairId={activePair?.id || ''}
-              initialTaskId={initialTaskId}
-              onSubmit={handleCreateMeeting}
-              isSubmitting={isCreating}
-            />
           </ToolbarActions>
         </Toolbar>
       </Container>
 
       <Container>
-        <PairingSelector />
-        
         <div className="grid gap-5 lg:gap-7.5">
           {isLoading ? (
             <div className="text-center py-12 text-muted-foreground">
               <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
               <p>Loading meetings...</p>
             </div>
-          ) : !activePair ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <KeenIcon icon="user" className="text-3xl text-gray-400" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No Relationship Selected</h3>
-                <p className="text-muted-foreground text-center max-w-sm">
-                  Please select a mentoring relationship from the dropdown above to view your meetings.
-                </p>
-              </CardContent>
-            </Card>
-          ) : menteeMeetings.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="size-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <KeenIcon icon="calendar-add" className="text-3xl text-gray-400" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No Meetings Scheduled</h3>
-                <p className="text-muted-foreground text-center max-w-sm mb-6">
-                  You don't have any mentoring meetings scheduled for this relationship yet.
-                </p>
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <KeenIcon icon="plus" />
-                  Schedule First Meeting
-                </Button>
-              </CardContent>
-            </Card>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-7.5">
-              {menteeMeetings.map((meeting) => (
-                <Card key={meeting.id}>
-                  <CardHeader className="pb-3 border-b border-gray-100 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <CardTitle className="text-base font-bold text-gray-900">{meeting.title}</CardTitle>
-                        <p className="text-xs text-muted-foreground">
-                          With {meeting.pair?.mentor?.full_name || 'Your Mentor'}
-                        </p>
+            <div className="space-y-7.5">
+              {/* Upcoming Meetings Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {menteeMeetings.filter(m => m.status === 'upcoming').slice(0, 3).map((meeting) => (
+                  <Card key={meeting.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {getTypeIcon(meeting.meeting_type)}
+                          <span className="text-base font-bold text-gray-900 truncate max-w-[150px]">
+                            {meeting.task?.name || meeting.title}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="bg-primary-light text-primary border-none text-[10px] uppercase font-bold">
+                          Upcoming
+                        </Badge>
                       </div>
-                      {getStatusBadge(meeting.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-wrap gap-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <KeenIcon icon="calendar" className="text-muted-foreground" />
-                        {format(new Date(meeting.date_time), 'PPP')}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <KeenIcon icon="time" className="text-muted-foreground" />
-                        {format(new Date(meeting.date_time), 'p')}
-                      </div>
-                    </div>
-                    {meeting.notes && (
-                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <p className="text-sm text-gray-600 leading-relaxed italic">
-                          "{meeting.notes}"
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
 
-          {activePair && menteeMeetings.length > 0 && (
-            <div className="mt-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 px-1">Meeting Calendar</h3>
-              <MeetingCalendar
+                      <div className="flex items-center gap-3">
+                        <div className="size-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
+                          {meeting.pair?.mentor?.full_name?.charAt(0) || 'M'}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">Mentor</span>
+                          <span className="text-sm font-semibold text-gray-800">
+                            {meeting.pair?.mentor?.full_name || 'Unknown Mentor'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5 pt-2 border-t border-gray-50">
+                        <div className="flex items-center gap-2.5 text-sm text-gray-600 font-medium">
+                          <KeenIcon icon="calendar" className="text-muted-foreground" />
+                          {format(new Date(meeting.date_time), 'PPP')}
+                        </div>
+                        <div className="flex items-center gap-2.5 text-sm text-gray-600 font-medium">
+                          <KeenIcon icon="time" className="text-muted-foreground" />
+                          {format(new Date(meeting.date_time), 'p')}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Full Calendar */}
+              <MeetingCalendar 
                 meetings={menteeMeetings}
+                pairs={pairs}
                 selectedParticipant={activePair?.id || ''}
                 onMeetingCreate={handleCreateMeeting}
+                showAddButton={false}
               />
             </div>
           )}
         </div>
       </Container>
-    </Fragment>
+
+      {/* Meeting Dialog */}
+      <MeetingDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        pairId={activePair?.id || ''}
+        onSubmit={handleCreateMeeting}
+        isSubmitting={isCreating}
+      />
+    </>
   );
 }

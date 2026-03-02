@@ -2,11 +2,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
-  UserCircle, 
   ClipboardList, 
   Calendar,
-  FileText,
-  GitBranch
+  GitBranch,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/auth/context/auth-context';
@@ -30,8 +29,9 @@ export function BottomNavBar() {
         { icon: LayoutDashboard, label: 'Hub', path: '/supervisor/dashboard' },
         { icon: Users, label: 'Members', path: '/supervisor/participants' },
         { icon: GitBranch, label: 'Pairs', path: '/supervisor/pairs' },
+        { icon: ClipboardList, label: 'Tasks', path: '/supervisor/master-tasks' },
+        { icon: ShieldCheck, label: 'Review', path: '/supervisor/evidence-review' },
         { icon: Calendar, label: 'Calendar', path: '/supervisor/calendar' },
-        { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
       ];
     }
 
@@ -40,7 +40,6 @@ export function BottomNavBar() {
       { icon: LayoutDashboard, label: 'Hub', path: '/program-member/dashboard' },
       { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
       { icon: Calendar, label: 'Meetings', path: '/program-member/meetings' },
-      { icon: UserCircle, label: 'Profile', path: '/profile/edit' },
     ];
   };
 
@@ -58,7 +57,7 @@ export function BottomNavBar() {
               key={item.path}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center gap-1.5 px-1 py-1 rounded-xl transition-all duration-200 min-w-[64px]',
+                'flex flex-col items-center justify-center gap-1.5 px-1 py-1 rounded-xl transition-all duration-200 min-w-[50px] flex-1',
                 isActive
                   ? 'text-primary'
                   : 'text-gray-400 active:scale-90'
@@ -71,7 +70,7 @@ export function BottomNavBar() {
                 <Icon className={cn('size-5', isActive && 'stroke-[2.5]')} />
               </div>
               <span className={cn(
-                "text-[9px] font-bold uppercase tracking-tighter transition-colors",
+                "text-[8px] font-bold uppercase tracking-tighter transition-colors text-center",
                 isActive ? "text-primary" : "text-gray-400"
               )}>
                 {item.label}

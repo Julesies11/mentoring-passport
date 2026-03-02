@@ -61,7 +61,7 @@ export function MenteesListContent() {
                     <ProfileAvatar
                       userId={pair.mentee?.id || ''}
                       currentAvatar={pair.mentee?.avatar_url}
-                      userName={pair.mentee?.full_name}
+                      userName={pair.mentee?.full_name || undefined}
                       size="sm"
                     />
                     <div className="flex flex-col">

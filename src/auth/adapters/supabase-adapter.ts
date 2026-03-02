@@ -273,7 +273,7 @@ export const SupabaseAdapter = {
         userData.fullname ||
         `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
       occupation: userData.occupation,
-      company_name: userData.company_name || userData.companyName, // Support both formats
+      company_name: userData.company_name, // Match UserModel type
       phone: userData.phone,
       roles: userData.roles,
       pic: userData.pic,

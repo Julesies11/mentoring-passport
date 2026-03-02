@@ -631,7 +631,7 @@ function Sortable<T>({
     if (activeChild) {
       return (
         <div className="bg-white rounded-lg shadow-2xl border border-primary/20 overflow-hidden ring-4 ring-primary/5">
-          {activeChild.props.children}
+          {(activeChild.props as any).children}
         </div>
       );
     }

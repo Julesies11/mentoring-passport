@@ -14,6 +14,7 @@ export interface Pair {
     job_title: string | null;
     department: string | null;
     avatar_url: string | null;
+    phone?: string | null;
   };
   mentee?: {
     id: string;
@@ -22,6 +23,7 @@ export interface Pair {
     job_title: string | null;
     department: string | null;
     avatar_url: string | null;
+    phone?: string | null;
   };
 }
 

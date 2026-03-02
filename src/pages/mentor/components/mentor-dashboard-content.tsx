@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { KeenIcon } from '@/components/keenicons';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Progress } from '@/components/ui/progress';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePairing } from '@/providers/pairing-provider';
+import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -17,454 +18,322 @@ import { format } from 'date-fns';
 export function MentorDashboardContent() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: pairs = [] } = useUserPairs(user?.id || '');
+  const { pairings = [], isLoading: pairingsLoading, setSelectedPairingId } = usePairing();
   const { fetchPairTasks } = useTasks();
   const { meetings = [] } = useAllMeetings();
-  const { setSelectedPairingId, selectedPairing } = usePairing();
 
   const [pairStats, setPairStats] = useState<any[]>([]);
-  const [selectedPairTasks, setSelectedPairTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Active pairings for this mentor
+  const activePairings = useMemo(() => 
+    pairings.filter(p => p.mentor_id === user?.id && p.status === 'active'),
+    [pairings, user?.id]
+  );
 
   useEffect(() => {
     const fetchAllData = async () => {
-      if (pairs.length === 0) {
+      if (pairings.length === 0) {
         setLoading(false);
         return;
       }
 
       try {
-        const stats = await Promise.all(pairs.map(async (pair) => {
+        const stats = await Promise.all(pairings.map(async (pair) => {
           const tasks = await fetchPairTasks(pair.id);
           const pairMeetings = meetings.filter(m => m.pair_id === pair.id);
           
+          const sortedTasks = [...tasks].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          
           const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+          const awaitingReviewTasks = tasks.filter((t: any) => t.status === 'awaiting_review').length;
           const totalTasks = tasks.length;
           const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
           
-          const nextMeeting = pairMeetings
+          const upcomingPairMeetings = pairMeetings
             .filter(m => m.status === 'upcoming' && new Date(m.date_time) > new Date())
-            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())[0];
+            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
 
-          if (pair.id === selectedPairing?.id) {
-            setSelectedPairTasks(tasks);
-          }
+          // Logic for "What to do next" - Prioritize items needing mentor attention
+          const nextTask = sortedTasks.find((t: any) => t.status === 'revision_required') || 
+                           sortedTasks.find((t: any) => t.status === 'not_submitted');
+          
+          // Recent Activity
+          const recentActivity = sortedTasks
+            .filter((t: any) => t.status === 'completed' || t.status === 'awaiting_review' || t.status === 'revision_required')
+            .sort((a, b) => {
+                const dateA = new Date(a.updated_at || a.created_at).getTime();
+                const dateB = new Date(b.updated_at || b.created_at).getTime();
+                return dateB - dateA;
+            })
+            .slice(0, 2);
 
           return {
             pair,
             completedTasks,
+            awaitingReviewTasks,
             totalTasks,
             progress,
-            nextMeeting,
-            tasks
+            upcomingPairMeetings,
+            nextTask,
+            recentActivity
           };
         }));
         
         setPairStats(stats);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('Error fetching mentor dashboard data:', error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAllData();
-  }, [pairs, fetchPairTasks, meetings, selectedPairing?.id]);
+  }, [pairings, fetchPairTasks, meetings]);
 
-  const upcomingMeetings = useMemo(() => {
-    if (!selectedPairing) return [];
-    return meetings
-      .filter(m => m.pair_id === selectedPairing.id && m.status === 'upcoming' && new Date(m.date_time) > new Date())
-      .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
-      .slice(0, 3);
-  }, [meetings, selectedPairing]);
-
-  const pendingTasks = useMemo(() => {
-    return selectedPairTasks
-      .filter(t => t.status !== 'completed')
-      .slice(0, 3);
-  }, [selectedPairTasks]);
-
-  if (loading) {
+  if (loading || pairingsLoading) {
     return (
-      <div className="flex justify-center py-10">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex justify-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (pairs.length === 0) {
+  const goToTasks = (pairId: string, taskId?: string) => {
+    setSelectedPairingId(pairId);
+    navigate(`/program-member/tasks?pair=${pairId}${taskId ? `&taskId=${taskId}` : ''}`);
+  };
+
+  const goToMeetings = (pairId: string, openDialog = false) => {
+    setSelectedPairingId(pairId);
+    navigate(`/program-member/meetings${openDialog ? '?create=true' : ''}`);
+  };
+
+  const renderRelationshipSection = (stat: any) => {
+    const mentee = stat.pair.mentee;
+
     return (
-      <Card>
-        <CardContent className="py-10 text-center">
-          <KeenIcon icon="info-circle" className="text-4xl text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">No active mentees</h3>
-          <p className="text-muted-foreground">You are not currently assigned to any mentees.</p>
-        </CardContent>
-      </Card>
+      <div key={stat.pair.id} className="mb-12 last:mb-0">
+        <Card className="border-primary/10 bg-primary/[0.02] shadow-none mb-5 lg:mb-7.5">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+              <div className="flex items-baseline gap-2">
+                <p className="text-4xl font-black text-gray-900">{stat.progress}%</p>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                  Program Completion ({stat.completedTasks} / {stat.totalTasks} items)
+                </span>
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="size-8 rounded-lg bg-yellow-50 flex items-center justify-center text-yellow-500">
+                    <KeenIcon icon="time" className="text-lg" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Awaiting Review</p>
+                    <p className="text-base font-black text-gray-900">{stat.awaitingReviewTasks || 0}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 border-s border-gray-200 ps-4">
+                  <div className="size-8 rounded-lg bg-green-50 flex items-center justify-center text-success">
+                    <KeenIcon icon="check-circle" className="text-lg" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Completed</p>
+                    <p className="text-base font-black text-gray-900">{stat.completedTasks || 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Progress value={stat.progress} className="h-2 bg-white border border-primary/5" />
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7.5 items-stretch">
+          <div className="lg:col-span-4">
+            <Card className="h-full border-primary/10 shadow-sm hover:border-primary/20 transition-all overflow-hidden flex flex-col">
+              <div className="h-2 bg-blue-500" />
+              <CardHeader className="text-center pt-8 pb-6 px-6">
+                <div className="mx-auto mb-4 relative">
+                  <ProfileAvatar
+                    userId={mentee?.id || ''}
+                    currentAvatar={mentee?.avatar_url}
+                    userName={mentee?.full_name || mentee?.email}
+                    size="lg"
+                  />
+                </div>
+                <CardTitle className="text-xl font-bold text-gray-900">
+                  {mentee?.full_name || 'Mentee'}
+                </CardTitle>
+                <CardDescription className="font-medium text-gray-500">{mentee?.job_title || 'Program Participant'}</CardDescription>
+                
+                <div className="flex justify-center mt-4 gap-2">
+                    <Badge variant="primary" className="font-bold uppercase text-[9px] tracking-widest px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                      Your Mentee
+                    </Badge>
+                    <Badge variant="secondary" className="text-[9px] uppercase tracking-widest px-2 py-0.5">
+                      {stat.pair.status}
+                    </Badge>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="flex-1 space-y-6 px-6 pb-8">
+                <Separator className="bg-gray-100" />
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Contact Details</h4>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3 text-sm">
+                      <KeenIcon icon="sms" className="text-gray-400 text-lg" />
+                      <span className="text-gray-700 truncate font-medium">{mentee?.email}</span>
+                    </div>
+                    {mentee?.phone && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <KeenIcon icon="phone" className="text-gray-400 text-lg" />
+                        <span className="text-gray-700 font-medium">{mentee?.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-7.5">
+            <Card className="shadow-none border-gray-100 bg-gray-50/30 flex flex-col h-full">
+              <CardHeader className="pb-4 flex flex-row items-center justify-between space-y-0 px-6">
+                <CardTitle className="text-xs font-black uppercase tracking-[0.1em] flex items-center gap-2 text-gray-500">
+                  <KeenIcon icon="clipboard" className="text-success text-base" />
+                  Action Checklist
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  mode="link"
+                  size="sm" 
+                  className="text-success font-black uppercase text-[10px] hover:bg-success/5 h-7 px-0"
+                  onClick={() => goToTasks(stat.pair.id)}
+                >
+                  Go to Tasks
+                </Button>
+              </CardHeader>
+              <CardContent className="px-6 pb-6 flex-1 space-y-6">
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">What to do next</h4>
+                  {stat.nextTask ? (
+                    <div 
+                      className={cn(
+                        "p-4 rounded-2xl border transition-all cursor-pointer group",
+                        stat.nextTask.status === 'revision_required' 
+                          ? "border-red-300 bg-red-50/50 hover:bg-red-50" 
+                          : "border-success/20 bg-success/[0.03] hover:bg-success/[0.06]"
+                      )}
+                      onClick={() => goToTasks(stat.pair.id, stat.nextTask.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "size-8 rounded-full text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0 mt-0.5",
+                          stat.nextTask.status === 'revision_required' ? "bg-red-600 shadow-red-200" : "bg-success shadow-success/20"
+                        )}>
+                          <KeenIcon icon={stat.nextTask.status === 'revision_required' ? "information-2" : "rocket"} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-sm font-bold transition-colors break-words",
+                            stat.nextTask.status === 'revision_required' ? "text-red-900 group-hover:text-red-700" : "text-gray-900 group-hover:text-success"
+                          )}>
+                            {stat.nextTask.name}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl border border-gray-100 bg-white flex items-center gap-3">
+                      <div className="size-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center">
+                        <KeenIcon icon="check" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-500">All tasks completed!</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-none border-gray-100 bg-gray-50/30 flex flex-col h-full">
+              <CardHeader className="pb-4 flex flex-row items-center justify-between space-y-0 px-6">
+                <CardTitle className="text-xs font-black uppercase tracking-[0.1em] flex items-center gap-2 text-gray-500">
+                  <KeenIcon icon="calendar-tick" className="text-primary text-base" />
+                  Upcoming Meetings
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  mode="link"
+                  size="sm" 
+                  className="text-primary font-black uppercase text-[10px] hover:bg-primary/5 h-7 px-0"
+                  onClick={() => goToMeetings(stat.pair.id)}
+                >
+                  Go to Calendar
+                </Button>
+              </CardHeader>
+              <CardContent className="px-6 pb-6 flex-1">
+                {stat.upcomingPairMeetings.length > 0 ? (
+                  <div className="space-y-3">
+                    {stat.upcomingPairMeetings.slice(0, 3).map((meeting: any) => (
+                      <div 
+                        key={meeting.id} 
+                        className="group p-4 rounded-2xl border border-white bg-white shadow-sm hover:shadow-md transition-all cursor-pointer"
+                        onClick={() => goToMeetings(stat.pair.id)}
+                      >
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors truncate">
+                            {meeting.task?.name || meeting.title}
+                          </span>
+                          <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-black uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <KeenIcon icon="calendar" className="text-xs text-primary/60" />
+                              {format(new Date(meeting.date_time), 'MMM d')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center bg-white/50 rounded-2xl border border-dashed border-gray-200">
+                    <KeenIcon icon="calendar" className="text-xl text-gray-300 mb-3" />
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">No sessions scheduled</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     );
-  }
-
-  const handlePairClick = (pairId: string) => {
-    setSelectedPairingId(pairId);
-  };
-
-  const goToTasks = (pairId: string) => {
-    setSelectedPairingId(pairId);
-    navigate('/program-member/tasks');
-  };
-
-  const goToMeetings = (pairId: string) => {
-    setSelectedPairingId(pairId);
-    navigate('/program-member/meetings');
   };
 
   return (
-    <div className="grid gap-5 lg:gap-7.5">
-      {/* Mentee Selection/Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7.5">
-        {pairStats.map((stat) => (
-          <Card 
-            key={stat.pair.id} 
-            className={cn(
-              "cursor-pointer transition-all duration-200 hover:shadow-md",
-              selectedPairing?.id === stat.pair.id ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:border-primary/30"
-            )}
-            onClick={() => handlePairClick(stat.pair.id)}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <ProfileAvatar 
-                    userId={stat.pair.mentee?.id || ''} 
-                    currentAvatar={stat.pair.mentee?.avatar_url}
-                    userName={stat.pair.mentee?.full_name} 
-                    size="md" 
-                  />
-                  <div>
-                    <CardTitle className="text-base">{stat.pair.mentee?.full_name}</CardTitle>
-                    <p className="text-xs text-muted-foreground">Mentee</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge variant={stat.pair.status === 'active' ? 'default' : 'secondary'}>
-                    {stat.pair.status}
-                  </Badge>
-                  {selectedPairing?.id === stat.pair.id && (
-                    <span className="text-[10px] font-bold text-primary uppercase">Active View</span>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-medium text-muted-foreground">Mentee Progress</span>
-                    <span className="font-bold">{stat.completedTasks}/{stat.totalTasks} tasks</span>
-                  </div>
-                  <Progress value={stat.progress} className="h-2" />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="flex-1 gap-1.5 text-xs h-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goToTasks(stat.pair.id);
-                    }}
-                  >
-                    <KeenIcon icon="clipboard" className="text-sm" />
-                    Tasks
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="flex-1 gap-1.5 text-xs h-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goToMeetings(stat.pair.id);
-                    }}
-                  >
-                    <KeenIcon icon="calendar" className="text-sm" />
-                    Meetings
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7.5">
-        {/* Left Column: Mentee Details (8 cols) */}
-        <div className="lg:col-span-8 space-y-5 lg:space-y-7.5">
-          {selectedPairing ? (
-            <Card className="border-primary/20 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100">
-                <div className="flex items-center gap-4">
-                  <ProfileAvatar 
-                    userId={selectedPairing.mentee?.id || ''} 
-                    currentAvatar={selectedPairing.mentee?.avatar_url}
-                    userName={selectedPairing.mentee?.full_name} 
-                    size="lg" 
-                  />
-                  <div>
-                    <CardTitle className="text-xl font-bold text-gray-900">{selectedPairing.mentee?.full_name}</CardTitle>
-                    <CardDescription className="font-medium">{selectedPairing.mentee?.email}</CardDescription>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate('/program-member/notes')}>
-                    <KeenIcon icon="message-question" />
-                    Message
-                  </Button>
-                  <Button size="sm" className="gap-2" onClick={() => goToMeetings(selectedPairing.id)}>
-                    <KeenIcon icon="calendar" />
-                    Schedule
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Contact & Info</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/10 border border-secondary/5">
-                        <div className="size-8 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm">
-                          <KeenIcon icon="sms" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-muted-foreground leading-none mb-1 uppercase">Email Address</span>
-                          <span className="text-sm font-bold text-gray-800">{selectedPairing.mentee?.email}</span>
-                        </div>
-                      </div>
-                      
-                      {selectedPairing.mentee?.phone && (
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/10 border border-secondary/5">
-                          <div className="size-8 rounded-lg bg-white flex items-center justify-center text-success shadow-sm">
-                            <KeenIcon icon="phone" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-muted-foreground leading-none mb-1 uppercase">Phone Number</span>
-                            <span className="text-sm font-bold text-gray-800">{selectedPairing.mentee?.phone}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/10 border border-secondary/5">
-                        <div className="size-8 rounded-lg bg-white flex items-center justify-center text-warning shadow-sm">
-                          <KeenIcon icon="calendar-add" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-muted-foreground leading-none mb-1 uppercase">Paired Since</span>
-                          <span className="text-sm font-bold text-gray-800">{format(new Date(selectedPairing.created_at), 'PPP')}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Quick Actions</h4>
-                    <div className="grid grid-cols-1 gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start gap-3 h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                        onClick={() => goToTasks(selectedPairing.id)}
-                      >
-                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                          <KeenIcon icon="clipboard" />
-                        </div>
-                        <div className="flex flex-col items-start">
-                          <span className="text-sm font-bold text-gray-900">Review Tasks</span>
-                          <span className="text-[10px] text-muted-foreground font-medium">Check and approve evidence</span>
-                        </div>
-                      </Button>
-
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start gap-3 h-auto py-3 px-4 hover:bg-success/5 hover:border-success/30 transition-all group"
-                        onClick={() => goToMeetings(selectedPairing.id)}
-                      >
-                        <div className="size-8 rounded-lg bg-success/10 flex items-center justify-center text-success group-hover:bg-success group-hover:text-white transition-all">
-                          <KeenIcon icon="calendar" />
-                        </div>
-                        <div className="flex flex-col items-start">
-                          <span className="text-sm font-bold text-gray-900">Meeting Log</span>
-                          <span className="text-[10px] text-muted-foreground font-medium">View history and upcoming sessions</span>
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <KeenIcon icon="profile-circle" className="text-5xl text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Mentee Selected</h3>
-                <p className="text-sm text-muted-foreground text-center">
-                  Please select a pairing card above to view mentee details.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Mentoring Best Practices</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-lg bg-secondary/10 hover:bg-secondary/20 transition-colors">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-gray-900">
-                    <KeenIcon icon="users" className="text-primary" />
-                    Regular Check-ins
-                  </h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">Maintain a consistent meeting schedule to keep your mentees engaged and on track.</p>
-                </div>
-                <div className="p-4 border rounded-lg bg-secondary/10 hover:bg-secondary/20 transition-colors">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-gray-900">
-                    <KeenIcon icon="message-text" className="text-success" />
-                    Provide Feedback
-                  </h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">Review task evidence regularly and provide constructive feedback to support development.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="grid gap-4 lg:gap-6">
+      {activePairings.length === 0 ? (
+        <Card className="border-dashed border-2 border-gray-200 bg-gray-50/30">
+          <CardContent className="py-20 text-center">
+            <KeenIcon icon="info-circle" className="text-5xl text-gray-200 mb-4" />
+            <h3 className="text-xl font-bold text-gray-900">No active mentees assigned</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto mt-2 font-medium">
+              You are not currently assigned as a mentor to any participants.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="mb-4">
+          <div className="flex items-center gap-4 mb-8">
+            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-gray-400 whitespace-nowrap">Your Mentees</h2>
+            <div className="h-px bg-gray-200 flex-1" />
+          </div>
+          {pairStats
+            .filter(s => s.pair.mentor_id === user?.id && s.pair.status === 'active')
+            .map(stat => renderRelationshipSection(stat))
+          }
         </div>
-
-        {/* Right Column: Upcoming Items (4 cols) */}
-        <div className="lg:col-span-4 space-y-5 lg:space-y-7.5">
-          {/* Upcoming Meetings List */}
-          <Card className="flex flex-col h-full shadow-sm">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <KeenIcon icon="calendar-tick" className="text-primary" />
-                Upcoming Meetings
-              </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="xs" 
-                className="text-primary font-bold hover:bg-primary/5"
-                onClick={() => selectedPairing && goToMeetings(selectedPairing.id)}
-              >
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {upcomingMeetings.length > 0 ? (
-                <div className="space-y-4">
-                  {upcomingMeetings.map((meeting) => (
-                    <div 
-                      key={meeting.id} 
-                      className="group p-3 rounded-xl border border-gray-100 bg-gray-50/30 hover:bg-white hover:shadow-sm transition-all cursor-pointer"
-                      onClick={() => selectedPairing && goToMeetings(selectedPairing.id)}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors truncate pr-2">
-                            {meeting.title}
-                          </span>
-                          <Badge variant="outline" className="text-[10px] uppercase font-bold border-gray-200">
-                            {meeting.meeting_type?.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
-                          <div className="flex items-center gap-1">
-                            <KeenIcon icon="calendar" className="text-xs" />
-                            {format(new Date(meeting.date_time), 'MMM d')}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <KeenIcon icon="time" className="text-xs" />
-                            {format(new Date(meeting.date_time), 'p')}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                  <KeenIcon icon="calendar" className="text-3xl text-gray-300 mb-2" />
-                  <p className="text-sm text-muted-foreground font-medium">No upcoming meetings</p>
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    className="mt-1 text-primary font-bold"
-                    onClick={() => selectedPairing && goToMeetings(selectedPairing.id)}
-                  >
-                    Schedule one
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Pending Tasks List */}
-          <Card className="flex flex-col h-full shadow-sm">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <KeenIcon icon="clipboard" className="text-success" />
-                Pending Tasks
-              </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="xs" 
-                className="text-success font-bold hover:bg-success/5"
-                onClick={() => selectedPairing && goToTasks(selectedPairing.id)}
-              >
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {pendingTasks.length > 0 ? (
-                <div className="space-y-4">
-                  {pendingTasks.map((task) => (
-                    <div 
-                      key={task.id} 
-                      className="group p-3 rounded-xl border border-gray-100 bg-gray-50/30 hover:bg-white hover:shadow-sm transition-all cursor-pointer"
-                      onClick={() => selectedPairing && goToTasks(selectedPairing.id)}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-gray-900 group-hover:text-success transition-colors truncate pr-2">
-                            {task.name}
-                          </span>
-                          <Badge 
-                            variant="secondary" 
-                            className={cn(
-                              "text-[9px] uppercase font-black tracking-wider",
-                              task.status === 'not_submitted' ? "bg-gray-100 text-gray-500" : "bg-warning-light text-warning-700"
-                            )}
-                          >
-                            {task.status?.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        {task.task?.description && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-1 italic">
-                            {task.task.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                  <KeenIcon icon="check-circle" className="text-3xl text-success/30 mb-2" />
-                  <p className="text-sm text-muted-foreground font-medium">All caught up!</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">No pending tasks for now.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -110,7 +110,7 @@ export function ParticipantAvatarUpload({
 
       if (updateError) throw updateError;
 
-      onAvatarChange(fileName.split('/').pop());
+      onAvatarChange(fileName.split('/').pop() || null);
       onOpenChange(false);
       setSelectedFile(null);
       setPreviewUrl('');
@@ -161,7 +161,7 @@ export function ParticipantAvatarUpload({
           <div className="flex justify-center">
             <Avatar className="h-24 w-24">
               <AvatarImage 
-                src={previewUrl || getAvatarUrl()} 
+                src={previewUrl || getAvatarUrl() || undefined} 
                 alt="Profile preview" 
               />
               <AvatarFallback className="bg-primary text-primary-foreground text-lg">

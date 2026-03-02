@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -9,7 +8,7 @@ import { PairsContent } from './components/pairs-content';
 
 export function PairsPage() {
   return (
-    <Fragment>
+    <>
       <Container>
         <Toolbar>
           <ToolbarHeading
@@ -24,6 +23,6 @@ export function PairsPage() {
       <Container>
         <PairsContent />
       </Container>
-    </Fragment>
+    </>
   );
 }
