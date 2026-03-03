@@ -33,7 +33,7 @@ export function CallbackPage() {
     // We need to get the session and integrate it with our auth context
     const handleCallback = async () => {
       try {
-        console.log('Processing OAuth callback');
+        if (import.meta.env.DEV) console.log('Processing OAuth callback');
 
         // Get the session from Supabase
         const { data, error } = await supabase.auth.getSession();
@@ -48,7 +48,7 @@ export function CallbackPage() {
           throw new Error('Authentication session not established');
         }
 
-        console.log('Session obtained successfully from OAuth provider');
+        if (import.meta.env.DEV) console.log('Session obtained successfully from OAuth provider');
 
         // Create auth model from session data (same structure as used in regular login)
         const authModel = {
@@ -58,13 +58,13 @@ export function CallbackPage() {
 
         // Save auth data to context and local storage
         saveAuth(authModel);
-        console.log('Auth data saved to context');
+        if (import.meta.env.DEV) console.log('Auth data saved to context');
 
         // Get the next URL - either from query param or default to root
         const nextPath = searchParams.get('next') || '/';
 
         // Navigate to the target page
-        console.log('Redirecting to:', nextPath);
+        if (import.meta.env.DEV) console.log('Redirecting to:', nextPath);
         navigate(nextPath);
       } catch (err) {
         console.error('Error processing OAuth callback:', err);

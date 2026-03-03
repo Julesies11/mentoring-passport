@@ -119,7 +119,7 @@ export function SignInPage() {
       setIsProcessing(true);
       setError(null);
 
-      console.log('Attempting to sign in with email:', values.email);
+      if (import.meta.env.DEV) console.log('Attempting to sign in with email:', values.email);
 
       // Simple validation
       if (!values.email.trim() || !values.password) {

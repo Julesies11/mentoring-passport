@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { KeenIcon } from '@/components/keenicons';
 import { cn } from '@/lib/utils';
+import { TASK_STATUS_COLORS } from '@/config/constants';
 import { format } from 'date-fns';
 import { 
   FileText, 

@@ -56,7 +56,7 @@ function storeClientReducer(
       };
     case 'ADD_TO_CART':
       // Log productId for now; extend to update cart state if needed
-      console.log(`Added product ${action.productId} to cart`);
+      if (import.meta.env.DEV) console.log(`Added product ${action.productId} to cart`);
       return { ...state, isCartSheetOpen: true }; // Open cart sheet on add
     default:
       return state;

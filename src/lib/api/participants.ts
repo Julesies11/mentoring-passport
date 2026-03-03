@@ -101,7 +101,7 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
  * This creates both the auth user and the profile using a secure RPC
  */
 export async function createParticipant(input: CreateParticipantInput & { avatar_url?: string }): Promise<Participant> {
-  console.log('Creating participant via RPC:', input.email);
+  if (import.meta.env.DEV) console.log('Creating participant via RPC:', input.email);
   
   // Use the RPC function to create user without logging out the supervisor
   const { data: newUserId, error: rpcError } = await supabase.rpc('mp_admin_create_user', {

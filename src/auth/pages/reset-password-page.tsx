@@ -40,7 +40,7 @@ export function ResetPasswordPage() {
       setIsProcessing(true);
       setError(null);
 
-      console.log('Submitting password reset for:', values.email);
+      if (import.meta.env.DEV) console.log('Submitting password reset for:', values.email);
 
       // Request password reset using Supabase directly
       const { error } = await supabase.auth.resetPasswordForEmail(

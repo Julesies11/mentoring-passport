@@ -7,7 +7,7 @@ export function ProductDetailsContent() {
   const [selectedProductId] = useState('123');
 
   const handleAddToCart = ({ productId }: { productId: string }) => {
-    console.log('Added to cart:', productId);
+    if (import.meta.env.DEV) console.log('Added to cart:', productId);
   };
 
   return (
