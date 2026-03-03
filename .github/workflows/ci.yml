@@ -1,0 +1,83 @@
+name: CI - Security, Lint, Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      checks: write
+
+    steps:
+      # -------------------------
+      # Checkout repository
+      # -------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -------------------------
+      # Setup Node & Cache
+      # -------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # -------------------------
+      # Install dependencies
+      # -------------------------
+      - name: Install dependencies
+        run: npm ci
+
+      # -------------------------
+      # Lint (ESLint)
+      # -------------------------
+      - name: Run ESLint
+        run: npm run lint
+
+      # -------------------------
+      # TypeScript type checking
+      # -------------------------
+      - name: TypeScript type check
+        run: npm run type-check
+
+      # -------------------------
+      # Security: npm audit
+      # -------------------------
+      - name: Security Scan - npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      # -------------------------
+      # Secret scanning
+      # -------------------------
+      - name: Secret Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+        continue-on-error: true
+
+      # -------------------------
+      # Vite Build
+      # -------------------------
+      - name: Build application
+        run: npm run build
+
+      # -------------------------
+      # Save built assets (optional)
+      # -------------------------
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
