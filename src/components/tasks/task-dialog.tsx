@@ -76,13 +76,6 @@ export function TaskDialog({
     await onSubmitEvidence(task.id, { description: evidenceNotes, files: selectedFiles }, submitForReview);
   };
 
-  const statusColors = {
-    not_submitted: 'bg-gray-100 text-gray-600',
-    awaiting_review: 'bg-yellow-100 text-yellow-700',
-    completed: 'bg-green-100 text-green-700',
-    revision_required: 'bg-red-100 text-red-700',
-  };
-
   const statusLabels = {
     not_submitted: 'Not Started',
     awaiting_review: 'In Review',
@@ -103,8 +96,8 @@ export function TaskDialog({
           <div className="bg-primary/5 p-8 border-b border-primary/10 relative overflow-hidden">
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-3">
-                <Badge variant="outline" className={cn("rounded-full font-black uppercase text-[10px] px-3 border-none shadow-sm", statusColors[task.status])}>
-                  {statusLabels[task.status]}
+                <Badge variant="outline" className={cn("rounded-full font-black uppercase text-[10px] px-3 border-none shadow-sm", TASK_STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-700')}>
+                  {statusLabels[task.status as keyof typeof statusLabels]}
                 </Badge>
                 {requiresSubmission && (
                   <Badge variant="destructive" size="xs" className="h-4 text-[8px] font-black px-1.5 uppercase tracking-widest">

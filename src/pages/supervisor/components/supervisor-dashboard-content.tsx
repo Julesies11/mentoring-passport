@@ -1,18 +1,18 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAllParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 import { usePendingEvidence } from '@/hooks/use-evidence';
+import { useAllPairTaskStatuses } from '@/hooks/use-tasks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KeenIcon } from '@/components/keenicons';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
-import { fetchPairTasks } from '@/lib/api/tasks';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { calculatePairProgress } from '@/lib/utils/progress';
 
 export function SupervisorDashboardContent() {
   const isMobile = useIsMobile();
@@ -20,43 +20,13 @@ export function SupervisorDashboardContent() {
   const { data: participants = [] } = useAllParticipants();
   const { pairs = [] } = usePairs();
   const { evidence: pendingEvidenceList = [] } = usePendingEvidence();
-
-  const [pairStats, setPairStats] = useState<Record<string, { completed: number, total: number, formatted: string }>>({});
-
-  // Fetch detailed progress for all active pairs
-  useEffect(() => {
-    const fetchProgress = async () => {
-      if (!pairs || pairs.length === 0) {
-        return;
-      }
-
-      const statsMap: Record<string, { completed: number, total: number, formatted: string }> = {};
-      try {
-        await Promise.all(pairs.map(async (pair) => {
-          if (pair.status === 'active') {
-            const tasks = await fetchPairTasks(pair.id);
-            const completed = tasks.filter((t: any) => t.status === 'completed').length;
-            const total = tasks.length;
-            statsMap[pair.id] = { 
-              completed, 
-              total, 
-              formatted: `${completed}/${total}` 
-            };
-          }
-        }));
-        setPairStats(statsMap);
-      } catch (error) {
-        console.error('Error fetching pair progress:', error);
-      }
-    };
-
-    fetchProgress();
-  }, [pairs]);
+  const { data: allStatuses = [] } = useAllPairTaskStatuses();
 
   // Statistics
   const stats = useMemo(() => {
     // 1. Active Relationships: Pairs with status 'active'
-    const active = pairs.filter(p => p.status === 'active').length;
+    const activePairs = pairs.filter(p => p.status === 'active');
+    const active = activePairs.length;
     
     // 2. Pending Reviews: Number of pending evidence items
     const pending = pendingEvidenceList.length;
@@ -69,19 +39,14 @@ export function SupervisorDashboardContent() {
     ).length;
     
     // 4. Program Pulse: Average completion percentage of all active relationships
-    const activePairProgress = pairs
-      .filter(p => p.status === 'active' && pairStats[p.id] !== undefined)
-      .map(p => {
-        const s = pairStats[p.id];
-        return s.total > 0 ? (s.completed / s.total) * 100 : 0;
-      });
+    const activePairProgress = activePairs.map(p => calculatePairProgress(p.id, allStatuses).percentage);
       
     const avgProgress = activePairProgress.length > 0 
       ? Math.round(activePairProgress.reduce((a, b) => a + b, 0) / activePairProgress.length) 
       : 0;
 
     return { active, pending, unpaired, avgProgress };
-  }, [pairs, pendingEvidenceList, participants, pairStats]);
+  }, [pairs, pendingEvidenceList, participants, allStatuses]);
 
   // Stale Pairings (No activity in 14 days)
   const stalePairings = useMemo(() => {
@@ -289,7 +254,9 @@ export function SupervisorDashboardContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pairs.filter(p => p.status === 'active').slice(0, 8).map((p) => (
+                {pairs.filter(p => p.status === 'active').slice(0, 8).map((p) => {
+                  const progress = calculatePairProgress(p.id, allStatuses);
+                  return (
                   <tr 
                     key={p.id} 
                     className="hover:bg-primary/[0.02] transition-colors text-sm cursor-pointer group"
@@ -317,19 +284,18 @@ export function SupervisorDashboardContent() {
                             {p.mentor?.job_title || 'N/A'} • {p.mentee?.job_title || 'N/A'}
                           </span>
                         </div>
-
                       </div>
                     </td>
                     <td className="py-3 sm:py-4 px-3 sm:px-6 min-w-0">
                       <div className="flex flex-col gap-1 min-w-[80px] lg:min-w-[120px]">
                         <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-black uppercase text-gray-400">
-                          <span>{pairStats[p.id]?.formatted || '0/0'}</span>
-                          <span>{pairStats[p.id]?.total > 0 ? Math.round((pairStats[p.id]?.completed / pairStats[p.id]?.total) * 100) : 0}%</span>
+                          <span>{progress.formatted}</span>
+                          <span>{progress.percentage}%</span>
                         </div>
                         <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-primary transition-all duration-500" 
-                            style={{ width: `${pairStats[p.id]?.total > 0 ? (pairStats[p.id]?.completed / pairStats[p.id]?.total) * 100 : 0}%` }}
+                            style={{ width: `${progress.percentage}%` }}
                           />
                         </div>
                       </div>
@@ -338,7 +304,7 @@ export function SupervisorDashboardContent() {
                       {format(new Date(p.updated_at), 'MMM d')}
                     </td>
                   </tr>
-                ))}
+                )})}
                 {pairs.filter(p => p.status === 'active').length === 0 && (
                   <tr>
                     <td colSpan={3} className="py-12 text-center text-gray-400 italic">

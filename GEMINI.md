@@ -51,10 +51,10 @@ This ensures:
 
 ## Component / Module Structure
 - Follow Metronic folder structure exactly.
-- Place new features in `/modules/{feature-name}`.
-- UI components go in `components/`.
-- Data hooks go in `hooks/`.
-- API logic goes in `api/`.
+- Group page-specific components in a `components` subfolder next to the page (e.g., `src/pages/supervisor/components/`).
+- Shared UI components go in `src/components/`.
+- Data fetching hooks go in `src/hooks/`.
+- API logic goes in `src/lib/api/`.
 
 ## TanStack Query Conventions
 - Use stable query keys.

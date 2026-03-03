@@ -28,12 +28,7 @@ import { toast } from 'sonner';
 import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-const pairStatusColors = {
-  active: 'bg-green-100 text-success border-green-200',
-  completed: 'bg-blue-100 text-blue-700 border-blue-200',
-  archived: 'bg-gray-100 text-gray-500 border-gray-200',
-};
+import { PAIR_STATUS_COLORS } from '@/config/constants';
 
 export function SupervisorChecklistPage() {
   const { user } = useAuth();

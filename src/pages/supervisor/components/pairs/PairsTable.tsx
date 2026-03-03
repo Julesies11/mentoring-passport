@@ -12,12 +12,8 @@ import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { useAllPairTaskStatuses } from '@/hooks/use-tasks';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-const statusColors = {
-  active: 'bg-green-100 text-green-800 border-green-200',
-  completed: 'bg-blue-100 text-blue-800 border-blue-200',
-  archived: 'bg-gray-100 text-gray-800 border-gray-200',
-};
+import { PAIR_STATUS_COLORS } from '@/config/constants';
+import { calculatePairProgress } from '@/lib/utils/progress';
 
 const SortIcon = ({ field, currentField, currentOrder }: { field: string, currentField: string, currentOrder: 'asc' | 'desc' }) => {
   if (field !== currentField) return <KeenIcon icon="arrow-up-down" className="text-[10px] opacity-20 ml-1" />;
@@ -60,15 +56,6 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
     }
   };
 
-  const getProgress = useMemo(() => {
-    return (pairId: string) => {
-      const pairTasks = allStatuses.filter(s => s.pair_id === pairId);
-      const total = pairTasks.length;
-      const completed = pairTasks.filter(s => s.status === 'completed').length;
-      return { completed, total, formatted: `${completed}/${total}` };
-    };
-  }, [allStatuses]);
-
   const sortedPairs = useMemo(() => {
     const filtered = pairs.filter((pair) => {
       const mentorName = pair.mentor?.full_name || '';
@@ -105,11 +92,11 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
           bVal = b.status;
           break;
         case 'progress':
-          const aProg = getProgress(a.id);
-          const bProg = getProgress(b.id);
-          // Sort by completion percentage if possible, or just raw completed count
-          aVal = aProg.total > 0 ? aProg.completed / aProg.total : 0;
-          bVal = bProg.total > 0 ? bProg.completed / bProg.total : 0;
+          const aProg = calculatePairProgress(a.id, allStatuses);
+          const bProg = calculatePairProgress(b.id, allStatuses);
+          // Sort by completion percentage
+          aVal = aProg.percentage;
+          bVal = bProg.percentage;
           break;
         case 'created_at':
         default:
@@ -122,7 +109,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [pairs, searchQuery, filterStatus, sortField, sortOrder, getProgress]);
+  }, [pairs, searchQuery, filterStatus, sortField, sortOrder, allStatuses]);
 
   const { paginatedPairs, totalPages } = useMemo(() => {
     const pages = Math.ceil(sortedPairs.length / itemsPerPage);
@@ -225,7 +212,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
               </TableHeader>
               <TableBody>
                 {paginatedPairs.map((pair) => {
-                  const progress = getProgress(pair.id);
+                  const progress = calculatePairProgress(pair.id, allStatuses);
                   return (
                     <TableRow 
                       key={pair.id} 
@@ -278,7 +265,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
                       </TableCell>
 
                       <TableCell className="hidden lg:table-cell">
-                        <Badge variant="outline" className={cn('capitalize font-medium text-[10px]', statusColors[pair.status as keyof typeof statusColors])}>
+                        <Badge variant="outline" className={cn('capitalize font-medium text-[10px]', PAIR_STATUS_COLORS[pair.status as keyof typeof PAIR_STATUS_COLORS])}>
                           {pair.status}
                         </Badge>
                       </TableCell>
