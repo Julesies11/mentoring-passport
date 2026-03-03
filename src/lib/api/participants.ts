@@ -46,8 +46,9 @@ export interface UpdateParticipantInput {
 export async function fetchParticipants(): Promise<Participant[]> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, email, role, full_name, job_title, department, avatar_url, phone, status, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1000);
 
   if (error) {
     console.error('Error fetching participants:', error);
@@ -63,10 +64,11 @@ export async function fetchParticipants(): Promise<Participant[]> {
 export async function fetchParticipantsByRole(role: 'supervisor' | 'program-member'): Promise<Participant[]> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select('id, email, role, full_name, job_title, department, avatar_url, phone, status')
     .eq('role', role)
     .eq('status', 'active')
-    .order('full_name', { ascending: true });
+    .order('full_name', { ascending: true })
+    .limit(1000);
 
   if (error) {
     console.error('Error fetching participants by role:', error);

@@ -16,6 +16,14 @@ const QueryProvider = ({ children }: { children: ReactNode }) => {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000, // Data is fresh for 5 minutes
+            gcTime: 10 * 60 * 1000, // Keep inactive data in cache for 10 minutes
+            refetchOnWindowFocus: false, // Don't refetch automatically when switching tabs
+            retry: 1, // Only retry failed requests once
+          },
+        },
         queryCache: new QueryCache({
           onError: (error) => {
             logError({

@@ -47,7 +47,8 @@ export async function fetchPairs(): Promise<Pair[]> {
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
       mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(1000);
 
   if (error) {
     console.error('Error fetching pairs:', error);
@@ -286,7 +287,8 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
     .in('status', ['active', 'completed'])
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(1000);
 
   if (error) {
     console.error('Error fetching user pairs:', error);

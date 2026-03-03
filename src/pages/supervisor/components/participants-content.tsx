@@ -72,8 +72,10 @@ export function ParticipantsContent() {
 
   // Reset to first page when search or filters change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, roleFilter, statusFilter, itemsPerPage]);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, roleFilter, statusFilter, itemsPerPage, currentPage]);
 
   const filteredParticipants = useMemo(() => {
     return participants.filter(p => {

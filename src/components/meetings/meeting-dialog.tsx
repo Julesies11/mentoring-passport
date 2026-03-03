@@ -99,11 +99,15 @@ export function MeetingDialog({
   useEffect(() => {
     if (!meeting && open && formData.pair_task_id && formData.pair_task_id !== 'none') {
       const selectedTask = tasks.find(t => t.id === formData.pair_task_id);
-      if (selectedTask && (!formData.title || tasks.some(t => t.name === formData.title))) {
-        setFormData(prev => ({ ...prev, title: selectedTask.name }));
+      if (selectedTask) {
+        // Only update if the title is empty or matches another task, AND isn't already the selected task's name
+        const needsUpdate = !formData.title || (tasks.some(t => t.name === formData.title) && formData.title !== selectedTask.name);
+        if (needsUpdate) {
+          setFormData(prev => ({ ...prev, title: selectedTask.name }));
+        }
       }
     }
-  }, [formData.pair_task_id, tasks, meeting, open]);
+  }, [formData.pair_task_id, formData.title, tasks, meeting, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

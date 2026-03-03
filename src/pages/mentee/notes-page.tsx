@@ -52,7 +52,7 @@ export function MenteeNotesPage() {
     if (activePair && !formData.pair_id) {
       setFormData(prev => ({ ...prev, pair_id: activePair.id }));
     }
-  }, [activePair]);
+  }, [activePair, formData.pair_id]);
 
   const privateNotes = notes.filter(note => note.is_private);
   const sharedNotes = notes.filter(note => !note.is_private);

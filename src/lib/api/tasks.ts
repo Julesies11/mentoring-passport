@@ -95,7 +95,8 @@ export async function fetchEvidenceTypes(): Promise<EvidenceType[]> {
   const { data, error } = await supabase
     .from('mp_evidence_types')
     .select('*')
-    .order('name', { ascending: true });
+    .order('name', { ascending: true })
+    .limit(100);
 
   if (error) {
     console.error('Error fetching evidence types:', error);
@@ -125,7 +126,7 @@ export async function fetchTasks(includeInactive: boolean = false): Promise<Task
     query.eq('is_active', true);
   }
 
-  const { data, error } = await query.order('sort_order', { ascending: true });
+  const { data, error } = await query.order('sort_order', { ascending: true }).limit(500);
 
   if (error) {
     console.error('Error fetching tasks:', error);

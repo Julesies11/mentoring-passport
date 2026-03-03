@@ -60,12 +60,14 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
     }
   };
 
-  const getProgress = (pairId: string) => {
-    const pairTasks = allStatuses.filter(s => s.pair_id === pairId);
-    const total = pairTasks.length;
-    const completed = pairTasks.filter(s => s.status === 'completed').length;
-    return { completed, total, formatted: `${completed}/${total}` };
-  };
+  const getProgress = useMemo(() => {
+    return (pairId: string) => {
+      const pairTasks = allStatuses.filter(s => s.pair_id === pairId);
+      const total = pairTasks.length;
+      const completed = pairTasks.filter(s => s.status === 'completed').length;
+      return { completed, total, formatted: `${completed}/${total}` };
+    };
+  }, [allStatuses]);
 
   const sortedPairs = useMemo(() => {
     const filtered = pairs.filter((pair) => {
@@ -120,7 +122,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [pairs, searchQuery, filterStatus, sortField, sortOrder, allStatuses]);
+  }, [pairs, searchQuery, filterStatus, sortField, sortOrder, getProgress]);
 
   const { paginatedPairs, totalPages } = useMemo(() => {
     const pages = Math.ceil(sortedPairs.length / itemsPerPage);
@@ -133,7 +135,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
 
   useEffect(() => {
     if (currentPage !== 1) setCurrentPage(1);
-  }, [searchQuery, filterStatus, itemsPerPage]);
+  }, [searchQuery, filterStatus, itemsPerPage, currentPage]);
 
   return (
     <Card className="border-0 sm:border">
