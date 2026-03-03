@@ -97,6 +97,11 @@ export function PairTaskEditDialog({
 
   const handleCreateSubTask = () => {
     if (task && subTaskName.trim()) {
+      if (task.id === 'new-task') {
+        toast.error('Please save the task before adding subtasks.');
+        return;
+      }
+
       const fallback =
         evidenceTypes.find((t: any) =>
           t.name.toLowerCase().includes('not applicable'),
@@ -108,7 +113,7 @@ export function PairTaskEditDialog({
 
   const handleSubTaskReorder = (newOrder: PairSubTask[]) => {
     setLocalSubTasks(newOrder);
-    if (task) {
+    if (task && task.id !== 'new-task') {
       onReorderSubTasks(task.id, newOrder);
     }
   };
@@ -122,7 +127,7 @@ export function PairTaskEditDialog({
           <DialogTitle className="text-xl font-bold text-gray-900">
             {readOnly
               ? 'Task Progress & Evidence'
-              : 'Edit Pair Task & Subtasks'}
+              : task.id === 'new-task' ? 'Create Custom Task' : 'Edit Pair Task & Subtasks'}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground mt-1">
             {readOnly
@@ -340,22 +345,31 @@ export function PairTaskEditDialog({
           </div>
 
           {/* Subtasks Section */}
-          <div className="space-y-5">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50">
-              <div className="flex items-center gap-2">
-                <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <KeenIcon icon="list" className="text-primary text-base" />
-                </div>
-                <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
-                  Subtasks ({localSubTasks.length})
-                </h4>
-              </div>
-              {!readOnly && (
-                <p className="text-[10px] text-muted-foreground font-medium bg-gray-100 px-2 py-0.5 rounded-full uppercase">
-                  Drag to reorder
-                </p>
-              )}
+          {task.id === 'new-task' ? (
+            <div className="mt-8 p-6 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
+              <KeenIcon icon="information-2" className="text-3xl text-gray-300 mb-3" />
+              <h4 className="text-sm font-bold text-gray-700 mb-1">Save Task to Add Subtasks</h4>
+              <p className="text-xs text-gray-500 max-w-[250px] mx-auto">
+                You can define a sequence of subtasks after saving the main task details.
+              </p>
             </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between pb-1 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <KeenIcon icon="list" className="text-primary text-base" />
+                  </div>
+                  <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
+                    Subtasks ({localSubTasks.length})
+                  </h4>
+                </div>
+                {!readOnly && (
+                  <p className="text-[10px] text-muted-foreground font-medium bg-gray-100 px-2 py-0.5 rounded-full uppercase">
+                    Drag to reorder
+                  </p>
+                )}
+              </div>
 
             {/* Subtask Add Form */}
             {!readOnly && (
@@ -547,19 +561,25 @@ export function PairTaskEditDialog({
               )}
             </div>
           </div>
+          )}
         </div>
 
-        <DialogFooter className="px-6 py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30 justify-between">
+        <DialogFooter className={cn(
+          "px-6 py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30",
+          !readOnly && task.id !== 'new-task' ? "justify-between" : "justify-end"
+        )}>
           {!readOnly ? (
             <Fragment>
-              <Button
-                variant="destructive"
-                className="h-11 px-6 rounded-xl font-bold"
-                onClick={() => task && onDeleteTask(task.id)}
-              >
-                <KeenIcon icon="trash" />
-                Delete Task
-              </Button>
+              {task.id !== 'new-task' && (
+                <Button
+                  variant="destructive"
+                  className="h-11 px-6 rounded-xl font-bold"
+                  onClick={() => task && onDeleteTask(task.id)}
+                >
+                  <KeenIcon icon="trash" />
+                  Delete Task
+                </Button>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="outline"

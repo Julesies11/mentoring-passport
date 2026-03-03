@@ -156,28 +156,34 @@ export function SupervisorChecklistPage() {
     }
   }, [searchParams, pairs, selectedPairId]);
 
-  const handleAddTask = async () => {
+  const handleAddTask = () => {
     if (!selectedPairId) return;
     
-    const fallbackEvidenceType = (evidenceTypes as any[]).find((t: any) => t.name.toLowerCase().includes('not applicable')) || evidenceTypes[0];
-    
-    const maxSortOrder = tasks.reduce((max: number, t: any) => Math.max(max, t.sort_order), 0) || 0;
-
-    createTask({
+    // Create a temporary task object to pass to the dialog
+    const tempTask: PairTask = {
+      id: 'new-task',
       pair_id: selectedPairId,
-      name: 'New Custom Task',
+      name: '',
       status: 'not_submitted',
-      sort_order: maxSortOrder + 1,
-      evidence_type_id: fallbackEvidenceType?.id,
-      master_task_id: null
-    } as any, {
-      onSuccess: (newTask) => {
-        handleOpenEditDialog(newTask);
-      }
-    });
+      sort_order: tasks.length + 1,
+      evidence_type_id: '',
+      master_task_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    setSelectedTaskId('new-task');
+    setIsReadOnly(false);
+    setIsEditTaskOpen(true);
   };
 
   const handleDeleteTask = (taskId: string) => {
+    if (taskId === 'new-task') {
+      setIsEditTaskOpen(false);
+      setSelectedTaskId(null);
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this task for this pair? This will remove all associated subtasks and cannot be undone.')) {
       deleteTask(taskId);
       setIsEditTaskOpen(false);
@@ -204,16 +210,42 @@ export function SupervisorChecklistPage() {
   };
 
   const handleUpdateTask = (taskId: string, updates: Partial<PairTask>) => {
-    updateTask(taskId, updates, {
-      onSuccess: () => {
-        setIsEditTaskOpen(false);
-        setSelectedTaskId(null);
-        toast.success('Task updated successfully');
+    if (taskId === 'new-task') {
+      if (!updates.name?.trim() || !updates.evidence_type_id) {
+        toast.error('Task name and evidence type are required.');
+        return;
       }
-    });
+      createTask({
+        pair_id: selectedPairId!,
+        name: updates.name,
+        status: 'not_submitted',
+        sort_order: tasks.length + 1,
+        evidence_type_id: updates.evidence_type_id,
+        master_task_id: null
+      } as any, {
+        onSuccess: () => {
+          setIsEditTaskOpen(false);
+          setSelectedTaskId(null);
+          toast.success('Task created successfully');
+        }
+      });
+    } else {
+      updateTask(taskId, updates, {
+        onSuccess: () => {
+          setIsEditTaskOpen(false);
+          setSelectedTaskId(null);
+          toast.success('Task updated successfully');
+        }
+      });
+    }
   };
 
   const handleCreateSubTask = (taskId: string, name: string, evidenceTypeId: string) => {
+    if (taskId === 'new-task') {
+      toast.error('Please save the task before adding subtasks.');
+      return;
+    }
+    
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     

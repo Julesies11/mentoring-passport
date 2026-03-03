@@ -120,19 +120,6 @@ export function TaskDialog({
           </div>
 
           <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-8 space-y-8">
-            {/* Task Info Section */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 px-1">
-                <AlertCircle size={16} className="text-primary" />
-                <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Task Details</span>
-              </div>
-              <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {task.description || "This task covers core program requirements. Please review the details and submit any requested evidence below."}
-                </p>
-              </div>
-            </section>
-
             {/* Revision Feedback Section */}
             {task.status === 'revision_required' && task.last_feedback && (
               <section className="space-y-4">
@@ -167,46 +154,49 @@ export function TaskDialog({
                     />
                   </div>
 
-                  {requiresSubmission && (
-                    <div className="space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
                       <Label className="text-xs font-bold text-gray-600 uppercase">Upload Documents/Photos</Label>
-                      
-                      {/* Dropzone Proxy */}
-                      <div className="relative">
-                        <input
-                          type="file"
-                          id="file-upload"
-                          multiple
-                          onChange={handleFileChange}
-                          className="absolute inset-0 opacity-0 cursor-pointer z-20"
-                        />
-                        <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-primary/50 hover:bg-primary/[0.02] transition-all bg-gray-50/50">
-                          <div className="size-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
-                            <Upload size={20} className="text-primary" />
-                          </div>
-                          <p className="text-sm font-bold text-gray-900">Click or drag to upload evidence</p>
-                          <p className="text-xs text-gray-500 mt-1 uppercase font-medium tracking-tighter">Support: PDF, JPG, PNG, DOCX</p>
-                        </div>
-                      </div>
-
-                      {/* File List */}
-                      {selectedFiles.length > 0 && (
-                        <div className="grid gap-2">
-                          {selectedFiles.map((file, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <FileText size={18} className="text-primary/60 shrink-0" />
-                                <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
-                              </div>
-                              <Button variant="ghost" size="sm" mode="icon" className="size-7 rounded-lg text-gray-400 hover:text-danger" onClick={() => removeFile(idx)}>
-                                <X size={14} />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
+                      {requiresSubmission && (
+                        <span className="text-[9px] font-black text-danger uppercase tracking-tighter bg-danger/5 px-1.5 py-0.5 rounded border border-danger/10">Required for Review</span>
                       )}
                     </div>
-                  )}
+                    
+                    {/* Dropzone Proxy */}
+                    <div className="relative">
+                      <input
+                        type="file"
+                        id="file-upload"
+                        multiple
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                      />
+                      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-primary/50 hover:bg-primary/[0.02] transition-all bg-gray-50/50">
+                        <div className="size-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
+                          <Upload size={20} className="text-primary" />
+                        </div>
+                        <p className="text-sm font-bold text-gray-900">Click or drag to upload evidence</p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase font-medium tracking-tighter">Support: PDF, JPG, PNG, DOCX</p>
+                      </div>
+                    </div>
+
+                    {/* File List */}
+                    {selectedFiles.length > 0 && (
+                      <div className="grid gap-2">
+                        {selectedFiles.map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <FileText size={18} className="text-primary/60 shrink-0" />
+                              <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" mode="icon" className="size-7 rounded-lg text-gray-400 hover:text-danger" onClick={() => removeFile(idx)}>
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </section>
             )}
@@ -246,7 +236,7 @@ export function TaskDialog({
                   </Button>
                   <Button 
                     onClick={() => handleSubmit(true)}
-                    disabled={isSubmitting || (requiresSubmission && selectedFiles.length === 0)}
+                    disabled={isSubmitting}
                     className="bg-primary hover:bg-primary-dark text-white rounded-xl h-11 px-8 font-bold shadow-lg shadow-primary/20 border-none"
                   >
                     {isSubmitting ? (
