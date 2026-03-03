@@ -199,22 +199,35 @@ export const SupabaseAdapter = {
    * Get current user from the session
    */
   async getCurrentUser(): Promise<UserModel | null> {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return null;
+    // Check if there is a local session first to prevent unnecessary 403 network errors
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
 
-    return this.getUserProfile();
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) return null;
+
+      return await this.getUserProfile(data.user);
+    } catch (e) {
+      return null;
+    }
   },
 
   /**
    * Get user profile from mp_profiles table
    */
-  async getUserProfile(): Promise<UserModel> {
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
+  async getUserProfile(preFetchedUser?: any): Promise<UserModel> {
+    let user = preFetchedUser;
 
-    if (error || !user) throw new Error(error?.message || 'User not found');
+    if (!user) {
+      const {
+        data: authData,
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error || !authData.user) throw new Error(error?.message || 'User not found');
+      user = authData.user;
+    }
 
     // Fetch profile data from mp_profiles table
     const { data: profile, error: profileError } = await supabase

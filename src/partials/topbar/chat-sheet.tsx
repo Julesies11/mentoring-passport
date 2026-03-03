@@ -205,10 +205,9 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
                 className="flex items-end justify-end gap-3 px-5"
               >
                 <div className="flex flex-col gap-1">
-                  <div
-                    className="bg-primary text-primary-foreground text-sm font-medium p-3 rounded-lg shadow-xs"
-                    dangerouslySetInnerHTML={{ __html: message.text }}
-                  />
+                  <div className="bg-primary text-primary-foreground text-sm font-medium p-3 rounded-lg shadow-xs">
+                    {message.text}
+                  </div>
                   <div className="flex items-center justify-end gap-1">
                     <span className="text-xs text-secondary-foreground">
                       {message.time}
@@ -243,10 +242,9 @@ export function ChatSheet({ trigger }: { trigger: ReactNode }) {
                   <AvatarFallback>CH</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col gap-1">
-                  <div
-                    className="bg-accent/50 text-secondary-foreground text-sm font-medium p-3 rounded-lg shadow-xs"
-                    dangerouslySetInnerHTML={{ __html: message.text }}
-                  />
+                  <div className="bg-accent/50 text-secondary-foreground text-sm font-medium p-3 rounded-lg shadow-xs">
+                    {message.text}
+                  </div>
                   <span className="text-xs text-muted-foreground">
                     {message.time}
                   </span>
