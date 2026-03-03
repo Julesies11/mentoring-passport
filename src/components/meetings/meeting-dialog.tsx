@@ -101,7 +101,8 @@ export function MeetingDialog({
         }));
       }
     }
-  }, [meeting, initialTaskId, open, tasks.length]); // Use tasks.length instead of tasks object to avoid loops if array reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meeting, initialTaskId, open, tasks, tasks.length]); // Use tasks.length instead of tasks object to avoid loops if array reference changes
 
   // Removed redundant second useEffect that was also updating title based on pair_task_id
 

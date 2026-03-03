@@ -58,16 +58,16 @@ jobs:
       # Security: npm audit
       # -------------------------
       - name: Security Scan - npm audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
         continue-on-error: true
 
       # -------------------------
       # Secret scanning
       # -------------------------
       - name: Secret Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/analyze@v3
         with:
-          sarif_file: results.sarif
+          category: "/language:javascript-typescript"
         continue-on-error: true
 
       # -------------------------

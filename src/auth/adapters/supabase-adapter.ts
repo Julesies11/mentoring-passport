@@ -208,7 +208,7 @@ export const SupabaseAdapter = {
       if (error || !data.user) return null;
 
       return await this.getUserProfile(data.user);
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   },
