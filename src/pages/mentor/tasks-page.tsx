@@ -287,43 +287,45 @@ export function TasksPage() {
 
   return (
     <>
-      <Container>
-        <Toolbar>
-          <ToolbarHeading
-            title="Mentoring Tasks"
-            description="Track progress and complete requirements for this mentoring relationship"
-          />
-          <ToolbarActions />
-        </Toolbar>
-      </Container>
+      <div className="hidden sm:block">
+        <Container>
+          <Toolbar>
+            <ToolbarHeading
+              title="Mentoring Tasks"
+              description="Track progress and complete requirements for this mentoring relationship"
+            />
+            <ToolbarActions />
+          </Toolbar>
+        </Container>
+      </div>
 
-      <Container>
+      <Container className="sm:mt-0">
         <PairingSelector />
         
-        <div className="grid gap-5 lg:gap-7.5">
+        <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
           {/* Progress Card */}
           {stats && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
+            <Card className="border-0 sm:border">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-1 sm:gap-0">
                   <div>
-                    <p className="text-sm font-semibold text-muted-foreground uppercase mb-1">Overall Progress</p>
+                    <p className="text-[10px] sm:text-sm font-semibold text-muted-foreground uppercase mb-0.5 sm:mb-1">Overall Progress</p>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-3xl font-bold text-gray-900">{stats.completion_percentage}%</p>
-                      <span className="text-sm text-muted-foreground">
+                      <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.completion_percentage}%</p>
+                      <span className="text-[10px] sm:text-sm text-muted-foreground">
                         ({stats.completed} of {stats.total} tasks completed)
                       </span>
                     </div>
                   </div>
                 </div>
-                <Progress value={stats.completion_percentage} className="h-2.5" />
+                <Progress value={stats.completion_percentage} className="h-2 sm:h-2.5" />
               </CardContent>
             </Card>
           )}
 
           {/* Tasks List */}
-          <Card>
-            <CardHeader>
+          <Card className="border-0 sm:border">
+            <CardHeader className="hidden sm:flex">
               <CardTitle>Mentoring Tasks</CardTitle>
             </CardHeader>
             <CardContent className="p-0">

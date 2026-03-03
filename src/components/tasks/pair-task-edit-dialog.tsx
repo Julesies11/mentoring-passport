@@ -91,21 +91,37 @@ export function PairTaskEditDialog({
       onUpdateTask(task.id, {
         name: formData.name,
         evidence_type_id: formData.evidence_type_id,
-      });
+        localSubTasks: task.id === 'new-task' ? localSubTasks : undefined
+      } as any);
     }
   };
 
   const handleCreateSubTask = () => {
     if (task && subTaskName.trim()) {
-      if (task.id === 'new-task') {
-        toast.error('Please save the task before adding subtasks.');
-        return;
-      }
-
       const fallback =
         evidenceTypes.find((t: any) =>
           t.name.toLowerCase().includes('not applicable'),
         ) || evidenceTypes[0];
+
+      if (task.id === 'new-task') {
+        // Add to local list for new tasks
+        const newSubTask: PairSubTask = {
+          id: Math.random().toString(36).substr(2, 9), // Temp ID
+          pair_task_id: 'new-task',
+          name: subTaskName,
+          evidence_type_id: fallback?.id || '',
+          sort_order: localSubTasks.length + 1,
+          is_completed: false,
+          completed_by_id: null,
+          completed_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setLocalSubTasks([...localSubTasks, newSubTask]);
+        setSubTaskName('');
+        return;
+      }
+
       onCreateSubTask(task.id, subTaskName, fallback?.id || '');
       setSubTaskName('');
     }
@@ -116,6 +132,16 @@ export function PairTaskEditDialog({
     if (task && task.id !== 'new-task') {
       onReorderSubTasks(task.id, newOrder);
     }
+  };
+
+  const handleUpdateLocalSubTask = (subtaskId: string, updates: Partial<PairSubTask>) => {
+    setLocalSubTasks(prev => prev.map(st => 
+      st.id === subtaskId ? { ...st, ...updates } : st
+    ));
+  };
+
+  const handleDeleteLocalSubTask = (subtaskId: string) => {
+    setLocalSubTasks(prev => prev.filter(st => st.id !== subtaskId));
   };
 
   if (!task) return null;
@@ -345,31 +371,22 @@ export function PairTaskEditDialog({
           </div>
 
           {/* Subtasks Section */}
-          {task.id === 'new-task' ? (
-            <div className="mt-8 p-6 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
-              <KeenIcon icon="information-2" className="text-3xl text-gray-300 mb-3" />
-              <h4 className="text-sm font-bold text-gray-700 mb-1">Save Task to Add Subtasks</h4>
-              <p className="text-xs text-gray-500 max-w-[250px] mx-auto">
-                You can define a sequence of subtasks after saving the main task details.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between pb-1 border-b border-gray-50">
-                <div className="flex items-center gap-2">
-                  <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <KeenIcon icon="list" className="text-primary text-base" />
-                  </div>
-                  <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
-                    Subtasks ({localSubTasks.length})
-                  </h4>
+          <div className="space-y-5">
+            <div className="flex items-center justify-between pb-1 border-b border-gray-50">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <KeenIcon icon="list" className="text-primary text-base" />
                 </div>
-                {!readOnly && (
-                  <p className="text-[10px] text-muted-foreground font-medium bg-gray-100 px-2 py-0.5 rounded-full uppercase">
-                    Drag to reorder
-                  </p>
-                )}
+                <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
+                  Subtasks ({localSubTasks.length})
+                </h4>
               </div>
+              {!readOnly && (
+                <p className="text-[10px] text-muted-foreground font-medium bg-gray-100 px-2 py-0.5 rounded-full uppercase">
+                  Drag to reorder
+                </p>
+              )}
+            </div>
 
             {/* Subtask Add Form */}
             {!readOnly && (
@@ -455,9 +472,13 @@ export function PairTaskEditDialog({
                                   e.target.value !== subtask.name &&
                                   e.target.value.trim()
                                 ) {
-                                  onUpdateSubTask(subtask.id, {
-                                    name: e.target.value.trim(),
-                                  });
+                                  if (task.id === 'new-task') {
+                                    handleUpdateLocalSubTask(subtask.id, { name: e.target.value.trim() });
+                                  } else {
+                                    onUpdateSubTask(subtask.id, {
+                                      name: e.target.value.trim(),
+                                    });
+                                  }
                                 }
                               }}
                               onKeyDown={(e) => {
@@ -483,15 +504,19 @@ export function PairTaskEditDialog({
                                   if (
                                     value !== (subtask.evidence_type_id || '')
                                   ) {
-                                    const fallback =
-                                      evidenceTypes.find((t: any) =>
-                                        t.name
-                                          .toLowerCase()
-                                          .includes('not applicable'),
-                                      ) || evidenceTypes[0];
-                                    onUpdateSubTask(subtask.id, {
-                                      evidence_type_id: value || fallback?.id,
-                                    });
+                                    if (task.id === 'new-task') {
+                                      handleUpdateLocalSubTask(subtask.id, { evidence_type_id: value });
+                                    } else {
+                                      const fallback =
+                                        evidenceTypes.find((t: any) =>
+                                          t.name
+                                            .toLowerCase()
+                                            .includes('not applicable'),
+                                        ) || evidenceTypes[0];
+                                      onUpdateSubTask(subtask.id, {
+                                        evidence_type_id: value || fallback?.id,
+                                      });
+                                    }
                                   }
                                 }}
                               >
@@ -547,7 +572,11 @@ export function PairTaskEditDialog({
                               className="size-9 text-gray-300 hover:text-danger hover:bg-danger/5 opacity-0 group-hover:opacity-100 transition-all rounded-xl"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeleteSubTask(subtask.id);
+                                if (task.id === 'new-task') {
+                                  handleDeleteLocalSubTask(subtask.id);
+                                } else {
+                                  onDeleteSubTask(subtask.id);
+                                }
                               }}
                             >
                               <KeenIcon icon="trash" className="text-lg" />
@@ -561,7 +590,6 @@ export function PairTaskEditDialog({
               )}
             </div>
           </div>
-          )}
         </div>
 
         <DialogFooter className={cn(

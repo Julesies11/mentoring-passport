@@ -13,15 +13,19 @@ import { cn } from '@/lib/utils';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 export function PairingSelector() {
-  const { user, isMentor } = useAuth();
+  const { user } = useAuth();
   const { pairings, selectedPairingId, setSelectedPairingId, isLoading } = usePairing();
 
   if (isLoading || pairings.length === 0) return null;
 
+  const selectedPair = pairings.find(p => p.id === selectedPairingId);
+  const isUserMentorInSelected = selectedPair?.mentor_id === user?.id;
+  const partnerRoleLabel = isUserMentorInSelected ? 'YOUR MENTEE' : 'YOUR MENTOR';
+
   return (
     <div className="flex flex-col gap-2 w-full max-w-md mb-6 animate-fade-in px-1">
-      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
-        Mentoring Member
+      <label className="text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-widest px-1">
+        {partnerRoleLabel}
       </label>
       <Select 
         value={selectedPairingId || ''} 

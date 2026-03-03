@@ -185,9 +185,12 @@ export function SupervisorChecklistPage() {
     }
     
     if (window.confirm('Are you sure you want to delete this task for this pair? This will remove all associated subtasks and cannot be undone.')) {
-      deleteTask(taskId);
-      setIsEditTaskOpen(false);
-      setSelectedTaskId(null);
+      deleteTask(taskId, {
+        onSuccess: () => {
+          setIsEditTaskOpen(false);
+          setSelectedTaskId(null);
+        }
+      });
     }
   };
 
@@ -209,7 +212,7 @@ export function SupervisorChecklistPage() {
     setIsEditTaskOpen(true);
   };
 
-  const handleUpdateTask = (taskId: string, updates: Partial<PairTask>) => {
+  const handleUpdateTask = (taskId: string, updates: Partial<PairTask> & { localSubTasks?: any[] }) => {
     if (taskId === 'new-task') {
       if (!updates.name?.trim() || !updates.evidence_type_id) {
         toast.error('Task name and evidence type are required.');
@@ -223,10 +226,32 @@ export function SupervisorChecklistPage() {
         evidence_type_id: updates.evidence_type_id,
         master_task_id: null
       } as any, {
-        onSuccess: () => {
-          setIsEditTaskOpen(false);
-          setSelectedTaskId(null);
-          toast.success('Task created successfully');
+        onSuccess: (newTask) => {
+          // If there were local subtasks added during creation, create them now
+          if (updates.localSubTasks && updates.localSubTasks.length > 0) {
+            Promise.all(updates.localSubTasks.map(st => 
+              createSubTask({
+                pair_task_id: newTask.id,
+                name: st.name,
+                evidence_type_id: st.evidence_type_id,
+                sort_order: st.sort_order,
+                is_completed: false
+              } as any)
+            )).then(() => {
+              setIsEditTaskOpen(false);
+              setSelectedTaskId(null);
+              toast.success('Task and sub-tasks created successfully');
+            }).catch(err => {
+              console.error('Error creating sub-tasks:', err);
+              toast.error('Task created but some sub-tasks failed to save.');
+              setIsEditTaskOpen(false);
+              setSelectedTaskId(null);
+            });
+          } else {
+            setIsEditTaskOpen(false);
+            setSelectedTaskId(null);
+            toast.success('Task created successfully');
+          }
         }
       });
     } else {
@@ -327,8 +352,24 @@ export function SupervisorChecklistPage() {
 
   const currentTask = useMemo(() => {
     if (!selectedTaskId) return null;
+    
+    if (selectedTaskId === 'new-task') {
+      return {
+        id: 'new-task',
+        pair_id: selectedPairId || '',
+        name: '',
+        status: 'not_submitted',
+        sort_order: tasks.length + 1,
+        evidence_type_id: '',
+        master_task_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subtasks: []
+      } as PairTask;
+    }
+    
     return enrichedTasks.find(t => t.id === selectedTaskId) || null;
-  }, [selectedTaskId, enrichedTasks]);
+  }, [selectedTaskId, enrichedTasks, selectedPairId, tasks.length]);
 
   return (
     <>

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
+import { toast } from 'sonner';
 import {
   fetchTasks,
   fetchPairTasks,
@@ -156,6 +157,11 @@ export function usePairTasks(pairId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
+      toast.success('Task deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting pair task:', error);
+      toast.error('Failed to delete task: ' + (error.message || 'Unknown error'));
     },
   });
 
@@ -200,6 +206,11 @@ export function usePairTasks(pairId: string) {
     mutationFn: deletePairSubTask,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
+      toast.success('Sub-task deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting pair subtask:', error);
+      toast.error('Failed to delete sub-task: ' + (error.message || 'Unknown error'));
     },
   });
 
