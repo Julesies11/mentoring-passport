@@ -4,19 +4,19 @@ import { describe, it, expect, vi } from 'vitest';
 
 // Mock Radix Select because it's difficult to interact with in JSDOM
 vi.mock('@/components/ui/select', () => ({
-  Select: ({ children, value, onValueChange }: any) => (
+  Select: ({ _children, value, onValueChange }: any) => (
     <select 
       value={value} 
       onChange={(e) => onValueChange(e.target.value)}
       data-testid="mock-select"
     >
-      {children}
+      {_children}
     </select>
   ),
-  SelectTrigger: ({ children }: any) => <>{children}</>,
-  SelectValue: ({ placeholder }: any) => <>{placeholder}</>,
-  SelectContent: ({ children }: any) => <>{children}</>,
-  SelectItem: ({ children, value }: any) => <option value={value}>{value}</option>,
+  SelectTrigger: ({ _children }: any) => <>{_children}</>,
+  SelectValue: ({ _placeholder }: any) => <>{_placeholder}</>,
+  SelectContent: ({ _children }: any) => <>{_children}</>,
+  SelectItem: ({ _children, value }: any) => <option value={value}>{value}</option>,
 }));
 
 describe('MeetingDialog', () => {

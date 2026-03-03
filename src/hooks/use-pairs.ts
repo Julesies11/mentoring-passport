@@ -8,7 +8,6 @@ import {
   archivePair,
   restorePair,
   fetchPairStats,
-  type CreatePairInput,
   type UpdatePairInput,
 } from '@/lib/api/pairs';
 
@@ -26,14 +25,6 @@ export function usePairs() {
     queryKey: ['pairs', 'stats'],
     queryFn: fetchPairStats,
   });
-
-  const fetchUserPairsQuery = (userId: string) => {
-    return useQuery({
-      queryKey: ['pairs', 'user', userId],
-      queryFn: () => fetchUserPairs(userId),
-      enabled: !!userId,
-    });
-  };
 
   const createMutation = useMutation({
     mutationFn: createPair,

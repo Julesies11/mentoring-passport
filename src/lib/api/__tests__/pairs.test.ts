@@ -1,5 +1,5 @@
 import { createPair } from '../pairs';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
 
@@ -43,8 +43,8 @@ describe('Pairs API - createPair logic', () => {
       }),
 
       // Track insertions
-      http.post('*/rest/v1/mp_pair_tasks*', async ({ request }) => {
-        const body = await request.json();
+      http.post('*/rest/v1/mp_pair_tasks*', async ({ request: _request }) => {
+        const body = await _request.json();
         // Return first created task for the next step's .single() call
         return HttpResponse.json([{ id: 'pt-new-id', ...body[0] }]);
       }),
@@ -54,7 +54,7 @@ describe('Pairs API - createPair logic', () => {
         return HttpResponse.json({ id: 'pt-new-id' });
       }),
 
-      http.post('*/rest/v1/mp_pair_subtasks*', async ({ request }) => {
+      http.post('*/rest/v1/mp_pair_subtasks*', async () => {
         return HttpResponse.json([{ id: 'pst-new-id' }]);
       })
     );
@@ -74,8 +74,8 @@ describe('Pairs API - createPair logic', () => {
     let capturedPairTasks: any[] = [];
     
     server.use(
-      http.post('*/rest/v1/mp_pair_tasks*', async ({ request }) => {
-        capturedPairTasks = await request.json();
+      http.post('*/rest/v1/mp_pair_tasks*', async ({ request: _request }) => {
+        capturedPairTasks = await _request.json();
         return HttpResponse.json([{ id: 'pt-new-id', ...capturedPairTasks[0] }]);
       })
     );
@@ -94,8 +94,8 @@ describe('Pairs API - createPair logic', () => {
     let capturedSubtasks: any[] = [];
     
     server.use(
-      http.post('*/rest/v1/mp_pair_subtasks*', async ({ request }) => {
-        capturedSubtasks = await request.json();
+      http.post('*/rest/v1/mp_pair_subtasks*', async ({ request: _request }) => {
+        capturedSubtasks = await _request.json();
         return HttpResponse.json([{ id: 'pst-new-id' }]);
       })
     );

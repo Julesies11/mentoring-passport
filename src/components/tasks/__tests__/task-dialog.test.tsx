@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@/test/utils';
+import { render, screen, fireEvent } from '@/test/utils';
 import { TaskDialog } from '../task-dialog';
 import { describe, it, expect, vi } from 'vitest';
 

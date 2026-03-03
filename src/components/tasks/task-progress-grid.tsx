@@ -15,13 +15,6 @@ interface TaskProgressGridProps {
   readOnly?: boolean;
 }
 
-const statusLabels: Record<string, string> = {
-  not_submitted: 'Not Started',
-  awaiting_review: 'Awaiting Review',
-  completed: 'Completed',
-  revision_required: 'Revision Required',
-};
-
 export function TaskProgressGrid({
   tasks,
   onViewDetails,
