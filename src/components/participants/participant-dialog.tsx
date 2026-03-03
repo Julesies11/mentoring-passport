@@ -179,21 +179,19 @@ export function ParticipantDialog({
               >
                 {({ onImageUpload }) => (
                   <div
-                    className="size-24 relative cursor-pointer group"
+                    className="size-24 relative cursor-pointer group rounded-full border-2 border-gray-200 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center shadow-sm p-0"
                     onClick={onImageUpload}
                   >
-                    <div className="size-full rounded-full border-2 border-gray-200 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center relative shadow-sm">
-                      {avatar.length > 0 ? (
-                        <img src={avatar[0].dataURL} alt="avatar" className="size-full object-cover" />
-                      ) : (
-                        <div className="text-gray-300 flex flex-col items-center">
-                          <KeenIcon icon="user" className="text-3xl" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
-                      <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        Upload
+                    {avatar.length > 0 ? (
+                      <img src={avatar[0].dataURL} alt="avatar" className="size-full object-cover" />
+                    ) : (
+                      <div className="text-gray-300 flex flex-col items-center">
+                        <KeenIcon icon="user" className="text-3xl" />
                       </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
+                    <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      Upload
                     </div>
                   </div>
                 )}

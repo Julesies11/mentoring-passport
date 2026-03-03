@@ -7,7 +7,7 @@ import {
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-import { SelectValue } from '@/components/ui/select';
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 

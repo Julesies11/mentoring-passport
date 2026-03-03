@@ -21,8 +21,9 @@ export function AvatarInput() {
       onChange={(selectedAvatar) => setAvatar(selectedAvatar)}
     >
       {({ onImageUpload }) => (
-        <div
-          className="size-16 relative cursor-pointer"
+        <button
+          type="button"
+          className="size-16 relative cursor-pointer p-0 bg-transparent border-0"
           onClick={onImageUpload}
         >
           <TooltipProvider>
@@ -49,7 +50,7 @@ export function AvatarInput() {
               backgroundImage: `url(${toAbsoluteUrl(`/media/avatars/blank.png`)})`,
             }}
           >
-            {avatar.length > 0 && <img src={avatar[0].dataURL} alt="avatar" />}
+            {avatar.length > 0 && <img src={avatar[0].dataURL} alt="avatar" className="size-full object-cover" />}
             <div className="flex items-center justify-center cursor-pointer h-5 left-0 right-0 bottom-0 bg-black/25 absolute">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -63,7 +64,7 @@ export function AvatarInput() {
               </svg>
             </div>
           </div>
-        </div>
+        </button>
       )}
     </ImageInput>
   );
