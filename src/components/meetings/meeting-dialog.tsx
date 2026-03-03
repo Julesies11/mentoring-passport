@@ -75,39 +75,35 @@ export function MeetingDialog({
     }
 
     if (meeting) {
-      setFormData({
-        title: meeting.title,
-        date_time: meeting.date_time ? format(new Date(meeting.date_time), "yyyy-MM-dd'T'HH:mm") : '',
-        notes: meeting.notes || '',
-        pair_task_id: meeting.pair_task_id || '',
-        location: meeting.location || '',
-        meeting_type: (meeting.meeting_type as any) || 'virtual',
-      });
+      const formattedDate = meeting.date_time ? format(new Date(meeting.date_time), "yyyy-MM-dd'T'HH:mm") : '';
+      
+      // Only set if different to avoid loops
+      if (formData.title !== meeting.title || formData.date_time !== formattedDate || formData.pair_task_id !== (meeting.pair_task_id || '')) {
+        setFormData({
+          title: meeting.title,
+          date_time: formattedDate,
+          notes: meeting.notes || '',
+          pair_task_id: meeting.pair_task_id || '',
+          location: meeting.location || '',
+          meeting_type: (meeting.meeting_type as any) || 'virtual',
+        });
+      }
     } else {
-      const selectedTask = tasks.find(t => t.id === targetTaskId);
-      setFormData({
-        title: selectedTask ? selectedTask.name : '',
-        date_time: '',
-        notes: '',
-        pair_task_id: targetTaskId || '',
-        location: '',
-        meeting_type: 'virtual',
-      });
-    }
-  }, [meeting, initialTaskId, open, tasks]);
+      const selectedTask = tasks.find(t => t.id === (formData.pair_task_id || targetTaskId));
+      const newTitle = selectedTask ? selectedTask.name : formData.title;
+      const newTaskID = targetTaskId || formData.pair_task_id || '';
 
-  useEffect(() => {
-    if (!meeting && open && formData.pair_task_id && formData.pair_task_id !== 'none') {
-      const selectedTask = tasks.find(t => t.id === formData.pair_task_id);
-      if (selectedTask) {
-        // Only update if the title is empty or matches another task, AND isn't already the selected task's name
-        const needsUpdate = !formData.title || (tasks.some(t => t.name === formData.title) && formData.title !== selectedTask.name);
-        if (needsUpdate) {
-          setFormData(prev => ({ ...prev, title: selectedTask.name }));
-        }
+      if (formData.pair_task_id !== newTaskID || (selectedTask && formData.title === '')) {
+        setFormData(prev => ({
+          ...prev,
+          title: newTitle,
+          pair_task_id: newTaskID,
+        }));
       }
     }
-  }, [formData.pair_task_id, formData.title, tasks, meeting, open]);
+  }, [meeting, initialTaskId, open, tasks.length]); // Use tasks.length instead of tasks object to avoid loops if array reference changes
+
+  // Removed redundant second useEffect that was also updating title based on pair_task_id
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
