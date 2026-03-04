@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus, Trash2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Meeting } from '@/lib/api/meetings';
+import { getMeetingStatus, type Meeting } from '@/lib/api/meetings';
 import type { Pair } from '@/lib/api/pairs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
@@ -75,10 +75,19 @@ export function MeetingCalendar({
     meeting_type: 'virtual' as 'in_person' | 'virtual' | 'phone',
   });
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const startDate = useMemo(() => {
+    if (viewMode === 'month') {
+      return startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
+    }
+    return startOfWeek(currentDate, { weekStartsOn: 1 });
+  }, [currentDate, viewMode]);
+
+  const endDate = useMemo(() => {
+    if (viewMode === 'month') {
+      return endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
+    }
+    return endOfWeek(currentDate, { weekStartsOn: 1 });
+  }, [currentDate, viewMode]);
 
   const filteredMeetings = useMemo(() => {
     return selectedParticipant && selectedParticipant !== 'all'
@@ -86,7 +95,7 @@ export function MeetingCalendar({
       : meetings;
   }, [meetings, selectedParticipant]);
 
-  const getDaysInMonth = () => {
+  const getCalendarDays = () => {
     const days = [];
     let day = startDate;
     while (day <= endDate) {
@@ -159,11 +168,14 @@ export function MeetingCalendar({
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-8 py-6">
           <div className="flex flex-col gap-1.5">
             <h2 className="text-2xl font-black text-gray-900 leading-tight">
-              {format(currentDate, 'MMMM yyyy')}
+              {viewMode === 'month' 
+                ? format(currentDate, 'MMMM yyyy')
+                : `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`
+              }
             </h2>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-primary/5 text-primary border-none font-bold text-[10px] uppercase px-2 h-5">
-                {filteredMeetings.length} Sessions Found
+                {filteredMeetings.length} Meetings Found
               </Badge>
             </div>
           </div>
@@ -235,7 +247,7 @@ export function MeetingCalendar({
         
         <div className="p-0">
           <div className="grid grid-cols-7 border-l border-t border-gray-100">
-            {getDaysInMonth().map((day, index) => {
+            {getCalendarDays().map((day, index) => {
               const dayMeetings = getMeetingsForDay(day);
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isTodayDate = isToday(day);
@@ -278,8 +290,7 @@ export function MeetingCalendar({
                       >
                         <div className={cn(
                           "absolute left-0 top-0 bottom-0 w-1",
-                          meeting.status === 'completed' ? "bg-success" : 
-                          meeting.status === 'cancelled' ? "bg-danger" : "bg-primary"
+                          getMeetingStatus(meeting.date_time) === 'past' ? "bg-success" : "bg-primary"
                         )} />
                         
                         <div className="flex flex-col gap-1 min-w-0">
@@ -336,13 +347,12 @@ export function MeetingCalendar({
               {/* Header with gradient based on status */}
               <div className={cn(
                 "p-8 pt-10 text-white relative overflow-hidden",
-                selectedMeeting.status === 'completed' ? "bg-success" : 
-                selectedMeeting.status === 'cancelled' ? "bg-danger" : "bg-primary"
+                getMeetingStatus(selectedMeeting.date_time) === 'past' ? "bg-success" : "bg-primary"
               )}>
                 <div className="relative z-10 space-y-3">
                   <div className="flex items-center justify-between">
                     <Badge variant="outline" className="bg-white/20 text-white border-none font-black uppercase text-[10px] tracking-widest px-3 h-6">
-                      {selectedMeeting.status}
+                      {getMeetingStatus(selectedMeeting.date_time)}
                     </Badge>
                     <div className="flex items-center gap-1 opacity-80 text-[10px] font-black uppercase tracking-tighter">
                       <Clock size={12} className="mr-1" />
@@ -464,6 +474,7 @@ export function MeetingCalendar({
         meeting={isEditDialogOpen ? selectedMeeting : null}
         pairId={formData.pair_id || (pairs.length === 1 ? pairs[0].id : '')}
         onSubmit={handleMeetingSubmit}
+        onDelete={onMeetingDelete}
       />
     </div>
   );

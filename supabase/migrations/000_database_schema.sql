@@ -192,3 +192,40 @@ create table public.mp_meeting_subtasks (
   constraint mp_meeting_subtasks_pkey primary key (id),
   constraint mp_meeting_subtasks_meeting_id_fkey foreign KEY (meeting_id) references mp_meetings (id) on delete CASCADE
 ) TABLESPACE pg_default;
+
+create table public.mp_meetings (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  pair_id uuid not null,
+  title text not null,
+  date_time timestamp with time zone not null,
+  notes text null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  pair_task_id uuid null,
+  location text null,
+  meeting_type text null default 'virtual'::text,
+  constraint mp_meetings_pkey primary key (id),
+  constraint mp_meetings_pair_id_fkey foreign KEY (pair_id) references mp_pairs (id) on delete CASCADE,
+  constraint mp_meetings_pair_task_id_fkey foreign KEY (pair_task_id) references mp_pair_tasks (id) on delete set null,
+  constraint mp_meetings_meeting_type_check check (
+    (
+      meeting_type = any (
+        array['in_person'::text, 'virtual'::text, 'phone'::text]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_meetings_pair_task_id on public.mp_meetings using btree (pair_task_id) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_meetings_pair on public.mp_meetings using btree (pair_id) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_meetings_date on public.mp_meetings using btree (date_time) TABLESPACE pg_default;
+
+create trigger mp_on_meeting_created
+after INSERT on mp_meetings for EACH row
+execute FUNCTION mp_notify_meeting_created ();
+
+create trigger mp_update_meetings_updated_at BEFORE
+update on mp_meetings for EACH row
+execute FUNCTION mp_update_updated_at_column ();

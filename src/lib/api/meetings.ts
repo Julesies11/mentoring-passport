@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { isFuture } from 'date-fns';
 
 export interface Meeting {
   id: string;
@@ -6,7 +7,6 @@ export interface Meeting {
   pair_task_id: string | null;
   title: string;
   date_time: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
   notes: string | null;
   location: string | null;
   meeting_type: 'in_person' | 'virtual' | 'phone' | null;
@@ -61,11 +61,17 @@ export interface CreateMeetingInput {
 export interface UpdateMeetingInput {
   title?: string;
   date_time?: string;
-  status?: 'upcoming' | 'completed' | 'cancelled';
   notes?: string;
   pair_task_id?: string | null;
   location?: string | null;
   meeting_type?: 'in_person' | 'virtual' | 'phone' | null;
+}
+
+/**
+ * Calculates if a meeting is upcoming or past based on its date_time
+ */
+export function getMeetingStatus(dateTime: string): 'upcoming' | 'past' {
+  return isFuture(new Date(dateTime)) ? 'upcoming' : 'past';
 }
 
 /**
@@ -135,7 +141,6 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
       task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`, { foreignTable: 'mp_pairs' })
-    .eq('status', 'upcoming')
     .gte('date_time', new Date().toISOString())
     .order('date_time', { ascending: true })
     .limit(10);
@@ -162,7 +167,6 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       date_time: input.date_time,
       location: input.location,
       meeting_type: input.meeting_type,
-      status: 'upcoming',
     })
     .select(`
       *,
@@ -234,19 +238,20 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
 export async function fetchMeetingStats() {
   const { data: meetingsData, error: meetingsError } = await supabase
     .from('mp_meetings')
-    .select('status');
+    .select('date_time');
 
   if (meetingsError) {
     console.error('Error fetching meeting stats:', meetingsError);
     throw meetingsError;
   }
 
+  const now = new Date();
   const stats = {
     total: meetingsData.length,
-    upcoming: meetingsData.filter(m => m.status === 'upcoming').length,
-    completed: meetingsData.filter(m => m.status === 'completed').length,
-    cancelled: meetingsData.filter(m => m.status === 'cancelled').length,
+    upcoming: meetingsData.filter(m => isFuture(new Date(m.date_time))).length,
+    past: meetingsData.filter(m => !isFuture(new Date(m.date_time))).length,
   };
 
   return stats;
 }
+

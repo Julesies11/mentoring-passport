@@ -9,56 +9,79 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
-import { UpcomingMeetingsList } from './components/upcoming-meetings-list';
+import { UpcomingMeetingsList } from '@/components/meetings/upcoming-meetings-list';
 import { SearchInput } from '@/components/common/search-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { CreateMeetingInput } from '@/lib/api/meetings';
+import { MeetingDialog } from '@/components/meetings/meeting-dialog';
+import { getMeetingStatus, type Meeting } from '@/lib/api/meetings';
 
 export function SupervisorCalendarPage() {
-  const { user } = useAuth();
-  const { meetings = [], stats, isLoading, createMeeting, updateMeeting, deleteMeeting } = useAllMeetings();
+  const { meetings = [], isLoading, createMeeting, updateMeeting, deleteMeeting } = useAllMeetings();
   const { data: pairs = [] } = useAllPairs();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Log user role for debugging if needed, but remove from component state to avoid unused var
-  if (user) {
-    // user is available if needed
-  }
+  // Calculate stats on the fly
+  const stats = useMemo(() => {
+    return {
+      upcoming: meetings.filter(m => getMeetingStatus(m.date_time) === 'upcoming').length,
+      past: meetings.filter(m => getMeetingStatus(m.date_time) === 'past').length,
+    };
+  }, [meetings]);
+
+  // Unified Dialog State
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
   const handlePairFilter = (pairId: string) => {
     setSelectedPairId(pairId);
   };
 
-  const handleMeetingCreate = async (data: CreateMeetingInput) => {
-    try {
-      await createMeeting(data);
-      toast.success('Meeting scheduled successfully');
-    } catch (err) {
-      console.error('Error creating meeting:', err);
-      toast.error('Failed to schedule meeting');
-    }
+  const handleCreateNew = () => {
+    setSelectedMeeting(null);
+    setIsDialogOpen(true);
   };
 
-  const handleMeetingUpdate = async (meeting: any) => {
+  const handleEditMeeting = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setIsDialogOpen(true);
+  };
+
+  const handleMeetingSubmit = async (data: any) => {
     try {
-      const { id, ...updates } = meeting;
-      await updateMeeting(id, updates);
-      toast.success('Meeting updated successfully');
+      if (selectedMeeting) {
+        await updateMeeting(selectedMeeting.id, data);
+        toast.success('Meeting updated');
+      } else {
+        await createMeeting(data);
+        toast.success('Meeting scheduled');
+      }
+      setIsDialogOpen(false);
     } catch (err) {
-      console.error('Error updating meeting:', err);
-      toast.error('Failed to update meeting');
+      console.error('Error saving meeting:', err);
+      toast.error('Failed to save meeting');
     }
   };
 
   const handleMeetingDelete = async (meetingId: string) => {
     try {
       await deleteMeeting(meetingId);
-      toast.success('Meeting deleted successfully');
+      toast.success('Meeting removed');
     } catch (err) {
       console.error('Error deleting meeting:', err);
-      toast.error('Failed to delete meeting');
+      toast.error('Failed to remove meeting');
+    }
+  };
+
+  const handleCalendarUpdate = async (meeting: any) => {
+    try {
+      const { id, ...updates } = meeting;
+      await updateMeeting(id, updates);
+      toast.success('Meeting moved');
+    } catch (err) {
+      console.error('Error moving meeting:', err);
+      toast.error('Failed to move meeting');
     }
   };
 
@@ -121,8 +144,8 @@ export function SupervisorCalendarPage() {
                   <span className="text-xs font-black text-primary leading-tight">{stats.upcoming}</span>
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className="text-[9px] font-black uppercase text-gray-400 leading-none mb-1">Completed</span>
-                  <span className="text-xs font-black text-success leading-tight">{stats.completed}</span>
+                  <span className="text-[9px] font-black uppercase text-gray-400 leading-none mb-1">Past</span>
+                  <span className="text-xs font-black text-success leading-tight">{stats.past}</span>
                 </div>
               </div>
             )}
@@ -132,20 +155,35 @@ export function SupervisorCalendarPage() {
 
       <Container>
         <div className="grid gap-5 lg:gap-7.5">
-          <UpcomingMeetingsList meetings={filteredMeetings} isLoading={isLoading} />
+          <UpcomingMeetingsList 
+            meetings={filteredMeetings} 
+            isLoading={isLoading} 
+            onMeetingClick={handleEditMeeting}
+          />
           
           <MeetingCalendar
             meetings={filteredMeetings}
             pairs={pairs}
-            onMeetingCreate={handleMeetingCreate}
-            onMeetingUpdate={handleMeetingUpdate}
+            onMeetingCreate={handleCreateNew}
+            onMeetingUpdate={handleCalendarUpdate}
             onMeetingDelete={handleMeetingDelete}
+            onMeetingClick={handleEditMeeting}
             selectedParticipant={selectedPairId}
             onPairFilter={handlePairFilter}
             showFilters={false}
           />
         </div>
       </Container>
+
+      {/* Shared Meeting Dialog */}
+      <MeetingDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        pairId={selectedMeeting?.pair_id || (selectedPairId !== 'all' ? selectedPairId : '')}
+        meeting={selectedMeeting}
+        onSubmit={handleMeetingSubmit}
+        onDelete={handleMeetingDelete}
+      />
     </>
   );
 }

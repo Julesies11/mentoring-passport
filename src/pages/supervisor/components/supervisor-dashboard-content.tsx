@@ -59,7 +59,7 @@ export function SupervisorDashboardContent() {
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
       {/* 1. Executive Summary */}
-      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
+      <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5" data-testid="executive-summary">
         <Card className="border-none shadow-sm bg-primary text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">

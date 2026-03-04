@@ -1,0 +1,65 @@
+import { renderHook, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { usePairs } from '../use-pairs';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as pairsApi from '@/lib/api/pairs';
+
+// Mock the API layer
+vi.mock('@/lib/api/pairs', () => ({
+  fetchPairs: vi.fn(),
+  fetchPairStats: vi.fn(),
+  createPair: vi.fn(),
+  updatePair: vi.fn(),
+  archivePair: vi.fn(),
+  restorePair: vi.fn(),
+}));
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+describe('usePairs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('fetches pairs correctly', async () => {
+    const mockPairs = [{ id: 'p1', status: 'active' }];
+    vi.mocked(pairsApi.fetchPairs).mockResolvedValue(mockPairs);
+    vi.mocked(pairsApi.fetchPairStats).mockResolvedValue({ total: 1 });
+
+    const { result } = renderHook(() => usePairs(), { wrapper: createWrapper() });
+
+    expect(result.current.isLoading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.pairs).toEqual(mockPairs);
+    expect(result.current.stats).toEqual({ total: 1 });
+  });
+
+  it('handles create pair mutation', async () => {
+    const newPair = { mentor_id: 'm1', mentee_id: 'e1' };
+    vi.mocked(pairsApi.createPair).mockResolvedValue({ id: 'p2', ...newPair } as any);
+
+    const { result } = renderHook(() => usePairs(), { wrapper: createWrapper() });
+
+    await result.current.createPairAsync(newPair);
+
+    expect(pairsApi.createPair).toHaveBeenCalledWith(
+      expect.objectContaining(newPair),
+      expect.anything()
+    );
+  });
+});

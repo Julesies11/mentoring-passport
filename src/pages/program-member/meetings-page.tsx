@@ -1,0 +1,169 @@
+import { useState } from 'react';
+import { useAuth } from '@/auth/context/auth-context';
+import { useAllMeetings } from '@/hooks/use-meetings';
+import { Container } from '@/components/common/container';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+} from '@/layouts/demo1/components/toolbar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { KeenIcon } from '@/components/keenicons';
+import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
+import { MeetingDialog } from '@/components/meetings/meeting-dialog';
+import { UpcomingMeetingsList } from '@/components/meetings/upcoming-meetings-list';
+import { toast } from 'sonner';
+import { usePairing } from '@/providers/pairing-provider';
+import type { Meeting } from '@/lib/api/meetings';
+
+export function ProgramMemberMeetingsPage() {
+  const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
+  const { 
+    meetings = [], 
+    isLoading, 
+    createMeeting, 
+    updateMeeting, 
+    deleteMeeting,
+    isCreating,
+    isUpdating
+  } = useAllMeetings();
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+
+  // Filter meetings for the relationship
+  const filteredMeetings = meetings.filter(m => 
+    pairs.some(p => p.id === m.pair_id)
+  );
+
+  const handleCreateNew = () => {
+    setSelectedMeeting(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditMeeting = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setIsDialogOpen(true);
+  };
+
+  const handleMeetingSubmit = async (data: any) => {
+    try {
+      if (selectedMeeting) {
+        await updateMeeting(selectedMeeting.id, data);
+        toast.success('Meeting updated successfully');
+      } else {
+        await createMeeting(data);
+        toast.success('Meeting scheduled successfully');
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving meeting:', error);
+      toast.error('Failed to save meeting');
+    }
+  };
+
+  const handleDeleteMeeting = async (meetingId: string) => {
+    try {
+      await deleteMeeting(meetingId);
+      toast.success('Meeting removed');
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+      toast.error('Failed to remove meeting');
+    }
+  };
+
+  const handleCalendarUpdate = async (meeting: any) => {
+    try {
+      const { id, ...updates } = meeting;
+      await updateMeeting(id, updates);
+      toast.success('Meeting updated successfully');
+    } catch (err) {
+      console.error('Error updating meeting:', err);
+      toast.error('Failed to update meeting');
+    }
+  };
+
+  return (
+    <>
+      <div className="hidden sm:block">
+        <Container>
+          <Toolbar>
+            <ToolbarHeading
+              title="Mentoring Meetings"
+              description="Schedule and manage your mentoring sessions"
+            />
+            <ToolbarActions>
+              <Button onClick={handleCreateNew}>
+                <KeenIcon icon="plus" />
+                Schedule Meeting
+              </Button>
+            </ToolbarActions>
+          </Toolbar>
+        </Container>
+      </div>
+
+      <Container className="sm:mt-0 mt-4">
+        <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <KeenIcon icon="loading" className="animate-spin mb-2 text-2xl" />
+              <p>Loading meetings...</p>
+            </div>
+          ) : (
+            <div className="space-y-4 sm:space-y-8">
+              {/* Upcoming Section (Reusable Component) */}
+              <UpcomingMeetingsList 
+                meetings={filteredMeetings} 
+                isLoading={isLoading} 
+                onMeetingClick={handleEditMeeting}
+              />
+              
+              {/* Mobile-only Add Button */}
+              <div className="sm:hidden mb-4">
+                 <Button onClick={handleCreateNew} className="w-full h-12 rounded-xl font-bold gap-2">
+                    <KeenIcon icon="plus" />
+                    Schedule New Meeting
+                  </Button>
+              </div>
+
+              {/* Calendar Section */}
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center gap-4 px-1">
+                  <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
+                    <KeenIcon icon="calendar" className="text-primary text-base" />
+                    Full Calendar
+                  </h3>
+                  <div className="h-px bg-gray-100 flex-1 ml-4" />
+                </div>
+                <div className="bg-white rounded-xl border-0 sm:border border-gray-200 overflow-hidden shadow-none sm:shadow-sm">
+                  <MeetingCalendar 
+                    meetings={filteredMeetings}
+                    pairs={pairs}
+                    selectedParticipant={activePair?.id || ''}
+                    onMeetingCreate={handleMeetingSubmit}
+                    onMeetingUpdate={handleCalendarUpdate}
+                    onMeetingDelete={handleDeleteMeeting}
+                    onMeetingClick={handleEditMeeting}
+                    showAddButton={false}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Container>
+
+      {/* Shared Meeting Dialog */}
+      <MeetingDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        pairId={activePair?.id || (selectedMeeting?.pair_id || '')}
+        meeting={selectedMeeting}
+        onSubmit={handleMeetingSubmit}
+        onDelete={handleDeleteMeeting}
+        isSubmitting={selectedMeeting ? isUpdating : isCreating}
+      />
+    </>
+  );
+}

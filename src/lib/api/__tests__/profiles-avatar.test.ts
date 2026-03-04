@@ -40,7 +40,7 @@ describe('Profile Avatar Utilities', () => {
         mockFile,
         { upsert: true }
       );
-      expect(result).toMatch(new RegExp(`^${userId}-\d+\.png$`));
+      expect(result).toMatch(new RegExp(`^${userId}-\\d+\\.png$`));
     });
 
     it('should return currentAvatarUrl when no file and not deleting', async () => {

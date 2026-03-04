@@ -45,11 +45,14 @@ export function usePairNotes(pairId: string) {
     notes,
     isLoading,
     error,
-    createNote: createMutation,
-    updateNote: updateMutation,
-    deleteNote: deleteMutation,
+    createNote: createMutation.mutateAsync,
+    updateNote: (id: string, input: UpdateNoteInput) => updateMutation.mutateAsync({ noteId: id, input }),
+    deleteNote: deleteMutation.mutateAsync,
   };
 }
+
+// Alias for unified usage
+export const useNotes = usePairNotes;
 
 export function useUserNotes(userId: string) {
   const queryClient = useQueryClient();

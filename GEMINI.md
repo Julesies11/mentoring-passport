@@ -11,7 +11,8 @@
 # 2. BUILD / SCRIPT EXECUTION
 # ===============================
 - Do NOT run 'npm run build', 'npm run dev', or any scripts automatically.
-- Only execute build steps if I explicitly ask for them.
+- Do NOT run unit tests (e.g., 'npm test', 'vitest', 'npx vitest') automatically.
+- Only execute build or test steps if I explicitly ask for them.
 
 # Gemini Project Instructions — Metronic React (Vite) + TanStack Query + Supabase
 This project uses:

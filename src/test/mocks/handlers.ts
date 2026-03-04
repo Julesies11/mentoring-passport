@@ -54,10 +54,12 @@ export const handlers = [
   // Fetch Pair Tasks
   http.get('*/rest/v1/mp_pair_tasks*', ({ request }) => {
     const url = new URL(request.url);
-    const pairId = url.searchParams.get('pair_id');
+    const pairIdParam = url.searchParams.get('pair_id');
     
-    if (pairId) {
-      const filtered = mockPairTasks.filter(t => t.pair_id === pairId.split('.')[1]); // Handle eq.p1 format
+    if (pairIdParam) {
+      // Handle both formats: "p1" or "eq.p1"
+      const pairId = pairIdParam.includes('.') ? pairIdParam.split('.')[1] : pairIdParam;
+      const filtered = mockPairTasks.filter(t => t.pair_id === pairId);
       return HttpResponse.json(filtered);
     }
     
@@ -83,6 +85,16 @@ export const handlers = [
 
   // Fetch Meetings
   http.get('*/rest/v1/mp_meetings*', () => {
+    return HttpResponse.json([]);
+  }),
+
+  // Fetch Evidence
+  http.get('*/rest/v1/mp_evidence_uploads*', () => {
+    return HttpResponse.json([]);
+  }),
+
+  // Fetch Subtasks
+  http.get('*/rest/v1/mp_pair_subtasks*', () => {
     return HttpResponse.json([]);
   }),
 ];

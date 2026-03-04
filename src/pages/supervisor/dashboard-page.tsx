@@ -12,7 +12,7 @@ export function SupervisorDashboardPage() {
 
   return (
     <>
-      <div className="hidden sm:block">
+      <div className="hidden sm:block" data-testid="dashboard-toolbar">
         <Container>
           <Toolbar>
             <ToolbarHeading
