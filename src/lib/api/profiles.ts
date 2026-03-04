@@ -73,3 +73,33 @@ export function getAvatarUrl(userId: string, avatarPath?: string | null): string
   const { data } = supabase.storage.from('mp-avatars').getPublicUrl(fullPath);
   return data.publicUrl;
 }
+
+/**
+ * Handles uploading a new avatar or preparing for deletion.
+ * Returns the new avatar_url (filename) to be saved in the database.
+ */
+export async function handleAvatarUpload(
+  userId: string,
+  file?: File | null,
+  shouldDelete?: boolean,
+  currentAvatarUrl?: string | null
+): Promise<string | null | undefined> {
+  if (shouldDelete) {
+    return null;
+  }
+
+  if (file) {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('mp-avatars')
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+    return fileName;
+  }
+
+  return currentAvatarUrl;
+}

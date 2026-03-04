@@ -130,7 +130,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   const updateProfile = async (userData: Partial<UserModel>) => {
-    return await SupabaseAdapter.updateUserProfile(userData);
+    const updatedUser = await SupabaseAdapter.updateUserProfile(userData);
+    setCurrentUser(updatedUser);
+    return updatedUser;
   };
 
   const logout = () => {

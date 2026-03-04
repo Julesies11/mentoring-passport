@@ -274,22 +274,23 @@ export const SupabaseAdapter = {
   },
 
   /**
-   * Update user profile (stored in metadata)
+   * Update user profile (stored in metadata AND mp_profiles table)
    */
   async updateUserProfile(userData: Partial<UserModel>): Promise<UserModel> {
-    // Transform from UserModel to metadata format
+    // 1. Transform from UserModel to metadata format for auth.users
     const metadata: Record<string, unknown> = {
       username: userData.username,
       first_name: userData.first_name,
       last_name: userData.last_name,
       fullname:
         userData.fullname ||
+        userData.full_name ||
         `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
       occupation: userData.occupation,
-      company_name: userData.company_name, // Match UserModel type
+      company_name: userData.company_name,
       phone: userData.phone,
       roles: userData.roles,
-      pic: userData.pic,
+      pic: userData.avatar_url !== undefined ? userData.avatar_url : userData.pic,
       language: userData.language,
       is_admin: userData.is_admin,
       updated_at: new Date().toISOString(),
@@ -302,14 +303,35 @@ export const SupabaseAdapter = {
       }
     });
 
-    // Update user metadata
-    const { error } = await supabase.auth.updateUser({
+    // Update user metadata in auth.users
+    const { error: authError } = await supabase.auth.updateUser({
       data: metadata,
     });
 
-    if (error) throw new Error(error.message);
+    if (authError) throw new Error(authError.message);
 
-    return this.getCurrentUser() as Promise<UserModel>;
+    // 2. Update mp_profiles table
+    const profileUpdate: Record<string, any> = {};
+    if (userData.full_name !== undefined) profileUpdate.full_name = userData.full_name;
+    if (userData.job_title !== undefined) profileUpdate.job_title = userData.job_title;
+    if (userData.bio !== undefined) profileUpdate.bio = userData.bio;
+    if (userData.department !== undefined) profileUpdate.department = userData.department;
+    if (userData.phone !== undefined) profileUpdate.phone = userData.phone;
+    if (userData.avatar_url !== undefined) profileUpdate.avatar_url = userData.avatar_url;
+
+    if (Object.keys(profileUpdate).length > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error: profileError } = await supabase
+          .from('mp_profiles')
+          .update(profileUpdate)
+          .eq('id', user.id);
+        
+        if (profileError) throw new Error(profileError.message);
+      }
+    }
+
+    return (await this.getCurrentUser()) as UserModel;
   },
 
   /**

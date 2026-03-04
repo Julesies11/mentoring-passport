@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useQueryClient } from '@tanstack/react-query';
-import { getAvatarUrl } from '@/lib/api/profiles';
+import { getAvatarUrl, handleAvatarUpload } from '@/lib/api/profiles';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { ImageInput, type ImageInputFile } from '@/components/image-input';
@@ -79,27 +79,16 @@ export function EditProfilePage() {
 
     setIsLoading(true);
     try {
-      let finalAvatarUrl: string | undefined = user.avatar_url;
-
-      if (deleteAvatar) {
-        finalAvatarUrl = undefined;
-      } else if (avatar.length > 0 && avatar[0].file) {
-        const file = avatar[0].file;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('mp-avatars')
-          .upload(filePath, file, { upsert: true });
-
-        if (uploadError) throw uploadError;
-        finalAvatarUrl = fileName;
-      }
+      const finalAvatarUrl = await handleAvatarUpload(
+        user.id,
+        avatar.length > 0 ? avatar[0].file : null,
+        deleteAvatar,
+        user.avatar_url
+      );
 
       await updateProfile({
         ...data,
-        avatar_url: finalAvatarUrl,
+        avatar_url: finalAvatarUrl as string | undefined, // Cast since updateProfile expects UserModel
       });
 
       // Invalidate queries

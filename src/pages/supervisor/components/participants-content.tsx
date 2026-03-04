@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { cn } from '@/lib/utils';
 import { KeenIcon } from '@/components/keenicons';
+import { handleAvatarUpload } from '@/lib/api/profiles';
 
 export function ParticipantsContent() {
   const { 
@@ -102,7 +103,19 @@ export function ParticipantsContent() {
 
   const handleCreate = async (data: any) => {
     try {
-      await createParticipant(data);
+      const { avatar_file, ...input } = data;
+      
+      // 1. Create the participant first to get the ID
+      const newParticipant = await createParticipant(input);
+      
+      // 2. If there's an avatar file, upload it
+      if (newParticipant?.id) {
+        const avatarUrl = await handleAvatarUpload(newParticipant.id, avatar_file);
+        if (avatarUrl) {
+          await updateParticipant(newParticipant.id, { avatar_url: avatarUrl });
+        }
+      }
+
       setNewCredentials({
         email: data.email,
         password: data.password,
@@ -121,7 +134,20 @@ export function ParticipantsContent() {
   const handleUpdate = async (data: any) => {
     if (!editingParticipant) return;
     try {
-      await updateParticipant(editingParticipant.id, data);
+      const { avatar_file, delete_avatar, ...input } = data;
+      
+      const finalAvatarUrl = await handleAvatarUpload(
+        editingParticipant.id,
+        avatar_file,
+        delete_avatar,
+        editingParticipant.avatar_url
+      );
+
+      await updateParticipant(editingParticipant.id, {
+        ...input,
+        avatar_url: finalAvatarUrl,
+      });
+
       setIsDialogOpen(false);
       setEditingParticipant(null);
       toast.success('Participant updated successfully');

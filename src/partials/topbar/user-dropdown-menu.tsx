@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { getAvatarUrl } from '@/lib/api/profiles';
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { logout, user } = useAuth();
@@ -27,7 +28,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const displayName = user?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
   const displayAvatar = user?.avatar_url ? 
-    `https://rdnaqrzqpcicskylmsyl.supabase.co/storage/v1/object/mp-avatars/${user?.id}/${user.avatar_url}` :
+    getAvatarUrl(user.id, user.avatar_url) :
     toAbsoluteUrl('/media/avatars/300-2.png');
 
   const handleThemeToggle = (checked: boolean) => {
