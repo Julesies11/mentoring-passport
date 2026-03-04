@@ -66,6 +66,9 @@ export function useParticipants() {
       updateMutation.mutate({ id, input }),
     archiveParticipant: archiveMutation.mutate,
     restoreParticipant: restoreMutation.mutate,
+    createParticipantAsync: createMutation.mutateAsync,
+    updateParticipantAsync: (id: string, input: UpdateParticipantInput) =>
+      updateMutation.mutateAsync({ id, input }),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isArchiving: archiveMutation.isPending,

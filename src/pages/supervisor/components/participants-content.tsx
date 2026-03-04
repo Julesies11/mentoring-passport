@@ -41,8 +41,8 @@ export function ParticipantsContent() {
     participants, 
     stats, 
     isLoading, 
-    createParticipant, 
-    updateParticipant, 
+    createParticipantAsync, 
+    updateParticipantAsync, 
     archiveParticipant, 
     restoreParticipant,
     isCreating,
@@ -106,13 +106,13 @@ export function ParticipantsContent() {
       const { avatar_file, ...input } = data;
       
       // 1. Create the participant first to get the ID
-      const newParticipant = await createParticipant(input);
+      const newParticipant = await createParticipantAsync(input);
       
       // 2. If there's an avatar file, upload it
       if (newParticipant?.id) {
         const avatarUrl = await handleAvatarUpload(newParticipant.id, avatar_file);
         if (avatarUrl) {
-          await updateParticipant(newParticipant.id, { avatar_url: avatarUrl });
+          await updateParticipantAsync(newParticipant.id, { avatar_url: avatarUrl });
         }
       }
 
@@ -143,7 +143,7 @@ export function ParticipantsContent() {
         editingParticipant.avatar_url
       );
 
-      await updateParticipant(editingParticipant.id, {
+      await updateParticipantAsync(editingParticipant.id, {
         ...input,
         avatar_url: finalAvatarUrl,
       });
