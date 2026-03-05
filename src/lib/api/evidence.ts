@@ -76,8 +76,13 @@ export async function getEvidenceUrl(path: string | null): Promise<string> {
     .createSignedUrl(storagePath, 3600); // 1 hour expiry
     
   if (error) {
+    // If the error is 'Object not found' (404), it means the file was deleted from storage 
+    // but the DB record remains. Return empty string so the UI knows the file is missing.
+    if (error.message.includes('Object not found') || error.message.includes('not_found')) {
+      return ''; 
+    }
     console.error('Error creating signed URL:', error);
-    return path; // Fallback to original path so it's not completely blank
+    return ''; // Return empty string on error so UI can handle missing file
   }
     
   return data.signedUrl;

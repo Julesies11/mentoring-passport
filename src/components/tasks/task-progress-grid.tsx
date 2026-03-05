@@ -295,18 +295,28 @@ export function TaskProgressGrid({
                       <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest lg:ml-1">Uploaded Evidence</p>
                       <div className="flex flex-wrap gap-2">
                         {task.evidence?.map((evidence: any) => (
-                          <a 
-                            key={evidence.id}
-                            href={evidence.file_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/5 border border-success/10 hover:bg-success/10 transition-colors group max-w-full"
-                          >
-                            <KeenIcon icon="file-done" className="text-success text-sm shrink-0" />
-                            <span className="text-[10px] font-bold text-success truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
-                            <KeenIcon icon="cloud-download" className="text-success/40 group-hover:text-success text-[10px] ml-1 shrink-0" />
-                          </a>
+                          evidence.file_url ? (
+                            <a 
+                              key={evidence.id}
+                              href={evidence.file_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/5 border border-success/10 hover:bg-success/10 transition-colors group max-w-full"
+                            >
+                              <KeenIcon icon="file-done" className="text-success text-sm shrink-0" />
+                              <span className="text-[10px] font-bold text-success truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
+                              <KeenIcon icon="cloud-download" className="text-success/40 group-hover:text-success text-[10px] ml-1 shrink-0" />
+                            </a>
+                          ) : (
+                            <div 
+                              key={evidence.id}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 max-w-full opacity-70"
+                            >
+                              <KeenIcon icon="file-deleted" className="text-gray-400 text-sm shrink-0" />
+                              <span className="text-[10px] font-bold text-gray-500 truncate max-w-[120px] sm:max-w-[150px] line-through">{evidence.file_name || 'Unknown File'}</span>
+                            </div>
+                          )
                         ))}
                       </div>
                     </div>

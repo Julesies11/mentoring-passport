@@ -94,8 +94,9 @@ export function TaskDialog({
       <DialogContent 
         className="max-w-[550px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl"
         aria-describedby={undefined}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="flex flex-col h-full max-h-[90vh]">
+        <div className="flex flex-col h-full max-h-[85dvh]">
           {/* Header with Background Pattern */}
           <div className="bg-primary/5 p-5 sm:p-8 border-b border-primary/10 relative overflow-hidden">
             <div className="relative z-10">
@@ -156,15 +157,25 @@ export function TaskDialog({
                       <div className="grid gap-2">
                         {task.evidence.map((evidence: any) => (
                           <div key={evidence.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-                            <a 
-                              href={evidence.file_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-3 min-w-0 flex-1 hover:text-primary transition-colors group"
-                            >
-                              <KeenIcon icon="file-done" className="text-success/60 group-hover:text-success text-base shrink-0" />
-                              <span className="text-xs font-bold text-gray-700 group-hover:text-primary truncate">{evidence.file_name || 'View File'}</span>
-                            </a>
+                            {evidence.file_url ? (
+                              <a 
+                                href={evidence.file_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 min-w-0 flex-1 hover:text-primary transition-colors group"
+                              >
+                                <KeenIcon icon="file-done" className="text-success/60 group-hover:text-success text-base shrink-0" />
+                                <span className="text-xs font-bold text-gray-700 group-hover:text-primary truncate">{evidence.file_name || 'View File'}</span>
+                              </a>
+                            ) : (
+                              <div className="flex items-center gap-3 min-w-0 flex-1 text-gray-400">
+                                <KeenIcon icon="file-deleted" className="text-gray-300 text-base shrink-0" />
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-xs font-bold truncate line-through">{evidence.file_name || 'Unknown File'}</span>
+                                  <span className="text-[9px] uppercase font-black tracking-widest text-danger">File Missing</span>
+                                </div>
+                              </div>
+                            )}
                             {onDeleteEvidence && (
                               <Button 
                                 variant="ghost" 
