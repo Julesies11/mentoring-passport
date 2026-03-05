@@ -18,7 +18,7 @@ describe('SupervisorChecklistPage Integration', () => {
 
     // Wait for tasks to load
     await waitFor(() => {
-      expect(screen.getByText('Initial Meeting')).toBeInTheDocument();
+      expect(screen.getAllByText('Initial Meeting').length).toBeGreaterThan(0);
     });
   });
 

@@ -149,17 +149,20 @@ export function ParticipantDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Participant' : 'Add New Participant'}</DialogTitle>
-          <DialogDescription>
+      <DialogContent 
+        className="sm:max-w-[500px] w-[calc(100%-32px)] sm:w-full max-h-[85dvh] p-0 overflow-hidden flex flex-col rounded-2xl border-none shadow-2xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="p-4 sm:p-6 pb-0 shrink-0">
+          <DialogTitle className="text-lg sm:text-xl font-bold">{isEdit ? 'Edit Participant' : 'Add New Participant'}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             {isEdit
               ? 'Update participant information'
               : 'Create a new participant account'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6 pt-2">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 overflow-y-auto kt-scrollable-y-hover p-4 sm:p-6 pt-2 space-y-5 sm:space-y-6">
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm font-medium border border-red-100">
               {error}
@@ -360,11 +363,11 @@ export function ParticipantDialog({
             )}
           </div>
 
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={handleClose} className="h-10 px-6 font-bold">
+          <DialogFooter className="p-4 sm:p-6 sm:py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30 flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <Button type="button" variant="outline" onClick={handleClose} className="h-10 sm:h-11 px-6 font-bold rounded-xl w-full sm:w-auto order-2 sm:order-1">
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="h-10 px-8 font-bold shadow-lg shadow-primary/20">
+            <Button type="submit" disabled={isLoading} className="h-10 sm:h-11 px-8 font-bold shadow-lg shadow-primary/20 rounded-xl w-full sm:w-auto order-1 sm:order-2">
               {isLoading ? 'Saving...' : isEdit ? 'Update Participant' : 'Create Participant'}
             </Button>
           </DialogFooter>

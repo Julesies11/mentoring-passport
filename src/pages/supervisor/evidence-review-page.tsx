@@ -274,19 +274,22 @@ export function EvidenceReviewPage() {
 
       {/* Review Action Dialog */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent className="max-w-[500px] rounded-2xl border-none shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
+        <DialogContent 
+          className="max-w-[500px] w-[calc(100%-32px)] sm:w-full p-0 overflow-hidden flex flex-col rounded-2xl border-none shadow-2xl max-h-[85dvh]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="p-4 sm:p-6 pb-0 shrink-0">
+            <DialogTitle className="text-lg sm:text-xl font-bold">
               {reviewAction === 'approve' ? 'Confirm Approval' : 'Revision Required'}
             </DialogTitle>
-            <DialogDescription className="text-sm">
+            <DialogDescription className="text-xs sm:text-sm text-gray-500">
               {reviewAction === 'approve'
                 ? 'This will validate the evidence and mark the task as 100% completed.'
                 : 'Provide specific feedback so the program member knows how to improve this submission.'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-4 sm:p-6 pt-2">
             {reviewAction === 'reject' && (
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-600 uppercase tracking-widest">Supervisor Feedback *</Label>
@@ -301,32 +304,32 @@ export function EvidenceReviewPage() {
             )}
             
             {reviewAction === 'approve' && (
-              <div className="p-6 bg-success/5 border border-success/10 rounded-2xl flex flex-col items-center text-center gap-3">
-                <div className="size-14 rounded-full bg-success/10 flex items-center justify-center text-success">
-                  <CheckCircle size={32} />
+              <div className="p-4 sm:p-6 bg-success/5 border border-success/10 rounded-2xl flex flex-col items-center text-center gap-2 sm:gap-3">
+                <div className="size-12 sm:size-14 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <CheckCircle size={28} className="sm:size-32" />
                 </div>
-                <p className="text-sm font-bold text-gray-700">
+                <p className="text-xs sm:text-sm font-bold text-gray-700">
                   Ready to validate this submission?
                 </p>
               </div>
             )}
           </div>
 
-          <DialogFooter className="gap-3">
-            <Button variant="outline" onClick={() => setReviewDialogOpen(false)} disabled={isReviewing} className="rounded-xl h-11 px-6 font-bold">
+          <DialogFooter className="p-4 sm:p-6 sm:py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30 flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <Button variant="outline" onClick={() => setReviewDialogOpen(false)} disabled={isReviewing} className="rounded-xl h-10 sm:h-11 px-6 font-bold w-full sm:w-auto order-2 sm:order-1">
               Cancel
             </Button>
             <Button
               onClick={handleSubmitReview}
               disabled={isReviewing || (reviewAction === 'reject' && !rejectionReason.trim())}
               className={cn(
-                "rounded-xl h-11 px-8 font-bold shadow-lg",
+                "rounded-xl h-10 sm:h-11 px-8 font-bold shadow-lg w-full sm:w-auto order-1 sm:order-2",
                 reviewAction === 'approve' ? "bg-green-600 hover:bg-green-700 text-white" : "bg-primary hover:bg-primary-dark text-white shadow-primary/20"
               )}
             >
               {isReviewing ? (
                 <>
-                  <KeenIcon icon="loading" className="animate-spin mr-2" />
+                  <KeenIcon icon="loading" className="animate-spin mr-1.5 sm:mr-2" />
                   Processing...
                 </>
               ) : (
