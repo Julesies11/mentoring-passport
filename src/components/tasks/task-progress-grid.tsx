@@ -12,6 +12,7 @@ interface TaskProgressGridProps {
   onToggleTask?: (taskId: string, currentStatus: string) => void;
   onToggleSubTask?: (subtaskId: string, currentStatus: boolean) => void;
   onCreateMeeting?: (taskId: string) => void;
+  onEditMeeting?: (meeting: any) => void;
   readOnly?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function TaskProgressGrid({
   onToggleTask,
   onToggleSubTask,
   onCreateMeeting,
+  onEditMeeting,
   readOnly = false,
 }: TaskProgressGridProps) {
   return (
@@ -119,10 +121,17 @@ export function TaskProgressGrid({
                 {/* Meetings Column - Desktop Only */}
                 <div className="flex flex-col gap-1.5 pt-0.5 min-w-0">
                   {task.meetings?.map((meeting: any) => (
-                    <div key={meeting.id} className="flex flex-col px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200">
+                    <div 
+                      key={meeting.id} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditMeeting?.(meeting);
+                      }}
+                      className={cn("flex flex-col px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 transition-colors", onEditMeeting && !readOnly && "cursor-pointer hover:border-primary/50 hover:bg-primary/5 group")}
+                    >
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <KeenIcon icon="calendar" className="text-primary text-[10px]" />
-                        <span className="text-[10px] font-bold text-gray-900 truncate">{meeting.title}</span>
+                        <span className={cn("text-[10px] font-bold text-gray-900 truncate", onEditMeeting && !readOnly && "group-hover:text-primary")}>{meeting.title}</span>
                       </div>
                       <span className="text-[9px] text-muted-foreground uppercase">{format(new Date(meeting.date_time), 'MMM d, p')}</span>
                     </div>
@@ -310,10 +319,17 @@ export function TaskProgressGrid({
                         <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Scheduled Meetings</p>
                         <div className="flex flex-col gap-1.5">
                           {task.meetings.map((m: any) => (
-                            <div key={m.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 gap-2">
+                            <div 
+                              key={m.id} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditMeeting?.(m);
+                              }}
+                              className={cn("flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 gap-2 transition-colors", onEditMeeting && !readOnly && "cursor-pointer active:bg-gray-100 hover:border-primary/50 group")}
+                            >
                               <div className="flex items-center gap-1.5 truncate min-w-0">
                                 <KeenIcon icon="calendar" className="text-primary text-[10px] shrink-0" />
-                                <span className="text-[10px] font-bold text-gray-700 truncate">{m.title}</span>
+                                <span className={cn("text-[10px] font-bold text-gray-700 truncate", onEditMeeting && !readOnly && "group-hover:text-primary")}>{m.title}</span>
                               </div>
                               <span className="text-[9px] font-medium text-gray-500 shrink-0">{format(new Date(m.date_time), 'MMM d, p')}</span>
                             </div>

@@ -17,7 +17,7 @@ import { TaskDialog } from '@/components/tasks/task-dialog';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 import { PairingSelector } from '@/components/common/pairing-selector';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchPairEvidence, uploadEvidenceFile, createEvidence } from '@/lib/api/evidence';
+import { fetchPairEvidence, uploadEvidenceFile, createEvidence, deleteEvidence } from '@/lib/api/evidence';
 import { toast } from 'sonner';
 import { usePairing } from '@/providers/pairing-provider';
 
@@ -61,7 +61,7 @@ export function ProgramMemberTasksPage() {
     enabled: !!selectedPair?.id,
   });
 
-  const { meetings = [], createMeeting, isCreating } = useAllMeetings();
+  const { meetings = [], createMeeting, updateMeeting, deleteMeeting, isCreating, isUpdating } = useAllMeetings();
   const pairMeetings = useMemo(() => 
     meetings.filter(m => m.pair_id === selectedPair?.id),
     [meetings, selectedPair?.id]
@@ -74,6 +74,7 @@ export function ProgramMemberTasksPage() {
   // Meeting Dialog State
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [isEvidenceSubmitting, setIsEvidenceSubmitting] = useState(false);
 
   // Automatically expand all tasks by default
@@ -191,6 +192,27 @@ export function ProgramMemberTasksPage() {
     }
   };
 
+  const handleDeleteEvidence = async (evidenceId: string) => {
+    try {
+      await deleteEvidence(evidenceId);
+      queryClient.invalidateQueries({ queryKey: ['pair-evidence', selectedPair?.id] });
+      queryClient.invalidateQueries({ queryKey: ['pair-tasks', selectedPair?.id] });
+      toast.success('Evidence removed');
+      
+      // Update selectedTask state to immediately reflect removal in dialog
+      setSelectedTask((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          evidence: prev.evidence?.filter((e: any) => e.id !== evidenceId) || [],
+          evidence_count: Math.max(0, (prev.evidence_count || 0) - 1)
+        };
+      });
+    } catch (error) {
+      toast.error('Failed to remove evidence');
+    }
+  };
+
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
     setIsTaskDialogOpen(true);
@@ -198,17 +220,40 @@ export function ProgramMemberTasksPage() {
 
   const handleCreateMeeting = (taskId: string) => {
     setInitialTaskId(taskId);
+    setSelectedMeeting(null);
     setIsMeetingDialogOpen(true);
+  };
+
+  const handleEditMeeting = (meeting: any) => {
+    setSelectedMeeting(meeting);
+    setInitialTaskId(meeting.pair_task_id || null);
+    setIsMeetingDialogOpen(true);
+  };
+
+  const handleDeleteMeeting = async (meetingId: string) => {
+    try {
+      await deleteMeeting(meetingId);
+      setIsMeetingDialogOpen(false);
+      toast.success('Meeting deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete meeting');
+    }
   };
 
   const handleMeetingSubmit = async (data: any) => {
     try {
-      await createMeeting(data);
+      if (selectedMeeting) {
+        await updateMeeting(selectedMeeting.id, data);
+        toast.success('Meeting updated successfully');
+      } else {
+        await createMeeting(data);
+        toast.success('Meeting scheduled successfully');
+      }
       setIsMeetingDialogOpen(false);
       setInitialTaskId(null);
-      toast.success('Meeting scheduled successfully');
+      setSelectedMeeting(null);
     } catch (error) {
-      toast.error('Failed to schedule meeting');
+      toast.error(selectedMeeting ? 'Failed to update meeting' : 'Failed to schedule meeting');
     }
   };
 
@@ -341,6 +386,7 @@ export function ProgramMemberTasksPage() {
                 onToggleTask={handleToggleTask}
                 onToggleSubTask={handleToggleSubTask}
                 onCreateMeeting={handleCreateMeeting}
+                onEditMeeting={handleEditMeeting}
               />
             </div>
           </div>
@@ -360,9 +406,11 @@ export function ProgramMemberTasksPage() {
             description: selectedTask.task?.description,
             evidence_type: selectedTask.evidence_type,
             completed_at: selectedTask.completed_at,
+            evidence: selectedTask.evidence,
           }}
           pairId={selectedPair?.id || ''}
           onSubmitEvidence={handleEvidenceSubmit}
+          onDeleteEvidence={handleDeleteEvidence}
           onUpdateStatus={handleToggleTask}
           isSubmitting={isEvidenceSubmitting}
         />
@@ -373,9 +421,11 @@ export function ProgramMemberTasksPage() {
         open={isMeetingDialogOpen}
         onOpenChange={setIsMeetingDialogOpen}
         pairId={selectedPair?.id || ''}
+        meeting={selectedMeeting}
         initialTaskId={initialTaskId}
         onSubmit={handleMeetingSubmit}
-        isSubmitting={isCreating}
+        onDelete={handleDeleteMeeting}
+        isSubmitting={selectedMeeting ? isUpdating : isCreating}
       />
     </>
   );

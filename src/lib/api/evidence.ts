@@ -55,16 +55,29 @@ export interface ReviewEvidenceInput {
  */
 export async function getEvidenceUrl(path: string | null): Promise<string> {
   if (!path) return '';
-  if (path.startsWith('http')) return path; // Already a full URL
   
+  let storagePath = path;
+
+  // Handle legacy data where public URLs might have been stored in the DB
+  if (path.startsWith('http')) {
+    if (path.includes('/object/public/mp-evidence-photos/')) {
+      // Extract the relative path
+      storagePath = path.split('/object/public/mp-evidence-photos/')[1];
+    } else if (path.includes('/object/public/evidence-photos/')) {
+      storagePath = path.split('/object/public/evidence-photos/')[1];
+    } else {
+      return path; // External URL or different bucket, return as is
+    }
+  }
+
   // For private buckets, we need a signed URL
   const { data, error } = await supabase.storage
     .from('mp-evidence-photos')
-    .createSignedUrl(path, 3600); // 1 hour expiry
+    .createSignedUrl(storagePath, 3600); // 1 hour expiry
     
   if (error) {
     console.error('Error creating signed URL:', error);
-    return '';
+    return path; // Fallback to original path so it's not completely blank
   }
     
   return data.signedUrl;

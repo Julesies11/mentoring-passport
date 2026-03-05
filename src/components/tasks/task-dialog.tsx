@@ -38,9 +38,11 @@ interface TaskDialogProps {
       requires_submission: boolean;
     } | null;
     completed_at?: string | null;
+    evidence?: any[];
   };
   pairId: string;
   onSubmitEvidence: (taskId: string, evidence: { description: string; files: File[] }, submitForReview: boolean) => Promise<void>;
+  onDeleteEvidence?: (evidenceId: string) => Promise<void>;
   onUpdateStatus: (taskId: string, currentStatus: string) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -50,6 +52,7 @@ export function TaskDialog({
   onOpenChange,
   task,
   onSubmitEvidence,
+  onDeleteEvidence,
   onUpdateStatus,
   isSubmitting = false,
 }: TaskDialogProps) {
@@ -97,9 +100,11 @@ export function TaskDialog({
           <div className="bg-primary/5 p-5 sm:p-8 border-b border-primary/10 relative overflow-hidden">
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-3">
-                <Badge variant="outline" className={cn("rounded-full font-black uppercase text-[10px] px-3 border-none shadow-sm", TASK_STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-700')}>
-                  {statusLabels[task.status as keyof typeof statusLabels]}
-                </Badge>
+                {['awaiting_review', 'completed'].includes(task.status) && (
+                  <Badge variant="outline" className={cn("rounded-full font-black uppercase text-[10px] px-3 border-none shadow-sm", TASK_STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-700')}>
+                    {statusLabels[task.status as keyof typeof statusLabels]}
+                  </Badge>
+                )}
                 {requiresSubmission && (
                   <Badge variant="destructive" size="xs" className="h-4 text-[8px] font-black px-1.5 uppercase tracking-widest">
                     Evidence Required
@@ -144,6 +149,43 @@ export function TaskDialog({
                 </div>
 
                 <div className="space-y-4">
+                  {/* Existing Evidence */}
+                  {task.evidence && task.evidence.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      <Label className="text-xs font-bold text-gray-600 uppercase px-1">Previously Uploaded Evidence</Label>
+                      <div className="grid gap-2">
+                        {task.evidence.map((evidence: any) => (
+                          <div key={evidence.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
+                            <a 
+                              href={evidence.file_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 min-w-0 flex-1 hover:text-primary transition-colors group"
+                            >
+                              <KeenIcon icon="file-done" className="text-success/60 group-hover:text-success text-base shrink-0" />
+                              <span className="text-xs font-bold text-gray-700 group-hover:text-primary truncate">{evidence.file_name || 'View File'}</span>
+                            </a>
+                            {onDeleteEvidence && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                type="button"
+                                className="size-8 rounded-lg text-gray-400 hover:text-danger hover:bg-danger/10 p-0" 
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to remove this evidence file?')) {
+                                    onDeleteEvidence(evidence.id);
+                                  }
+                                }}
+                              >
+                                <KeenIcon icon="trash" className="text-base" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-gray-600 uppercase px-1">Notes / Reflections</Label>
                     <Textarea

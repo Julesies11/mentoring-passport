@@ -109,56 +109,44 @@ export function MeetingDialog({
   });
 
   useEffect(() => {
-    if (internalPairId && open && !meeting) {
-      setFormData(prev => ({ ...prev, pair_task_id: '' }));
-    }
-  }, [internalPairId, open, meeting]);
-
-  useEffect(() => {
-    if (open && tasks.length > 0 && formData.pair_task_id) {
-      const selectedTask = tasks.find(t => t.id === formData.pair_task_id);
-      if (selectedTask && selectedTask.status === 'completed' && !meeting) {
-        setFormData(prev => ({ ...prev, pair_task_id: '' }));
-      }
-    }
-  }, [tasks, open, formData.pair_task_id, meeting]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    let targetTaskId = initialTaskId;
-    if (!targetTaskId && tasks.length > 0) {
-      const firstPending = tasks.find(t => t.status !== 'completed');
-      if (firstPending) targetTaskId = firstPending.id;
+    if (!open) {
+      setFormData({
+        title: '',
+        date_time: '',
+        notes: '',
+        pair_task_id: '',
+        location: '',
+        meeting_type: 'virtual',
+      });
+      return;
     }
 
     if (meeting) {
       const formattedDate = meeting.date_time ? format(new Date(meeting.date_time), "yyyy-MM-dd'T'HH:mm") : '';
-      
-      if (formData.title !== meeting.title || formData.date_time !== formattedDate || formData.pair_task_id !== (meeting.pair_task_id || '')) {
-        setFormData({
-          title: meeting.title,
-          date_time: formattedDate,
-          notes: meeting.notes || '',
-          pair_task_id: meeting.pair_task_id || '',
-          location: meeting.location || '',
-          meeting_type: (meeting.meeting_type as any) || 'virtual',
-        });
+      setFormData({
+        title: meeting.title,
+        date_time: formattedDate,
+        notes: meeting.notes || '',
+        pair_task_id: meeting.pair_task_id || '',
+        location: meeting.location || '',
+        meeting_type: (meeting.meeting_type as any) || 'virtual',
+      });
+    } else {
+      let targetTaskId = initialTaskId;
+      if (!targetTaskId && tasks.length > 0) {
+        const firstPending = tasks.find(t => t.status !== 'completed');
+        if (firstPending) targetTaskId = firstPending.id;
       }
-    } else if (tasks.length > 0) {
-      const selectedTask = tasks.find(t => t.id === (formData.pair_task_id || targetTaskId));
-      const newTitle = (selectedTask && formData.title === '') ? selectedTask.name : formData.title;
-      const newTaskID = targetTaskId || formData.pair_task_id || '';
 
-      if (formData.pair_task_id !== newTaskID || newTitle !== formData.title) {
-        setFormData(prev => ({
-          ...prev,
-          title: newTitle,
-          pair_task_id: newTaskID,
-        }));
-      }
+      const selectedTask = tasks.find(t => t.id === targetTaskId);
+
+      setFormData(prev => ({
+        ...prev,
+        pair_task_id: targetTaskId || prev.pair_task_id || '',
+        title: selectedTask ? selectedTask.name : prev.title,
+      }));
     }
-  }, [meeting, initialTaskId, open, tasks.length, internalPairId]); 
+  }, [open, meeting, initialTaskId, tasks]); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,25 +232,25 @@ export function MeetingDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[500px] w-[calc(100%-32px)] sm:w-full p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-xl font-black text-gray-900 leading-tight">
+        <DialogHeader className="p-4 sm:p-6 pb-0">
+          <DialogTitle className="text-lg sm:text-xl font-black text-gray-900 leading-tight">
             {meeting ? 'Edit Meeting' : 'Schedule New Meeting'}
           </DialogTitle>
-          <DialogDescription className="text-xs font-medium text-gray-500">
+          <DialogDescription className="text-[10px] sm:text-xs font-medium text-gray-500">
             {meeting 
               ? 'Update meeting details or cancel the session.' 
               : `Schedule a mentoring session for your relationship.`}
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="p-6 pt-4 space-y-5 overflow-y-auto max-h-[80vh]">
-          <div className="space-y-4">
-            <div className="grid gap-1.5">
-              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">{partnerRoleLabel}</Label>
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 pt-3 sm:pt-4 space-y-3 sm:space-y-5 overflow-y-auto max-h-[85vh]">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid gap-1 sm:gap-1.5">
+              <Label className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">{partnerRoleLabel}</Label>
               {(isSupervisor || pairings.length > 1) && !meeting ? (
                 <Select value={internalPairId} onValueChange={setInternalPairId}>
                   <SelectTrigger 
-                    className="h-auto py-3 rounded-xl border-gray-200 bg-white font-bold text-sm" 
+                    className="h-auto min-h-10 sm:min-h-11 py-2 sm:py-3 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm" 
                     aria-label="Select a mentoring pair"
                     data-testid="pair-select-trigger"
                   >
@@ -277,26 +265,33 @@ export function MeetingDialog({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="size-8 rounded-full bg-primary-light flex items-center justify-center text-xs text-primary font-black">
+                <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="size-7 sm:size-8 rounded-full bg-primary-light flex items-center justify-center text-[10px] sm:text-xs text-primary font-black">
                     <KeenIcon icon="users" />
                   </div>
-                  <span className="text-sm font-bold text-gray-700 truncate" data-testid="pair-display">{pairDisplay}</span>
+                  <span className="text-xs sm:text-sm font-bold text-gray-700 truncate" data-testid="pair-display">{pairDisplay}</span>
                 </div>
               )}
             </div>
 
-            <div className="grid gap-1.5 min-w-0">
-              <Label htmlFor="pair_task_id" className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">
+            <div className="grid gap-1 sm:gap-1.5 min-w-0">
+              <Label htmlFor="pair_task_id" className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">
                 Link to Task <span className="text-danger">*</span>
               </Label>
               <Select
                 value={formData.pair_task_id}
-                onValueChange={(val) => setFormData({ ...formData, pair_task_id: val })}
+                onValueChange={(val) => {
+                  const selectedTask = tasks.find(t => t.id === val);
+                  setFormData({ 
+                    ...formData, 
+                    pair_task_id: val,
+                    title: selectedTask ? selectedTask.name : formData.title
+                  });
+                }}
                 required
                 disabled={!internalPairId || isTasksLoading}
               >
-                <SelectTrigger id="pair_task_id" data-testid="task-select-trigger" className="h-auto min-h-11 rounded-xl border-gray-200 bg-white font-bold text-sm text-left">
+                <SelectTrigger id="pair_task_id" data-testid="task-select-trigger" className="h-auto min-h-10 sm:min-h-11 py-2 sm:py-3 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm text-left">
                   <SelectValue placeholder={!internalPairId ? "Select a pair first" : "Select a task"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[450px]">
@@ -305,12 +300,12 @@ export function MeetingDialog({
                     const isAwaiting = task.status === 'awaiting_review';
                     
                     return (
-                      <SelectItem key={task.id} value={task.id} className="py-2.5" data-testid={`task-option-${task.id}`}>
-                        <div className="flex items-start justify-between w-full gap-4">
-                          <span className="font-bold text-xs leading-normal">{task.name}</span>
+                      <SelectItem key={task.id} value={task.id} className="py-2 sm:py-2.5" data-testid={`task-option-${task.id}`}>
+                        <div className="flex items-start justify-between w-full gap-3 sm:gap-4">
+                          <span className="font-bold text-[11px] sm:text-xs leading-normal">{task.name}</span>
                           <Badge 
                             variant={isCompleted ? 'success' : (isAwaiting ? 'warning' : 'outline')} 
-                            className="shrink-0 text-[8px] h-4 uppercase font-black tracking-widest border-none mt-0.5"
+                            className="shrink-0 text-[7px] sm:text-[8px] h-3.5 sm:h-4 uppercase font-black tracking-widest border-none mt-0.5"
                           >
                             {isCompleted ? 'Validated' : (isAwaiting ? 'Review' : 'Pending')}
                           </Badge>
@@ -323,82 +318,82 @@ export function MeetingDialog({
             </div>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="title" className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Meeting Title *</Label>
+          <div className="grid gap-1 sm:gap-1.5">
+            <Label htmlFor="title" className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Meeting Title *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="e.g., Monthly Progress Sync"
-              className="h-11 rounded-xl border-gray-200 font-bold"
+              className="h-10 sm:h-11 rounded-xl border-gray-200 font-bold text-xs sm:text-sm"
               required
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="date_time" className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Date & Time *</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid gap-1 sm:gap-1.5">
+              <Label htmlFor="date_time" className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Date & Time *</Label>
               <Input
                 id="date_time"
                 type="datetime-local"
                 value={formData.date_time}
                 onChange={(e) => setFormData({ ...formData, date_time: e.target.value })}
-                className="h-11 rounded-xl border-gray-200 font-bold text-sm"
+                className="h-10 sm:h-11 rounded-xl border-gray-200 font-bold text-xs sm:text-sm"
                 required
               />
             </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="meeting_type" className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Type</Label>
+            <div className="grid gap-1 sm:gap-1.5">
+              <Label htmlFor="meeting_type" className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Type</Label>
               <Select 
                 value={formData.meeting_type} 
                 onValueChange={(value: any) => setFormData({...formData, meeting_type: value})}
               >
-                <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white font-bold text-sm">
+                <SelectTrigger className="h-10 sm:h-11 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-2xl border-gray-100">
-                  <SelectItem value="in_person" className="font-bold text-xs">In Person</SelectItem>
-                  <SelectItem value="virtual" className="font-bold text-xs">Virtual</SelectItem>
-                  <SelectItem value="phone" className="font-bold text-xs">Phone Call</SelectItem>
+                  <SelectItem value="in_person" className="font-bold text-[11px] sm:text-xs">In Person</SelectItem>
+                  <SelectItem value="virtual" className="font-bold text-[11px] sm:text-xs">Virtual</SelectItem>
+                  <SelectItem value="phone" className="font-bold text-[11px] sm:text-xs">Phone Call</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="location" className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Location / Link</Label>
+          <div className="grid gap-1 sm:gap-1.5">
+            <Label htmlFor="location" className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Location / Link</Label>
             <Input
               id="location"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               placeholder="e.g., Zoom Link or Meeting Room"
-              className="h-11 rounded-xl border-gray-200 font-bold"
+              className="h-10 sm:h-11 rounded-xl border-gray-200 font-bold text-xs sm:text-sm"
             />
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="notes" className="text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Agenda / Notes</Label>
+          <div className="grid gap-1 sm:gap-1.5">
+            <Label htmlFor="notes" className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">Agenda / Notes</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="What would you like to discuss?"
-              rows={3}
-              className="rounded-xl border-gray-200 font-medium text-sm resize-none p-4"
+              rows={2}
+              className="rounded-xl border-gray-200 font-medium text-xs sm:text-sm resize-none p-3 sm:p-4 min-h-[60px] sm:min-h-[80px]"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 pb-2">
-            <div className="flex flex-1 gap-3 order-2 sm:order-1">
-              <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest border-gray-200" onClick={() => onOpenChange(false)}>
-                Discard
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4 pb-1 sm:pb-2">
+            <div className="flex flex-1 gap-2 sm:gap-3 order-2 sm:order-1">
+              <Button type="button" variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest border-gray-200" onClick={() => onOpenChange(false)}>
+                Cancel
               </Button>
-              <Button type="submit" className="flex-1 h-12 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !internalPairId}>
+              <Button type="submit" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !internalPairId}>
                 {isSubmitting ? (
-                  <KeenIcon icon="loading" className="animate-spin mr-2" />
+                  <KeenIcon icon="loading" className="animate-spin mr-1.5 sm:mr-2" />
                 ) : (
-                  <KeenIcon icon="check" className="mr-2" />
+                  <KeenIcon icon="check" className="mr-1.5 sm:mr-2" />
                 )}
                 {meeting ? 'Update' : 'Schedule'}
               </Button>
@@ -408,10 +403,10 @@ export function MeetingDialog({
               <Button 
                 type="button" 
                 variant="outline" 
-                className="h-12 rounded-xl font-black uppercase text-[10px] tracking-widest border-danger/20 text-danger hover:bg-danger hover:text-white transition-all order-1 sm:order-2 px-6"
+                className="h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest border-danger/20 text-danger hover:bg-danger hover:text-white transition-all order-1 sm:order-2 px-6"
                 onClick={handleCancelMeeting}
               >
-                <KeenIcon icon="trash" className="mr-2" />
+                <KeenIcon icon="trash" className="mr-1.5 sm:mr-2" />
                 Cancel Meeting
               </Button>
             )}
