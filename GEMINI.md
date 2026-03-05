@@ -88,6 +88,18 @@ This ensures:
   - Reduce vertical gaps between components (`gap-2 sm:gap-5`).
   - Remove outer card borders on mobile (`border-0 sm:border`).
 
+- **Layout Overflow & Flexbox Containment:**
+  - **STRICT RULE:** Never use `overflow-x-hidden` or `max-w-full` on top-level layout wrappers to "fix" horizontal overflow. These hacks mask the root cause and break absolute positioned dropdown menus.
+  - **STRICT RULE:** Use `min-w-0` on flex items (`flex-1 min-w-0`) containing text that needs to wrap or truncate. Without `min-w-0`, flexbox's default `min-width: auto` will stretch the container beyond the screen width to fit the text.
+  - **Dropdown Constraints:** When using custom Radix `Select` components with complex internal layouts, always wrap the `<SelectValue>` content in a `<div className="flex-1 min-w-0 overflow-hidden">`. Otherwise, long selected values will blow out the `<SelectTrigger>` width.
+  - **Wrapping Text:** Use `break-words` and `line-clamp-2` within text spans to ensure URLs and long titles wrap safely. Do not use `break-words` directly on `<span>` tags without `block` or `inline-block`, or use a `<div>` instead.
+
+- **Dialogs & Modals:**
+  - **Keyboard Management:** ALWAYS apply `onOpenAutoFocus={(e) => e.preventDefault()}` to `<DialogContent>` components containing text inputs. This prevents the mobile virtual keyboard from aggressively opening the moment the dialog mounts.
+  - **Dynamic Viewport Height:** Use `max-h-[85dvh]` instead of `vh` for dialog containers. Dynamic Viewport Height (`dvh`) naturally recalculates when the mobile keyboard slides up, ensuring your dialog shrinks and your footer action buttons remain visible.
+  - **Compact Forms:** Reduce internal dialog padding (`p-4 sm:p-6`), input heights (`h-10 sm:h-11`), and font sizes (`text-xs`) to maximize visible space on mobile screens.
+  - **Stacked Actions:** Use `flex-col sm:flex-row` and `w-full` for footer action buttons on mobile, making them easy to tap.
+
 - **Table Layout & Containment:**
   - **STRICT RULE:** NEVER use `table-fixed` without a desktop override. Always use `table-fixed md:table-auto` to ensure tables are contained on mobile but return to a natural, balanced layout on desktop.
   - **STRICT RULE:** Any width percentages applied to `<th>` or `<td>` MUST be mobile-only (e.g., `w-[45%] md:w-auto`). NEVER lock column widths on desktop.
