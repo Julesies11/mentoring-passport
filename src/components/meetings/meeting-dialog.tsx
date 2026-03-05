@@ -110,26 +110,48 @@ export function MeetingDialog({
 
   useEffect(() => {
     if (!open) {
-      setFormData({
-        title: '',
-        date_time: '',
-        notes: '',
-        pair_task_id: '',
-        location: '',
-        meeting_type: 'virtual',
+      setFormData(prev => {
+        if (!prev.title && !prev.date_time && !prev.pair_task_id) return prev;
+        return {
+          title: '',
+          date_time: '',
+          notes: '',
+          pair_task_id: '',
+          location: '',
+          meeting_type: 'virtual',
+        };
       });
       return;
     }
 
     if (meeting) {
       const formattedDate = meeting.date_time ? format(new Date(meeting.date_time), "yyyy-MM-dd'T'HH:mm") : '';
-      setFormData({
-        title: meeting.title,
-        date_time: formattedDate,
-        notes: meeting.notes || '',
-        pair_task_id: meeting.pair_task_id || '',
-        location: meeting.location || '',
-        meeting_type: (meeting.meeting_type as any) || 'virtual',
+      setFormData(prev => {
+        const newTitle = meeting.title || '';
+        const newNotes = meeting.notes || '';
+        const newTaskId = meeting.pair_task_id || '';
+        const newLocation = meeting.location || '';
+        const newType = (meeting.meeting_type as any) || 'virtual';
+
+        if (
+          prev.title === newTitle &&
+          prev.date_time === formattedDate &&
+          prev.notes === newNotes &&
+          prev.pair_task_id === newTaskId &&
+          prev.location === newLocation &&
+          prev.meeting_type === newType
+        ) {
+          return prev;
+        }
+
+        return {
+          title: newTitle,
+          date_time: formattedDate,
+          notes: newNotes,
+          pair_task_id: newTaskId,
+          location: newLocation,
+          meeting_type: newType,
+        };
       });
     } else {
       let targetTaskId = initialTaskId;
@@ -140,11 +162,20 @@ export function MeetingDialog({
 
       const selectedTask = tasks.find(t => t.id === targetTaskId);
 
-      setFormData(prev => ({
-        ...prev,
-        pair_task_id: targetTaskId || prev.pair_task_id || '',
-        title: selectedTask ? selectedTask.name : prev.title,
-      }));
+      setFormData(prev => {
+        const newTaskId = targetTaskId || prev.pair_task_id || '';
+        const newTitle = (selectedTask && prev.title === '') ? selectedTask.name : prev.title;
+
+        if (prev.pair_task_id === newTaskId && prev.title === newTitle) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          pair_task_id: newTaskId,
+          title: newTitle,
+        };
+      });
     }
   }, [open, meeting, initialTaskId, tasks]); 
 
@@ -231,7 +262,10 @@ export function MeetingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[500px] w-[calc(100%-32px)] sm:w-full p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+      <DialogContent 
+        className="max-w-[500px] w-[calc(100%-32px)] sm:w-full p-0 overflow-hidden border-none shadow-2xl rounded-2xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader className="p-4 sm:p-6 pb-0">
           <DialogTitle className="text-lg sm:text-xl font-black text-gray-900 leading-tight">
             {meeting ? 'Edit Meeting' : 'Schedule New Meeting'}

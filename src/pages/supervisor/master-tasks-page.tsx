@@ -92,11 +92,27 @@ export function SupervisorMasterTasksPage() {
 
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: createTask,
+    mutationFn: async (data: { task: Omit<Task, 'id' | 'created_at' | 'updated_at'>, subtasks: any[] }) => {
+      const newTask = await createTask(data.task);
+      if (data.subtasks && data.subtasks.length > 0) {
+        await Promise.all(
+          data.subtasks.map((st, index) => 
+            createMasterSubTask({
+              task_id: newTask.id,
+              name: st.name,
+              evidence_type_id: st.evidence_type_id,
+              sort_order: index + 1
+            })
+          )
+        );
+      }
+      return newTask;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
       setIsEditDialogOpen(false);
       setSelectedTask(null);
+      setLocalSubTasks([]);
       toast.success('Task created successfully');
     },
   });
@@ -220,28 +236,58 @@ export function SupervisorMasterTasksPage() {
   };
 
   const handleCreateSubTask = () => {
-    if (!subTaskFormData.name.trim() || !selectedTask) {
+    if (!subTaskFormData.name.trim()) {
       return;
     }
 
-    createSubTaskMutation.mutate({
-      task_id: selectedTask.id,
-      name: subTaskFormData.name,
-      evidence_type_id:
-        subTaskFormData.evidence_type_id || evidenceTypes[0]?.id,
-      sort_order: localSubTasks.length + 1,
-    });
+    if (selectedTask) {
+      createSubTaskMutation.mutate({
+        task_id: selectedTask.id,
+        name: subTaskFormData.name,
+        evidence_type_id:
+          subTaskFormData.evidence_type_id || evidenceTypes[0]?.id,
+        sort_order: localSubTasks.length + 1,
+      });
+    } else {
+      // Temporary subtask creation for new tasks
+      const newSubTask = {
+        id: `temp-${Date.now()}`,
+        task_id: 'temp',
+        name: subTaskFormData.name,
+        evidence_type_id: subTaskFormData.evidence_type_id || evidenceTypes[0]?.id,
+        sort_order: localSubTasks.length + 1,
+        evidence_type: evidenceTypes.find((t: any) => t.id === (subTaskFormData.evidence_type_id || evidenceTypes[0]?.id))
+      };
+      
+      setLocalSubTasks((prev) => [...prev, newSubTask as any]);
+      
+      const fallback =
+        evidenceTypes.find((t: any) =>
+          t.name.toLowerCase().includes('not applicable'),
+        ) || evidenceTypes[0];
+      setSubTaskFormData({
+        name: '',
+        evidence_type_id: fallback?.id || '',
+        sort_order: localSubTasks.length + 2,
+      });
+    }
   };
 
   const handleDeleteSubTask = (subtaskId: string) => {
     if (window.confirm('Are you sure you want to delete this subtask?')) {
-      deleteSubTaskMutation.mutate(subtaskId);
+      if (subtaskId.startsWith('temp-')) {
+        setLocalSubTasks((prev) => prev.filter((st) => st.id !== subtaskId));
+      } else {
+        deleteSubTaskMutation.mutate(subtaskId);
+      }
     }
   };
 
   const handleSubTaskReorder = (newOrder: MasterSubTask[]) => {
     setLocalSubTasks(newOrder);
-    updateSubTaskOrderMutation.mutate(newOrder);
+    if (selectedTask) {
+      updateSubTaskOrderMutation.mutate(newOrder);
+    }
   };
 
   const handleTaskReorder = (newOrder: Task[]) => {
@@ -275,10 +321,13 @@ export function SupervisorMasterTasksPage() {
       });
     } else {
       createTaskMutation.mutate({
-        name: formData.name,
-        evidence_type_id: formData.evidence_type_id,
-        sort_order: tasks.length + 1,
-        is_active: formData.is_active,
+        task: {
+          name: formData.name,
+          evidence_type_id: formData.evidence_type_id,
+          sort_order: tasks.length + 1,
+          is_active: formData.is_active,
+        },
+        subtasks: localSubTasks
       });
     }
   };
@@ -393,8 +442,8 @@ export function SupervisorMasterTasksPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-end py-4">
+          <div className="border-0 sm:border sm:rounded-xl sm:bg-card sm:shadow-sm min-w-0 w-full">
+            <CardHeader className="hidden sm:flex flex-row items-center justify-end py-4">
               <Button
                 size="sm"
                 onClick={openCreateDialog}
@@ -403,7 +452,7 @@ export function SupervisorMasterTasksPage() {
                 Add Task
               </Button>
             </CardHeader>
-            <CardContent className="p-0">
+            <div className="p-0 min-w-0 w-full">
               {isLoading ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <KeenIcon
@@ -443,31 +492,45 @@ export function SupervisorMasterTasksPage() {
                   isDeleting={deleteTaskMutation.isPending}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+            {/* Mobile Floating Action Button */}
+            <div className="sm:hidden fixed bottom-20 right-4 z-50">
+              <Button
+                size="lg"
+                className="rounded-full shadow-lg h-14 w-14 p-0 flex items-center justify-center bg-primary text-white"
+                onClick={openCreateDialog}
+              >
+                <KeenIcon icon="plus" className="text-2xl" />
+              </Button>
+            </div>
+          </div>
         </div>
       </Container>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-[600px] h-[85vh] p-0 overflow-hidden flex flex-col border-none shadow-2xl">
-          <DialogHeader className="px-6 py-5 border-b border-gray-100 flex-shrink-0">
-            <DialogTitle className="text-xl font-bold text-gray-900">
+        <DialogContent 
+          className="max-w-[600px] h-[85dvh] w-[calc(100%-32px)] sm:w-full p-0 overflow-hidden flex flex-col border-none shadow-2xl rounded-2xl"
+          aria-describedby={undefined}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="p-4 sm:px-6 sm:py-5 border-b border-gray-100 flex-shrink-0">
+            <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900">
               Edit Task & Subtasks
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-1">
+            <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
               Refine the task details and manage sequential subtasks.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto kt-scrollable-y-hover px-6 py-6 space-y-8">
+          <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-4 sm:px-6 sm:py-6 space-y-6 sm:space-y-8">
             {/* Main Task Info Section */}
-            <div className="space-y-5">
-              <div className="grid gap-5">
-                <div className="grid gap-2">
+            <div className="space-y-4 sm:space-y-5">
+              <div className="grid gap-4 sm:gap-5">
+                <div className="grid gap-1.5 sm:gap-2">
                   <Label
                     htmlFor="edit-task-name"
-                    className="text-xs font-bold text-gray-600 uppercase"
+                    className="text-[10px] sm:text-xs font-bold text-gray-600 uppercase tracking-wider px-1"
                   >
                     Task Name
                   </Label>
@@ -477,15 +540,15 @@ export function SupervisorMasterTasksPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="h-11 border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary/20"
+                    className="h-10 sm:h-11 border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl"
                     placeholder="Enter task name..."
                   />
                 </div>
 
-                <div className="grid gap-2">
+                <div className="grid gap-1.5 sm:gap-2">
                   <Label
                     htmlFor="edit-evidence-type"
-                    className="text-xs font-bold text-gray-600 uppercase"
+                    className="text-[10px] sm:text-xs font-bold text-gray-600 uppercase tracking-wider px-1"
                   >
                     Evidence Requirement *
                   </Label>
@@ -495,15 +558,16 @@ export function SupervisorMasterTasksPage() {
                       setFormData({ ...formData, evidence_type_id: value })
                     }
                   >
-                    <SelectTrigger className="h-11 border-gray-200">
-                      <SelectValue placeholder="Select requirement (Required)" />
+                    <SelectTrigger className="h-10 sm:h-11 border-gray-200 rounded-xl">
+                      <SelectValue placeholder="Select requirement" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[calc(100vw-4rem)]">
                       {evidenceTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          <div className="flex items-center justify-between w-full gap-4">
+                        <SelectItem key={type.id} value={type.id} className="py-2.5">
+                          <div className="flex items-start sm:items-center justify-between w-full gap-2 sm:gap-4 flex-col sm:flex-row">
                             <span
                               className={cn(
+                                "text-xs sm:text-sm whitespace-normal text-left",
                                 type.requires_submission &&
                                   'font-semibold text-gray-900',
                               )}
@@ -515,7 +579,7 @@ export function SupervisorMasterTasksPage() {
                                 variant="destructive"
                                 appearance="light"
                                 size="xs"
-                                className="gap-1 px-1.5"
+                                className="gap-1 px-1.5 shrink-0"
                               >
                                 <KeenIcon
                                   icon="cloud-upload"
@@ -534,123 +598,129 @@ export function SupervisorMasterTasksPage() {
             </div>
 
             {/* Subtasks Section */}
-            {selectedTask ? (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between pb-1 border-b border-gray-50">
-                  <div className="flex items-center gap-2">
-                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <KeenIcon icon="list" className="text-primary text-base" />
-                    </div>
-                    <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
-                      Subtasks ({localSubTasks.length})
-                    </h4>
+            <div className="space-y-4 sm:space-y-5">
+              <div className="flex items-center justify-between pb-1 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 sm:size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <KeenIcon icon="list" className="text-primary text-sm sm:text-base" />
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-medium bg-gray-100 px-2 py-0.5 rounded-full uppercase">
-                    Drag to reorder
-                  </p>
+                  <h4 className="font-bold text-gray-800 text-xs sm:text-sm uppercase tracking-wider">
+                    Subtasks ({localSubTasks.length})
+                  </h4>
                 </div>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground font-medium bg-gray-100 px-2 py-0.5 rounded-full uppercase">
+                  Drag to reorder
+                </p>
+              </div>
 
-                <div className="relative group">
-                  <Input
-                    placeholder="Type a new subtask and press enter..."
-                    value={subTaskFormData.name}
-                    onChange={(e) =>
-                      setSubTaskFormData({
-                        ...subTaskFormData,
-                        name: e.target.value,
-                      })
+              <div className="relative group">
+                <Input
+                  placeholder="New subtask (press enter)..."
+                  value={subTaskFormData.name}
+                  onChange={(e) =>
+                    setSubTaskFormData({
+                      ...subTaskFormData,
+                      name: e.target.value,
+                    })
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCreateSubTask();
                     }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleCreateSubTask();
-                      }
-                    }}
-                    className="h-12 pl-4 pr-12 border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary/20 shadow-sm rounded-xl"
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="absolute right-1.5 top-1.5 size-9 p-0 hover:bg-primary hover:text-white rounded-lg transition-all"
-                    onClick={handleCreateSubTask}
-                    disabled={
-                      createSubTaskMutation.isPending ||
-                      !subTaskFormData.name.trim()
-                    }
-                  >
-                    {createSubTaskMutation.isPending ? (
-                      <KeenIcon icon="loading" className="animate-spin" />
-                    ) : (
-                      <KeenIcon icon="plus" className="text-lg" />
-                    )}
-                  </Button>
-                </div>
-
-                <div className="min-h-[100px]">
-                  {localSubTasks.length === 0 ? (
-                    <div className="text-center py-10 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/30">
-                      <KeenIcon
-                        icon="file-added"
-                        className="text-3xl text-gray-200 mb-2"
-                      />
-                      <p className="text-sm text-muted-foreground italic">
-                        No subtasks defined yet
-                      </p>
-                    </div>
+                  }}
+                  className="h-10 sm:h-12 pl-3 sm:pl-4 pr-10 sm:pr-12 border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary/20 shadow-sm rounded-xl text-xs sm:text-sm"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="absolute right-1 sm:right-1.5 top-1 sm:top-1.5 size-8 sm:size-9 p-0 hover:bg-primary hover:text-white rounded-lg transition-all"
+                  onClick={handleCreateSubTask}
+                  disabled={
+                    createSubTaskMutation.isPending ||
+                    !subTaskFormData.name.trim()
+                  }
+                >
+                  {createSubTaskMutation.isPending ? (
+                    <KeenIcon icon="loading" className="animate-spin" />
                   ) : (
-                    <Sortable
-                      value={localSubTasks}
-                      onValueChange={handleSubTaskReorder}
-                      getItemValue={(item) => item.id}
-                      className="space-y-3"
-                    >
-                      {localSubTasks.map((subtask) => (
-                        <SortableItem key={subtask.id} value={subtask.id}>
-                          <div className="flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl hover:border-primary/40 hover:shadow-md transition-all group relative overflow-hidden">
-                            <SortableItemHandle>
-                              <div className="flex items-center justify-center size-8 rounded-lg bg-gray-50 group-hover:bg-primary/5 transition-colors cursor-grab active:cursor-grabbing">
-                                <KeenIcon
-                                  icon="dots-square-vertical"
-                                  className="text-gray-400 group-hover:text-primary"
-                                />
-                              </div>
-                            </SortableItemHandle>
+                    <KeenIcon icon="plus" className="text-base sm:text-lg" />
+                  )}
+                </Button>
+              </div>
 
-                            <div className="flex-1 flex flex-col min-w-0 pr-10">
-                              <Input
-                                defaultValue={subtask.name}
-                                onBlur={(e) => {
-                                  if (
-                                    e.target.value !== subtask.name &&
-                                    e.target.value.trim()
-                                  ) {
+              <div className="min-h-[100px]">
+                {localSubTasks.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/30">
+                    <KeenIcon
+                      icon="file-added"
+                      className="text-2xl sm:text-3xl text-gray-200 mb-2"
+                    />
+                    <p className="text-xs sm:text-sm text-muted-foreground italic">
+                      No subtasks defined yet
+                    </p>
+                  </div>
+                ) : (
+                  <Sortable
+                    value={localSubTasks}
+                    onValueChange={handleSubTaskReorder}
+                    getItemValue={(item) => item.id}
+                    className="space-y-2.5 sm:space-y-3"
+                  >
+                    {localSubTasks.map((subtask) => (
+                      <SortableItem key={subtask.id} value={subtask.id}>
+                        <div className="flex items-start sm:items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-white border border-gray-100 rounded-2xl hover:border-primary/40 hover:shadow-md transition-all group relative overflow-hidden">
+                          <SortableItemHandle>
+                            <div className="flex items-center justify-center size-7 sm:size-8 rounded-lg bg-gray-50 group-hover:bg-primary/5 transition-colors cursor-grab active:cursor-grabbing mt-0.5 sm:mt-0 shrink-0">
+                              <KeenIcon
+                                icon="dots-square-vertical"
+                                className="text-gray-400 group-hover:text-primary text-sm sm:text-base"
+                              />
+                            </div>
+                          </SortableItemHandle>
+
+                          <div className="flex-1 flex flex-col min-w-0 pr-8 sm:pr-10">
+                            <Input
+                              defaultValue={subtask.name}
+                              onBlur={(e) => {
+                                if (
+                                  e.target.value !== subtask.name &&
+                                  e.target.value.trim()
+                                ) {
+                                  if (subtask.id.startsWith('temp-')) {
+                                    setLocalSubTasks(prev => prev.map(st => st.id === subtask.id ? { ...st, name: e.target.value.trim() } : st));
+                                  } else {
                                     updateSubTaskMutation.mutate({
                                       subtaskId: subtask.id,
                                       updates: { name: e.target.value.trim() },
                                     });
                                   }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    (e.target as HTMLInputElement).blur();
-                                  }
-                                }}
-                                className="border-none focus:ring-0 focus:border-none shadow-none px-0 h-auto text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors bg-transparent"
-                              />
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  (e.target as HTMLInputElement).blur();
+                                }
+                              }}
+                              className="border-none focus:ring-0 focus:border-none shadow-none px-0 h-auto text-xs sm:text-sm font-semibold text-gray-900 group-hover:text-primary transition-colors bg-transparent break-words whitespace-normal"
+                            />
 
-                              <div className="flex items-center gap-2 mt-1">
-                                <Select
-                                  defaultValue={subtask.evidence_type_id || ''}
-                                  onValueChange={(value) => {
-                                    if (
-                                      value !== (subtask.evidence_type_id || '')
-                                    ) {
-                                      const fallback =
-                                        evidenceTypes.find((t: any) =>
-                                          t.name
-                                            .toLowerCase()
-                                            .includes('not applicable'),
-                                        ) || evidenceTypes[0];
+                            <div className="flex flex-wrap items-center gap-2 mt-1 sm:mt-1.5">
+                              <Select
+                                defaultValue={subtask.evidence_type_id || ''}
+                                onValueChange={(value) => {
+                                  if (
+                                    value !== (subtask.evidence_type_id || '')
+                                  ) {
+                                    const fallback =
+                                      evidenceTypes.find((t: any) =>
+                                        t.name
+                                          .toLowerCase()
+                                          .includes('not applicable'),
+                                      ) || evidenceTypes[0];
+                                    if (subtask.id.startsWith('temp-')) {
+                                      setLocalSubTasks(prev => prev.map(st => st.id === subtask.id ? { ...st, evidence_type_id: value || fallback?.id } : st));
+                                    } else {
                                       updateSubTaskMutation.mutate({
                                         subtaskId: subtask.id,
                                         updates: {
@@ -658,111 +728,104 @@ export function SupervisorMasterTasksPage() {
                                         },
                                       });
                                     }
-                                  }}
-                                >
-                                  <SelectTrigger className="h-6 border-none bg-gray-100 hover:bg-gray-200 text-[10px] font-bold text-muted-foreground uppercase tracking-tight py-0 px-2 rounded-md shadow-none w-auto gap-1">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {evidenceTypes.map((type) => (
-                                      <SelectItem
-                                        key={type.id}
-                                        value={type.id}
-                                        className="text-xs"
-                                      >
-                                        <div className="flex items-center justify-between w-full gap-4">
-                                          <span
-                                            className={cn(
-                                              type.requires_submission &&
-                                                'font-semibold text-gray-900',
-                                            )}
-                                          >
-                                            {type.name}
-                                          </span>
-                                          {type.requires_submission && (
-                                            <Badge
-                                              variant="destructive"
-                                              appearance="light"
-                                              size="xs"
-                                              className="gap-1 px-1.5"
-                                            >
-                                              <KeenIcon
-                                                icon="cloud-upload"
-                                                className="text-[9px]"
-                                              />
-                                              Required
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                mode="icon"
-                                className="size-9 text-gray-300 hover:text-danger hover:bg-danger/5 opacity-0 group-hover:opacity-100 transition-all rounded-xl"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteSubTask(subtask.id);
+                                  }
                                 }}
-                                disabled={
-                                  deleteSubTaskMutation.isPending ||
-                                  updateSubTaskMutation.isPending
-                                }
                               >
-                                <KeenIcon icon="trash" className="text-lg" />
-                              </Button>
+                                <SelectTrigger className="h-6 sm:h-7 border-none bg-gray-100 hover:bg-gray-200 text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-tight py-0 px-2 rounded-md shadow-none w-auto gap-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="max-w-[calc(100vw-5rem)]">
+                                  {evidenceTypes.map((type) => (
+                                    <SelectItem
+                                      key={type.id}
+                                      value={type.id}
+                                      className="text-[10px] sm:text-xs"
+                                    >
+                                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-1 sm:gap-4">
+                                        <span
+                                          className={cn(
+                                            "whitespace-normal text-left leading-tight",
+                                            type.requires_submission &&
+                                              'font-semibold text-gray-900',
+                                          )}
+                                        >
+                                          {type.name}
+                                        </span>
+                                        {type.requires_submission && (
+                                          <Badge
+                                            variant="destructive"
+                                            appearance="light"
+                                            size="xs"
+                                            className="gap-1 px-1.5 py-0.5 text-[8px] h-auto shrink-0"
+                                          >
+                                            <KeenIcon
+                                              icon="cloud-upload"
+                                              className="text-[8px]"
+                                            />
+                                            Required
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
-                        </SortableItem>
-                      ))}
-                    </Sortable>
-                  )}
-                </div>
+
+                          <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              mode="icon"
+                              className="size-8 sm:size-9 text-gray-400 hover:text-danger hover:bg-danger/5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all rounded-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSubTask(subtask.id);
+                              }}
+                              disabled={
+                                deleteSubTaskMutation.isPending ||
+                                updateSubTaskMutation.isPending
+                              }
+                            >
+                              <KeenIcon icon="trash" className="text-base sm:text-lg" />
+                            </Button>
+                          </div>
+                        </div>
+                      </SortableItem>
+                    ))}
+                  </Sortable>
+                )}
               </div>
-            ) : (
-              <div className="mt-8 p-6 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
-                <KeenIcon icon="information-2" className="text-3xl text-gray-300 mb-3" />
-                <h4 className="text-sm font-bold text-gray-700 mb-1">Save Task to Add Subtasks</h4>
-                <p className="text-xs text-gray-500 max-w-[250px] mx-auto">
-                  You can define a sequence of subtasks after saving the main task details.
-                </p>
-              </div>
-            )}
+            </div>
           </div>
 
           <DialogFooter className={cn(
-            "px-6 py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30",
-            selectedTask ? "justify-between" : "justify-end"
+            "p-4 sm:px-6 sm:py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30",
+            selectedTask ? "flex flex-col sm:flex-row sm:justify-between gap-3 sm:gap-0" : "flex flex-col sm:flex-row sm:justify-end gap-3 sm:gap-0"
           )}>
             {selectedTask && (
               <Button
-                variant="destructive"
-                className="h-11 px-6 rounded-xl font-bold"
+                variant="outline"
+                className="h-10 sm:h-11 px-6 rounded-xl font-bold border-danger/20 text-danger hover:bg-danger hover:text-white order-3 sm:order-1 transition-colors"
                 onClick={() => handleDeleteTask(selectedTask.id)}
                 disabled={deleteTaskMutation.isPending}
               >
-                <KeenIcon icon="trash" />
+                <KeenIcon icon="trash" className="mr-1.5" />
                 Delete Task
               </Button>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 order-1 sm:order-2 w-full sm:w-auto">
               <Button
                 variant="outline"
-                className="h-11 px-6 rounded-xl font-bold"
+                className="h-10 sm:h-11 px-6 rounded-xl font-bold border-gray-200 order-2 sm:order-1"
                 onClick={() => setIsEditDialogOpen(false)}
                 disabled={updateTaskMutation.isPending || createTaskMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
-                className="h-11 px-8 rounded-xl font-bold shadow-lg shadow-primary/20"
+                className="h-10 sm:h-11 px-8 rounded-xl font-bold shadow-lg shadow-primary/20 order-1 sm:order-2"
                 onClick={handleEditTask}
                 disabled={
                   updateTaskMutation.isPending ||
@@ -773,12 +836,12 @@ export function SupervisorMasterTasksPage() {
               >
                 {updateTaskMutation.isPending || createTaskMutation.isPending ? (
                   <>
-                    <KeenIcon icon="loading" className="animate-spin mr-2" />{' '}
+                    <KeenIcon icon="loading" className="animate-spin mr-1.5 sm:mr-2" />
                     Saving...
                   </>
                 ) : (
                   <>
-                    <KeenIcon icon="check" className="mr-2" /> Save Changes
+                    <KeenIcon icon="check" className="mr-1.5 sm:mr-2" /> Save Changes
                   </>
                 )}
               </Button>
