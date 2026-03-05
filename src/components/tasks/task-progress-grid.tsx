@@ -24,7 +24,7 @@ export function TaskProgressGrid({
   readOnly = false,
 }: TaskProgressGridProps) {
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0 overflow-hidden">
       {/* Desktop Header - Hidden on Mobile */}
       <div className="hidden lg:grid grid-cols-[40px_minmax(200px,2fr)_minmax(140px,1fr)_minmax(160px,1.2fr)_100px] gap-4 border-b border-gray-100 bg-gray-50/50 p-4 font-semibold text-gray-700 text-sm">
         <div className="w-10 text-center">Done</div>
@@ -34,7 +34,7 @@ export function TaskProgressGrid({
         <div className="text-right">Actions</div>
       </div>
 
-      <div className="p-2 lg:p-4 flex flex-col gap-3 lg:gap-4">
+      <div className="lg:p-4 flex flex-col gap-3 lg:gap-4 min-w-0 w-full">
         {tasks.map((task) => {
           const isRevision = task.status === 'revision_required';
           
@@ -43,7 +43,7 @@ export function TaskProgressGrid({
               key={task.id} 
               id={`task-${task.id}`} 
               className={cn(
-                "border rounded-xl lg:rounded-2xl overflow-hidden bg-white shadow-sm transition-all scroll-mt-20",
+                "border rounded-xl lg:rounded-2xl overflow-hidden bg-white shadow-sm transition-all scroll-mt-20 min-w-0 w-full",
                 isRevision ? "border-red-300 ring-1 ring-red-100 shadow-md shadow-red-50" : "border-gray-200 hover:border-gray-300"
               )}
             >
@@ -143,11 +143,14 @@ export function TaskProgressGrid({
               </div>
 
               {/* Mobile Version - Card Layout */}
-              <div className="lg:hidden flex flex-col p-3 bg-white gap-3 relative">
-                <div className="flex items-start gap-3 pr-24">
+              <div 
+                className="lg:hidden flex flex-col p-3 bg-white gap-3 relative cursor-pointer active:bg-gray-50 transition-colors min-w-0 w-full overflow-hidden"
+                onClick={() => onViewDetails(task)}
+              >
+                <div className="flex items-start gap-3 pr-20 min-w-0 w-full">
                   <button
                     onClick={(e) => {
-                      e.preventDefault();
+                      e.stopPropagation();
                       if (task.status === 'awaiting_review') return;
                       if (task.status === 'revision_required' || (task.status !== 'completed' && task.evidence_type?.requires_submission)) {
                         onViewDetails(task);
@@ -168,23 +171,23 @@ export function TaskProgressGrid({
                      <KeenIcon icon="check" className="text-xs" />}
                   </button>
                   <div className="flex-1 min-w-0">
-                    <h3 className={cn("text-sm font-bold text-gray-900 leading-tight", task.status === 'completed' && "text-gray-400 line-through")}>
-                      {task.name}
-                      {isRevision && <Badge className="bg-red-100 text-red-700 border-none text-[7px] h-3.5 uppercase font-black px-1 ml-1.5 align-middle">Revision Required</Badge>}
-                    </h3>
+                    <div className={cn("text-sm font-bold text-gray-900 leading-tight flex flex-wrap items-center gap-x-1.5 gap-y-1", task.status === 'completed' && "text-gray-400 line-through")}>
+                      <span className="break-words min-w-0 flex-1 break-all line-clamp-2">{task.name}</span>
+                      {isRevision && <Badge className="bg-red-100 text-red-700 border-none text-[6px] h-3 uppercase font-black px-1 align-middle shrink-0">Revision Required</Badge>}
+                    </div>
                     
                     {task.evidence_type && (
                       <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
-                        <span>Required Evidence:</span>
+                        <span className="shrink-0">Required:</span>
                         {task.evidence_type.requires_submission ? (
                           <Badge variant="destructive" appearance="light" className="text-[9px] h-4.5 px-1.5 gap-1 font-bold">
                             <KeenIcon icon="cloud-upload" className="text-[10px]" />
                             {task.evidence_type.name}
                           </Badge>
                         ) : (
-                          <span className="flex items-center gap-1">
-                            <KeenIcon icon="file" className="text-[10px]" />
-                            {task.evidence_type.name}
+                          <span className="flex items-center gap-1 truncate">
+                            <KeenIcon icon="file" className="text-[10px] shrink-0" />
+                            <span className="truncate">{task.evidence_type.name}</span>
                           </span>
                         )}
                       </div>
@@ -193,7 +196,7 @@ export function TaskProgressGrid({
                     {isRevision && task.last_feedback && (
                       <div className="bg-red-50 border border-red-100 p-2.5 rounded-xl mt-2">
                         <p className="text-[8px] font-black text-red-700 uppercase tracking-widest mb-1">Feedback</p>
-                        <p className="text-[11px] text-red-800 font-medium italic leading-snug">"{task.last_feedback}"</p>
+                        <p className="text-[11px] text-red-800 font-medium italic leading-snug break-words">"{task.last_feedback}"</p>
                       </div>
                     )}
                     {task.status === 'completed' && task.completed_at && (
@@ -207,12 +210,26 @@ export function TaskProgressGrid({
                 {/* Top-Right Action Buttons */}
                 <div className="absolute top-2.5 right-2.5 flex gap-1">
                   {!readOnly && (
-                    <Button variant="outline" className="size-9 p-0 rounded-lg border-success/20 bg-success-light text-success shadow-xs" onClick={() => onCreateMeeting?.(task.id)}>
-                      <KeenIcon icon="calendar-add" className="text-lg" />
+                    <Button 
+                      variant="outline" 
+                      className="size-8 p-0 rounded-lg border-success/20 bg-success-light text-success shadow-xs" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCreateMeeting?.(task.id);
+                      }}
+                    >
+                      <KeenIcon icon="calendar-add" className="text-base" />
                     </Button>
                   )}
-                  <Button variant="secondary" className="size-9 p-0 rounded-lg bg-gray-50 border border-gray-100 text-gray-500 hover:text-primary transition-colors shadow-xs" onClick={() => onViewDetails(task)}>
-                    <KeenIcon icon="pencil" className="text-lg" />
+                  <Button 
+                    variant="secondary" 
+                    className="size-8 p-0 rounded-lg bg-gray-50 border border-gray-100 text-gray-500 hover:text-primary transition-colors shadow-xs" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails(task);
+                    }}
+                  >
+                    <KeenIcon icon="pencil" className="text-base" />
                   </Button>
                 </div>
               </div>
@@ -221,10 +238,17 @@ export function TaskProgressGrid({
               {task.subtasks && task.subtasks.length > 0 && (
                 <div className="border-t border-gray-100 bg-gray-50/20 divide-y divide-gray-100/50">
                   {task.subtasks.map((st: any) => (
-                    <div key={st.id} className="flex items-start gap-3 py-3.5 px-4 lg:px-5 lg:ml-10 lg:border-l-2 lg:border-l-primary/20">
+                    <div 
+                      key={st.id} 
+                      className="flex items-start gap-3 py-3 px-4 lg:py-3.5 lg:px-5 lg:ml-10 lg:border-l-2 lg:border-l-primary/20 cursor-pointer active:bg-gray-100/50 transition-colors"
+                      onClick={() => onToggleSubTask?.(st.id, st.is_completed)}
+                    >
                       <button
                         disabled={readOnly}
-                        onClick={() => onToggleSubTask?.(st.id, st.is_completed)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleSubTask?.(st.id, st.is_completed);
+                        }}
                         className={cn("size-5 rounded border flex items-center justify-center transition-all shrink-0 mt-0.5",
                           st.is_completed ? "bg-success border-success text-white" : "bg-white border-gray-200"
                         )}
@@ -233,15 +257,15 @@ export function TaskProgressGrid({
                       </button>
                       <div className="flex-1 min-w-0">
                         <p className={cn("text-xs font-medium leading-normal break-words", st.is_completed && "text-gray-400 line-through")}>{st.name}</p>
-                        <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex items-center gap-3 mt-1">
                           {st.evidence_type && (
-                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                              <KeenIcon icon="file" className="text-[10px]" />
-                              {st.evidence_type.name}
+                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 truncate">
+                              <KeenIcon icon="file" className="text-[10px] shrink-0" />
+                              <span className="truncate">{st.evidence_type.name}</span>
                             </span>
                           )}
                           {st.is_completed && st.completed_at && (
-                            <span className="text-[9px] text-muted-foreground font-medium flex items-center gap-1">
+                            <span className="text-[9px] text-muted-foreground font-medium flex items-center gap-1 shrink-0">
                               <KeenIcon icon="check-circle" className="text-success text-[10px]" />
                               {format(new Date(st.completed_at), 'MMM d')}
                             </span>
@@ -255,10 +279,10 @@ export function TaskProgressGrid({
 
               {/* Attachments & Meetings Section (Bottom of card) */}
               {(task.evidence_count > 0 || (task.meetings && task.meetings.length > 0)) && (
-                <div className="border-t border-gray-100 pt-4 px-3 pb-4 lg:px-10 lg:pb-5 space-y-4 bg-gray-50/10">
+                <div className="border-t border-gray-100 pt-3 px-3 pb-3 lg:pt-4 lg:px-10 lg:pb-5 space-y-3 lg:space-y-4 bg-gray-50/10">
                   {/* Evidence Files */}
                   {task.evidence_count > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest lg:ml-1">Uploaded Evidence</p>
                       <div className="flex flex-wrap gap-2">
                         {task.evidence?.map((evidence: any) => (
@@ -267,11 +291,12 @@ export function TaskProgressGrid({
                             href={evidence.file_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success/5 border border-success/10 hover:bg-success/10 transition-colors group"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/5 border border-success/10 hover:bg-success/10 transition-colors group max-w-full"
                           >
-                            <KeenIcon icon="file-done" className="text-success text-base" />
-                            <span className="text-[11px] font-bold text-success truncate max-w-[150px]">{evidence.file_name || 'View File'}</span>
-                            <KeenIcon icon="cloud-download" className="text-success/40 group-hover:text-success text-xs ml-1" />
+                            <KeenIcon icon="file-done" className="text-success text-sm shrink-0" />
+                            <span className="text-[10px] font-bold text-success truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
+                            <KeenIcon icon="cloud-download" className="text-success/40 group-hover:text-success text-[10px] ml-1 shrink-0" />
                           </a>
                         ))}
                       </div>
@@ -281,16 +306,16 @@ export function TaskProgressGrid({
                   {/* Meetings (Mobile View Only) */}
                   <div className="lg:hidden">
                     {task.meetings && task.meetings.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Scheduled Meetings</p>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1.5">
                           {task.meetings.map((m: any) => (
-                            <div key={m.id} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                              <div className="flex items-center gap-2 truncate">
-                                <KeenIcon icon="calendar" className="text-primary text-xs" />
-                                <span className="text-[11px] font-bold text-gray-700 truncate">{m.title}</span>
+                            <div key={m.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 gap-2">
+                              <div className="flex items-center gap-1.5 truncate min-w-0">
+                                <KeenIcon icon="calendar" className="text-primary text-[10px] shrink-0" />
+                                <span className="text-[10px] font-bold text-gray-700 truncate">{m.title}</span>
                               </div>
-                              <span className="text-[10px] font-medium text-gray-500 shrink-0">{format(new Date(m.date_time), 'MMM d, p')}</span>
+                              <span className="text-[9px] font-medium text-gray-500 shrink-0">{format(new Date(m.date_time), 'MMM d, p')}</span>
                             </div>
                           ))}
                         </div>

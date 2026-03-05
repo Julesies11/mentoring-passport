@@ -306,15 +306,15 @@ export function ProgramMemberTasksPage() {
       <Container className="sm:mt-0 mt-4">
         <PairingSelector />
         
-        <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
+        <div className="grid gap-2 sm:gap-5 lg:gap-7.5 min-w-0">
           {/* Progress Card */}
           {stats && (
             <Card className="border-0 sm:border shadow-none sm:shadow-sm">
               <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-1 sm:gap-0">
-                  <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-[10px] sm:text-sm font-semibold text-muted-foreground uppercase mb-0.5 sm:mb-1">Overall Progress</p>
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
                       <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.completion_percentage}%</p>
                       <span className="text-[10px] sm:text-sm text-muted-foreground">
                         ({stats.completed} of {stats.total} tasks completed)
@@ -328,11 +328,11 @@ export function ProgramMemberTasksPage() {
           )}
 
           {/* Tasks List */}
-          <Card className="border-0 sm:border shadow-none sm:shadow-sm">
+          <div className="border-0 sm:border sm:rounded-xl sm:bg-card sm:shadow-sm min-w-0 w-full">
             <CardHeader className="hidden sm:flex">
               <CardTitle>Mentoring Tasks</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <div className="p-0 min-w-0 w-full">
               <TaskProgressGrid
                 tasks={enrichedTasks}
                 expandedTasks={expandedTasks}
@@ -342,8 +342,8 @@ export function ProgramMemberTasksPage() {
                 onToggleSubTask={handleToggleSubTask}
                 onCreateMeeting={handleCreateMeeting}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </Container>
 
