@@ -2,10 +2,8 @@ import { ReactNode } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import {
   IdCard,
-  Moon,
   UserCircle,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { Link, useNavigate } from 'react-router';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
@@ -21,7 +19,6 @@ import { getAvatarUrl } from '@/lib/api/profiles';
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { logout, user } = useAuth();
-  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   // Use display data from currentUser
@@ -30,10 +27,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const displayAvatar = user?.avatar_url ? 
     getAvatarUrl(user.id, user.avatar_url) :
     toAbsoluteUrl('/media/avatars/300-2.png');
-
-  const handleThemeToggle = (checked: boolean) => {
-    setTheme(checked ? 'dark' : 'light');
-  };
 
   const handleLogout = () => {
     logout();
@@ -77,20 +70,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
         <DropdownMenuSeparator />
 
         {/* Footer */}
-        <DropdownMenuItem
-          className="flex items-center gap-2"
-          onSelect={(event) => event.preventDefault()}
-        >
-          <Moon />
-          <div className="flex items-center gap-2 justify-between grow">
-            Dark Mode
-            <Switch
-              size="sm"
-              checked={theme === 'dark'}
-              onCheckedChange={handleThemeToggle}
-            />
-          </div>
-        </DropdownMenuItem>
         <div className="p-2 mt-1">
           <Button
             variant="outline"

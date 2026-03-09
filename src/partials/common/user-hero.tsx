@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import { LucideIcon } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { Link } from 'react-router';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Container } from '@/components/common/container';
@@ -18,7 +17,6 @@ export interface UserHeroProps {
 }
 
 export function UserHero({ image, name, info }: UserHeroProps) {
-  const { theme } = useTheme();
   const buildInfo = (info: UserHeroInfo[]) => {
     return info.map((item, index) => {
       return (
@@ -49,10 +47,7 @@ export function UserHero({ image, name, info }: UserHeroProps) {
     <div
       className="bg-center bg-cover bg-no-repeat hero-bg"
       style={{
-        backgroundImage:
-          theme === 'dark'
-            ? `url('${toAbsoluteUrl('/media/images/2600x1200/bg-1-dark.png')}')`
-            : `url('${toAbsoluteUrl('/media/images/2600x1200/bg-1.png')}')`,
+        backgroundImage: `url('${toAbsoluteUrl('/media/images/2600x1200/bg-1.png')}')`,
       }}
     >
       <Container>

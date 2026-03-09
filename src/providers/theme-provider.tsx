@@ -10,11 +10,12 @@ export function ThemeProvider({
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
+      defaultTheme="light"
+      forcedTheme="light"
       storageKey="vite-theme"
-      enableSystem
+      enableSystem={false}
       disableTransitionOnChange
-      enableColorScheme
+      enableColorScheme={false}
     >
       <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
     </NextThemesProvider>

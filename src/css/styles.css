@@ -26,10 +26,6 @@
 /* Demos */
 @import './demos/demo1.css';
 
-/** Dark/Light Theme Variant **/
-@custom-variant dark (&:is(.dark *));
-@custom-variant light (&:not(.dark *));
-
 @layer base {
   html, body {
     @apply overflow-x-hidden w-full h-full;

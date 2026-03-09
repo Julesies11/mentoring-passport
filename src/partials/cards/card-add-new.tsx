@@ -1,5 +1,4 @@
 import { Rocket } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { Link } from 'react-router-dom';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,17 +12,12 @@ const CardAddNew = ({
   title,
   subTitle,
 }: IAddNewProps) => {
-  const { theme } = useTheme();
-
   return (
     <Link to={`${path}`}>
       <Card
-        className="border-2 border-dashed border-orange-200 dark:border-orange-950 bg-center bg-[length:600px] bg-no-repeat h-full"
+        className="border-2 border-dashed border-orange-200 bg-center bg-[length:600px] bg-no-repeat h-full"
         style={{
-          backgroundImage:
-            theme === 'dark'
-              ? `url('${toAbsoluteUrl('/media/images/2600x1200/bg-4-dark.png')}')`
-              : `url('${toAbsoluteUrl('/media/images/2600x1200/bg-4.png')}')`,
+          backgroundImage: `url('${toAbsoluteUrl('/media/images/2600x1200/bg-4.png')}')`,
         }}
       >
         <CardContent>
@@ -34,8 +28,8 @@ const CardAddNew = ({
                 badge={
                   <Rocket size={16} className={`${iconSize} text-orange-400`} />
                 }
-                stroke="stroke-orange-200 dark:stroke-orange-950"
-                fill="fill-orange-50 dark:fill-orange-950/30"
+                stroke="stroke-orange-200"
+                fill="fill-orange-50"
               />
             </div>
             <div className="flex flex-col text-center">
