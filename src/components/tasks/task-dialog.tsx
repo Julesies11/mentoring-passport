@@ -15,13 +15,18 @@ import { KeenIcon } from '@/components/keenicons';
 import { cn } from '@/lib/utils';
 import { TASK_STATUS_COLORS } from '@/config/constants';
 import { format } from 'date-fns';
+import { getFileIcon } from '@/lib/helpers';
 import { 
   FileText, 
   Upload, 
   X, 
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Eye,
+  ExternalLink,
+  XCircle
 } from 'lucide-react';
+import { FilePreviewCard } from '@/components/common/file-preview-card';
 
 interface TaskDialogProps {
   open: boolean;
@@ -152,46 +157,18 @@ export function TaskDialog({
                 <div className="space-y-4">
                   {/* Existing Evidence */}
                   {task.evidence && task.evidence.length > 0 && (
-                    <div className="space-y-2 mb-4">
-                      <Label className="text-xs font-bold text-gray-600 uppercase px-1">Previously Uploaded Evidence</Label>
-                      <div className="grid gap-2">
+                    <div className="space-y-3 mb-6">
+                      <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Previously Uploaded Evidence</Label>
+                      <div className="grid gap-2.5">
                         {task.evidence.map((evidence: any) => (
-                          <div key={evidence.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-                            {evidence.file_url ? (
-                              <a 
-                                href={evidence.file_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 min-w-0 flex-1 hover:text-primary transition-colors group"
-                              >
-                                <KeenIcon icon="file-done" className="text-success/60 group-hover:text-success text-base shrink-0" />
-                                <span className="text-xs font-bold text-gray-700 group-hover:text-primary truncate">{evidence.file_name || 'View File'}</span>
-                              </a>
-                            ) : (
-                              <div className="flex items-center gap-3 min-w-0 flex-1 text-gray-400">
-                                <KeenIcon icon="file-deleted" className="text-gray-300 text-base shrink-0" />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-bold truncate line-through">{evidence.file_name || 'Unknown File'}</span>
-                                  <span className="text-[9px] uppercase font-black tracking-widest text-danger">File Missing</span>
-                                </div>
-                              </div>
-                            )}
-                            {onDeleteEvidence && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                type="button"
-                                className="size-8 rounded-lg text-gray-400 hover:text-danger hover:bg-danger/10 p-0" 
-                                onClick={() => {
-                                  if (confirm('Are you sure you want to remove this evidence file?')) {
-                                    onDeleteEvidence(evidence.id);
-                                  }
-                                }}
-                              >
-                                <KeenIcon icon="trash" className="text-base" />
-                              </Button>
-                            )}
-                          </div>
+                          <FilePreviewCard
+                            key={evidence.id}
+                            fileName={evidence.file_name}
+                            fileUrl={evidence.file_url}
+                            mimeType={evidence.mime_type}
+                            createdAt={evidence.created_at}
+                            onDelete={onDeleteEvidence ? () => onDeleteEvidence(evidence.id) : undefined}
+                          />
                         ))}
                       </div>
                     </div>

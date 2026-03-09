@@ -71,21 +71,37 @@ export async function getEvidenceUrl(path: string | null): Promise<string> {
   }
 
   // For private buckets, we need a signed URL
-  const { data, error } = await supabase.storage
-    .from('mp-evidence-photos')
-    .createSignedUrl(storagePath, 3600); // 1 hour expiry
-    
-  if (error) {
-    // If the error is 'Object not found' (404), it means the file was deleted from storage 
-    // but the DB record remains. Return empty string so the UI knows the file is missing.
-    if (error.message.includes('Object not found') || error.message.includes('not_found')) {
+  try {
+    const { data, error } = await supabase.storage
+      .from('mp-evidence-photos')
+      .createSignedUrl(storagePath, 3600); // 1 hour expiry
+      
+    if (error) {
+      // If the error is 'Object not found' or similar, handle it gracefully
+      const isNotFound = error.message.includes('Object not found') || 
+                        error.message.includes('not_found') ||
+                        (error as any).status === 404 ||
+                        (error as any).status === 400; // 400 often means path is invalid/missing
+
+      if (!isNotFound) {
+        // Only log to DB if it's a real system error (like permissions), not just a missing file
+        const { logError } = await import('@/lib/logger');
+        await logError({
+          message: `Failed to sign evidence URL: ${error.message}`,
+          componentName: 'evidence-api',
+          severity: 'warning',
+          metadata: { storagePath, error }
+        });
+      }
+      
       return ''; 
     }
-    console.error('Error creating signed URL:', error);
-    return ''; // Return empty string on error so UI can handle missing file
+      
+    return data.signedUrl;
+  } catch (err: any) {
+    console.warn('Inaccessible evidence file:', storagePath);
+    return '';
   }
-    
-  return data.signedUrl;
 }
 
 /**

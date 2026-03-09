@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PAIR_STATUS_COLORS } from '@/config/constants';
 import { calculatePairProgress } from '@/lib/utils/progress';
+import { usePagination } from '@/hooks/use-pagination';
+import { DataTablePagination } from '@/components/common/data-table-pagination';
 
 const SortIcon = ({ field, currentField, currentOrder }: { field: string, currentField: string, currentOrder: 'asc' | 'desc' }) => {
   if (field !== currentField) return <KeenIcon icon="arrow-up-down" className="text-[10px] opacity-20 ml-1" />;
@@ -35,8 +37,6 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { data: allStatuses = [] } = useAllPairTaskStatuses();
 
@@ -111,18 +111,22 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
     });
   }, [pairs, searchQuery, filterStatus, sortField, sortOrder, allStatuses]);
 
-  const { paginatedPairs, totalPages } = useMemo(() => {
-    const pages = Math.ceil(sortedPairs.length / itemsPerPage);
-    const paginated = sortedPairs.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    );
-    return { paginatedPairs: paginated, totalPages: pages };
-  }, [sortedPairs, currentPage, itemsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, filterStatus, itemsPerPage]);
+  // Use centralized pagination hook
+  const {
+    currentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages,
+    paginatedItems: paginatedPairs,
+    goToNextPage,
+    goToPrevPage,
+    totalItems,
+    startIndex,
+    endIndex
+  } = usePagination({
+    items: sortedPairs,
+    resetDeps: [searchQuery, filterStatus]
+  });
 
   return (
     <Card className="border-0 sm:border">
@@ -299,51 +303,17 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
         )}
       </CardContent>
 
-      {sortedPairs.length > 0 && (
-        <div className="border-t border-gray-100 px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground order-2 sm:order-1">
-            <span>Show</span>
-            <select 
-              className="h-8 w-[70px] bg-gray-50 border border-gray-200 rounded-md px-1 outline-none focus:ring-2 focus:ring-primary/20"
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-            <span>per page</span>
-            <span className="mx-2 text-gray-200">|</span>
-            <span>
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedPairs.length)} of {sortedPairs.length}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 order-1 sm:order-2">
-            <Button
-              variant="outline" size="sm" mode="icon" className="size-8 rounded-md"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            >
-              <KeenIcon icon="black-left" />
-            </Button>
-            <div className="flex items-center px-2">
-              <span className="text-sm font-bold text-gray-900">Page {currentPage} of {totalPages || 1}</span>
-            </div>
-            <Button
-              variant="outline" size="sm" mode="icon" className="size-8 rounded-md"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages || totalPages === 0}
-            >
-              <KeenIcon icon="black-right" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </Card>
+        <DataTablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          onItemsPerPageChange={setItemsPerPage}
+          onPrevPage={goToPrevPage}
+          onNextPage={goToNextPage}
+        />
+      </Card>
   );
 }

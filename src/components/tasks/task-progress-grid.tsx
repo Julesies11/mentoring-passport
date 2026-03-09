@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { KeenIcon } from '@/components/keenicons';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { getFileIcon } from '@/lib/helpers';
 
 interface TaskProgressGridProps {
   tasks: any[];
@@ -302,18 +303,22 @@ export function TaskProgressGrid({
                               target="_blank" 
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-success/5 border border-success/10 hover:bg-success/10 transition-colors group max-w-full"
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-primary/5 hover:border-primary/20 transition-all group max-w-full"
                             >
-                              <KeenIcon icon="file-done" className="text-success text-sm shrink-0" />
-                              <span className="text-[10px] font-bold text-success truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
-                              <KeenIcon icon="cloud-download" className="text-success/40 group-hover:text-success text-[10px] ml-1 shrink-0" />
+                              <div className="size-4 shrink-0">
+                                <img src={getFileIcon(evidence.file_name)} alt="icon" className="size-full" />
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-700 group-hover:text-primary truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
+                              <KeenIcon icon="cloud-download" className="text-gray-400 group-hover:text-primary text-[10px] ml-1 shrink-0" />
                             </a>
                           ) : (
                             <div 
                               key={evidence.id}
                               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 max-w-full opacity-70"
                             >
-                              <KeenIcon icon="file-deleted" className="text-gray-400 text-sm shrink-0" />
+                              <div className="size-4 shrink-0 grayscale">
+                                <img src={getFileIcon(evidence.file_name)} alt="icon" className="size-full" />
+                              </div>
                               <span className="text-[10px] font-bold text-gray-500 truncate max-w-[120px] sm:max-w-[150px] line-through">{evidence.file_name || 'Unknown File'}</span>
                             </div>
                           )

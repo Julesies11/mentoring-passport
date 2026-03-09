@@ -15,6 +15,7 @@ const SupervisorMasterTasksPage = lazy(() => import('@/pages/supervisor/master-t
 const EvidenceReviewPage = lazy(() => import('@/pages/supervisor/evidence-review-page').then(m => ({ default: m.EvidenceReviewPage })));
 const SupervisorCalendarPage = lazy(() => import('@/pages/supervisor/calendar-page').then(m => ({ default: m.SupervisorCalendarPage })));
 const SupervisorChecklistPage = lazy(() => import('@/pages/supervisor/checklist-page').then(m => ({ default: m.SupervisorChecklistPage })));
+const SupervisorErrorLogsPage = lazy(() => import('@/pages/supervisor/error-logs-page').then(m => ({ default: m.SupervisorErrorLogsPage })));
 
 const ProgramMemberDashboardPage = lazy(() => import('@/pages/dashboards/program-member-dashboard').then(m => ({ default: m.ProgramMemberDashboardPage })));
 const ProgramMemberTasksPage = lazy(() => import('@/pages/program-member').then(m => ({ default: m.ProgramMemberTasksPage })));
@@ -108,6 +109,14 @@ export function AppRoutingSetup() {
               element={
                 <RequireRole allowedRoles={['supervisor']}>
                   <SupervisorChecklistPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/supervisor/error-logs"
+              element={
+                <RequireRole allowedRoles={['supervisor']}>
+                  <SupervisorErrorLogsPage />
                 </RequireRole>
               }
             />

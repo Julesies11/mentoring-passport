@@ -14,17 +14,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 export function useNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [limit, setLimit] = useState(20);
 
   // Fetch notifications
   const {
     data: notifications = [],
     isLoading,
+    isFetching,
     error,
   } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: () => fetchNotifications(),
+    queryKey: ['notifications', limit],
+    queryFn: () => fetchNotifications(limit),
     enabled: !!user,
   });
+
+  const loadMore = () => setLimit(prev => prev + 20);
 
   // Fetch unread count
   const { data: unreadCount = 0 } = useQuery({
@@ -99,6 +103,9 @@ export function useNotifications() {
     notifications,
     unreadCount,
     isLoading,
+    isFetching,
+    limit,
+    loadMore,
     error,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,

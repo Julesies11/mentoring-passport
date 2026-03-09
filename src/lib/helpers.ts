@@ -115,3 +115,53 @@ export function formatDateTime(input: Date | string | number): string {
     hour12: true,
   });
 }
+
+export function getFileIcon(fileName: string | null | undefined): string {
+  if (!fileName) return toAbsoluteUrl('/media/file-types/text.svg');
+  
+  const extension = fileName.split('.').pop()?.toLowerCase() || '';
+  
+  const iconMap: Record<string, string> = {
+    // Documents
+    pdf: 'pdf.svg',
+    doc: 'doc.svg',
+    docx: 'word.svg',
+    txt: 'txt.svg',
+    rtf: 'text.svg',
+    // Spreadsheets
+    xls: 'xls.svg',
+    xlsx: 'excel.svg',
+    csv: 'excel.svg',
+    // Presentations
+    ppt: 'ppt.svg',
+    pptx: 'powerpoint.svg',
+    // Images
+    png: 'image.svg',
+    jpg: 'image.svg',
+    jpeg: 'image.svg',
+    webp: 'image.svg',
+    gif: 'image.svg',
+    svg: 'svg.svg',
+    ai: 'ai.svg',
+    psd: 'psd.svg',
+    // Media
+    mp3: 'mp3.svg',
+    wav: 'music.svg',
+    mp4: 'video.svg',
+    mov: 'video.svg',
+    avi: 'video.svg',
+    // Code
+    js: 'js.svg',
+    ts: 'javascript.svg',
+    css: 'css.svg',
+    php: 'php.svg',
+    sql: 'sql.svg',
+    // Archives
+    zip: 'zip.svg',
+    rar: 'zip.svg',
+    '7z': 'zip.svg',
+  };
+
+  const iconName = iconMap[extension] || 'text.svg';
+  return toAbsoluteUrl(`/media/file-types/${iconName}`);
+}

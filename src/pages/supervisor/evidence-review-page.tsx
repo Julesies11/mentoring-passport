@@ -24,13 +24,34 @@ import type { Evidence } from '@/lib/api/evidence';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { getFileIcon } from '@/lib/helpers';
 import { toast } from 'sonner';
-import { FileText, ExternalLink, CheckCircle, XCircle, Clock, Paperclip } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle, XCircle, Clock, Paperclip, Eye, ImageIcon } from 'lucide-react';
+import { usePagination } from '@/hooks/use-pagination';
+import { DataTablePagination } from '@/components/common/data-table-pagination';
+import { FilePreviewCard } from '@/components/common/file-preview-card';
 
 export function EvidenceReviewPage() {
   const navigate = useNavigate();
   const { evidence, stats, isLoading, reviewEvidence, isReviewing } = usePendingEvidence();
   
+  // Use centralized pagination hook
+  const {
+    currentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages,
+    paginatedItems,
+    goToNextPage,
+    goToPrevPage,
+    totalItems,
+    startIndex,
+    endIndex
+  } = usePagination({
+    items: evidence,
+    initialItemsPerPage: 10 // Balanced for image-heavy page
+  });
+
   // Review Dialog State
   const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -59,49 +80,6 @@ export function EvidenceReviewPage() {
     } catch (error) {
       toast.error('Failed to process review');
     }
-  };
-
-  const renderMediaPreview = (item: Evidence) => {
-    const isImage = item.mime_type?.startsWith('image/') || 
-                   item.file_url?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-
-    if (isImage) {
-      return (
-        <div className="relative group rounded-xl overflow-hidden border border-gray-100 bg-gray-50 max-w-sm">
-          <img 
-            src={item.file_url || ''} 
-            alt="Evidence" 
-            className="w-full h-auto max-h-[300px] object-contain mx-auto"
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className="opacity-0 group-hover:opacity-100 transition-opacity rounded-lg shadow-lg h-8 text-[10px] font-bold"
-              onClick={() => window.open(item.file_url || '', '_blank')}
-            >
-              <ExternalLink size={12} className="mr-1.5" />
-              View Full Size
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 max-w-md group hover:border-primary/30 transition-colors cursor-pointer" onClick={() => window.open(item.file_url || '', '_blank')}>
-        <div className="size-12 rounded-lg bg-white flex items-center justify-center text-primary shadow-sm border border-gray-100 shrink-0">
-          <FileText size={24} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-gray-900 truncate">{item.file_name || 'Document'}</p>
-          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight">{item.mime_type || 'File'}</p>
-        </div>
-        <div className="size-8 rounded-full flex items-center justify-center text-gray-300 group-hover:text-primary transition-colors">
-          <ExternalLink size={16} />
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -148,126 +126,147 @@ export function EvidenceReviewPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {evidence.map((item) => (
-              <Card key={item.id} className="border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
-                <div className="grid grid-cols-1 lg:grid-cols-12">
-                  {/* Left Section: Info & Notes (7 cols) */}
-                  <div className="lg:col-span-7 p-6 lg:p-8 space-y-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex -space-x-3 shrink-0">
-                          <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
-                            <ProfileAvatar 
-                              userId={item.pair?.mentor?.id || ''} 
-                              currentAvatar={item.pair?.mentor?.avatar_url} 
-                              userName={item.pair?.mentor?.full_name || undefined} 
-                              size="lg" 
-                            />
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 gap-6">
+              {paginatedItems.map((item) => (
+                <Card key={item.id} className="border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                  <div className="grid grid-cols-1 lg:grid-cols-12">
+                    {/* Left Section: Info & Notes (7 cols) */}
+                    <div className="lg:col-span-7 p-6 lg:p-8 space-y-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex -space-x-3 shrink-0">
+                            <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
+                              <ProfileAvatar 
+                                userId={item.pair?.mentor?.id || ''} 
+                                currentAvatar={item.pair?.mentor?.avatar_url} 
+                                userName={item.pair?.mentor?.full_name || undefined} 
+                                size="lg" 
+                              />
+                            </div>
+                            <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
+                              <ProfileAvatar 
+                                userId={item.pair?.mentee?.id || ''} 
+                                currentAvatar={item.pair?.mentee?.avatar_url} 
+                                userName={item.pair?.mentee?.full_name || undefined} 
+                                size="lg" 
+                              />
+                            </div>
                           </div>
-                          <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
-                            <ProfileAvatar 
-                              userId={item.pair?.mentee?.id || ''} 
-                              currentAvatar={item.pair?.mentee?.avatar_url} 
-                              userName={item.pair?.mentee?.full_name || undefined} 
-                              size="lg" 
-                            />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-black text-gray-900 leading-tight">
+                                <span className="text-primary">{item.pair?.mentor?.full_name}</span>
+                                <span className="text-gray-300 mx-2">&</span>
+                                <span className="text-success">{item.pair?.mentee?.full_name}</span>
+                              </h3>
+                              <Badge 
+                                className={cn(
+                                  "rounded-full font-black uppercase text-[8px] px-2 h-4 border-none",
+                                  item.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                )}
+                              >
+                                {item.status === 'rejected' ? 'Revision Required' : item.status}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">
+                                Submission for: <span className="text-gray-900 font-black">{item.task?.name || 'Assigned Task'}</span>
+                              </p>
+                              <button 
+                                onClick={() => navigate(`/supervisor/checklist?pair=${item.pair_id}&taskId=${item.pair_task_id}`)}
+                                className="text-[10px] font-black uppercase text-primary hover:underline flex items-center gap-1 ml-2 bg-primary/5 px-2 py-0.5 rounded"
+                              >
+                                <KeenIcon icon="exit-right-corner" className="text-[10px]" />
+                                View Context
+                              </button>
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-black text-gray-900 leading-tight">
-                              <span className="text-primary">{item.pair?.mentor?.full_name}</span>
-                              <span className="text-gray-300 mx-2">&</span>
-                              <span className="text-success">{item.pair?.mentee?.full_name}</span>
-                            </h3>
-                            <Badge 
-                              className={cn(
-                                "rounded-full font-black uppercase text-[8px] px-2 h-4 border-none",
-                                item.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                              )}
-                            >
-                              {item.status === 'rejected' ? 'Revision Required' : item.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">
-                              Submission for: <span className="text-gray-900 font-black">{item.task?.name || 'Assigned Task'}</span>
-                            </p>
-                            <button 
-                              onClick={() => navigate(`/supervisor/checklist?pair=${item.pair_id}&taskId=${item.pair_task_id}`)}
-                              className="text-[10px] font-black uppercase text-primary hover:underline flex items-center gap-1 ml-2 bg-primary/5 px-2 py-0.5 rounded"
-                            >
-                              <KeenIcon icon="exit-right-corner" className="text-[10px]" />
-                              View Context
-                            </button>
+                        <div className="text-right hidden sm:block">
+                          <div className="flex items-center justify-end gap-1.5 text-gray-400">
+                            <Clock size={12} />
+                            <span className="text-[10px] font-black uppercase tracking-tight">{format(new Date(item.created_at), 'MMM d, yyyy • p')}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="text-right hidden sm:block">
-                        <div className="flex items-center justify-end gap-1.5 text-gray-400">
-                          <Clock size={12} />
-                          <span className="text-[10px] font-black uppercase tracking-tight">{format(new Date(item.created_at), 'MMM d, yyyy • p')}</span>
+
+                      {item.description && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 px-1">
+                            <KeenIcon icon="message-text-2" className="text-gray-400 text-sm" />
+                            <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Submitter's Notes</span>
+                          </div>
+                          <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 italic text-gray-700 leading-relaxed text-sm">
+                            "{item.description}"
+                          </div>
                         </div>
+                      )}
+
+                      {(item.status === 'rejected' || item.rejection_reason) && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 px-1">
+                            <KeenIcon icon="information-2" className="text-danger text-sm" />
+                            <span className="text-[10px] font-black uppercase text-danger tracking-widest">Your Previous Feedback</span>
+                          </div>
+                          <div className="p-5 rounded-2xl bg-red-50/50 border border-red-100 text-red-800 leading-relaxed text-sm font-medium">
+                            "{item.rejection_reason || 'Changes requested.'}"
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-3 pt-2">
+                        <Button 
+                          onClick={() => handleOpenReview(item, 'approve')}
+                          className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 px-8 font-bold shadow-lg shadow-green-200 border-none"
+                        >
+                          <CheckCircle size={18} className="mr-2" />
+                          Approve Submission
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => handleOpenReview(item, 'reject')}
+                          className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 rounded-xl h-11 px-6 font-bold transition-colors"
+                        >
+                          <XCircle size={18} className="mr-2 text-red-600" />
+                          Request Revision
+                        </Button>
                       </div>
                     </div>
 
-                    {item.description && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 px-1">
-                          <KeenIcon icon="message-text-2" className="text-gray-400 text-sm" />
-                          <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Submitter's Notes</span>
-                        </div>
-                        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 italic text-gray-700 leading-relaxed text-sm">
-                          "{item.description}"
-                        </div>
+                    {/* Right Section: Media Preview (5 cols) */}
+                    <div className="lg:col-span-5 bg-gray-50/50 border-t lg:border-t-0 lg:border-l border-gray-100 p-6 lg:p-8 flex flex-col">
+                      <div className="flex items-center gap-2 mb-4 px-1">
+                        <Paperclip size={14} className="text-gray-400" />
+                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Attached Evidence</span>
                       </div>
-                    )}
-
-                    {(item.status === 'rejected' || item.rejection_reason) && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 px-1">
-                          <KeenIcon icon="information-2" className="text-danger text-sm" />
-                          <span className="text-[10px] font-black uppercase text-danger tracking-widest">Your Previous Feedback</span>
-                        </div>
-                        <div className="p-5 rounded-2xl bg-red-50/50 border border-red-100 text-red-800 leading-relaxed text-sm font-medium">
-                          "{item.rejection_reason || 'Changes requested.'}"
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-3 pt-2">
-                      <Button 
-                        onClick={() => handleOpenReview(item, 'approve')}
-                        className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 px-8 font-bold shadow-lg shadow-green-200 border-none"
-                      >
-                        <CheckCircle size={18} className="mr-2" />
-                        Approve Submission
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={() => handleOpenReview(item, 'reject')}
-                        className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 rounded-xl h-11 px-6 font-bold transition-colors"
-                      >
-                        <XCircle size={18} className="mr-2 text-red-600" />
-                        Request Revision
-                      </Button>
-                    </div>
+                      <div className="flex-1 flex items-center justify-center">
+                        <FilePreviewCard 
+                          fileName={item.file_name}
+                          fileUrl={item.file_url}
+                          mimeType={item.mime_type}
+                          createdAt={item.created_at}
+                          className="w-full"
+                        />
+                      </div>                    </div>
                   </div>
+                </Card>
+              ))}
+            </div>
 
-                  {/* Right Section: Media Preview (5 cols) */}
-                  <div className="lg:col-span-5 bg-gray-50/50 border-t lg:border-t-0 lg:border-l border-gray-100 p-6 lg:p-8 flex flex-col">
-                    <div className="flex items-center gap-2 mb-4 px-1">
-                      <Paperclip size={14} className="text-gray-400" />
-                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Attached Evidence</span>
-                    </div>
-                    <div className="flex-1 flex items-center justify-center">
-                      {renderMediaPreview(item)}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))}
+            <Card className="border-gray-200 shadow-none">
+              <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                onItemsPerPageChange={setItemsPerPage}
+                onPrevPage={goToPrevPage}
+                onNextPage={goToNextPage}
+              />
+            </Card>
           </div>
         )}
       </Container>

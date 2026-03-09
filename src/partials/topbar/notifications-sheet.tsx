@@ -18,6 +18,9 @@ export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
     notifications,
     unreadCount,
     isLoading,
+    isFetching,
+    limit,
+    loadMore,
     markAsRead,
     markAllAsRead,
     deleteNotification,
@@ -34,7 +37,7 @@ export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
         <SheetBody className="grow p-0">
           <ScrollArea className="h-[calc(100vh-10.5rem)]">
             <div className="px-3 py-2">
-              {isLoading ? (
+              {isLoading && notifications.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Loading notifications...
                 </div>
@@ -52,6 +55,27 @@ export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
                       onDelete={deleteNotification}
                     />
                   ))}
+                  
+                  {notifications.length >= limit && (
+                    <div className="p-4 pt-2 text-center">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={loadMore} 
+                        disabled={isFetching}
+                        className="text-xs font-bold text-primary hover:bg-primary/5"
+                      >
+                        {isFetching ? (
+                          <>
+                            <KeenIcon icon="loading" className="animate-spin mr-2" />
+                            Loading...
+                          </>
+                        ) : (
+                          'Load More Notifications'
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

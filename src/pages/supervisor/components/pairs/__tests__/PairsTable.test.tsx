@@ -55,4 +55,49 @@ describe('PairsTable', () => {
     expect(screen.queryByText('Mentor One')).not.toBeInTheDocument();
     expect(screen.getByText(/no pairings found/i)).toBeInTheDocument();
   });
+
+  describe('Pagination', () => {
+    const manyPairs = Array.from({ length: 12 }, (_, i) => ({
+      id: `p${i}`,
+      status: 'active',
+      mentor: { id: `m${i}`, full_name: `Mentor ${i + 1}`, email: `m${i}@test.com` },
+      mentee: { id: `e${i}`, full_name: `Mentee ${i + 1}`, email: `e${i}@test.com` },
+      created_at: new Date().toISOString(),
+    }));
+
+    it('shows only first 10 pairs on page 1', () => {
+      render(<PairsTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+      expect(screen.getByText('Mentor 1')).toBeInTheDocument();
+      expect(screen.getByText('Mentor 10')).toBeInTheDocument();
+      expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
+    });
+
+    it('navigates to page 2 when next arrow is clicked', () => {
+      render(<PairsTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+      
+      const nextButton = screen.getByTestId('keen-icon-black-right').closest('button');
+      fireEvent.click(nextButton!);
+      
+      expect(screen.queryByText('Mentor 1')).not.toBeInTheDocument();
+      expect(screen.getByText('Mentor 11')).toBeInTheDocument();
+      expect(screen.getByText('Mentor 12')).toBeInTheDocument();
+    });
+
+    it('resets to page 1 when search query changes', () => {
+      render(<PairsTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+      
+      // 1. Go to page 2
+      const nextButton = screen.getByTestId('keen-icon-black-right').closest('button');
+      fireEvent.click(nextButton!);
+      expect(screen.getByText('Mentor 11')).toBeInTheDocument();
+
+      // 2. Change search term
+      const searchInput = screen.getByPlaceholderText(/search/i);
+      fireEvent.change(searchInput, { target: { value: 'Mentor' } });
+
+      // 3. Should be back on page 1
+      expect(screen.getByText('Mentor 1')).toBeInTheDocument();
+      expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
+    });
+  });
 });

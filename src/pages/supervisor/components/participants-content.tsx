@@ -36,6 +36,8 @@ import { cn } from '@/lib/utils';
 import { KeenIcon } from '@/components/keenicons';
 import { logError } from '@/lib/logger';
 import { handleAvatarUpload } from '@/lib/api/profiles';
+import { usePagination } from '@/hooks/use-pagination';
+import { DataTablePagination } from '@/components/common/data-table-pagination';
 
 export function ParticipantsContent() {
   const { 
@@ -56,8 +58,6 @@ export function ParticipantsContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'supervisor' | 'program-member'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -73,11 +73,6 @@ export function ParticipantsContent() {
     }
   }, [isMobile, statusFilter]);
 
-  // Reset to first page when search or filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, roleFilter, statusFilter, itemsPerPage]);
-
   const filteredParticipants = useMemo(() => {
     return participants.filter(p => {
       const matchesSearch = 
@@ -92,14 +87,22 @@ export function ParticipantsContent() {
     });
   }, [participants, searchTerm, roleFilter, statusFilter]);
 
-  const { paginatedParticipants, totalPages } = useMemo(() => {
-    const pages = Math.ceil(filteredParticipants.length / itemsPerPage);
-    const paginated = filteredParticipants.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    );
-    return { paginatedParticipants: paginated, totalPages: pages };
-  }, [filteredParticipants, currentPage, itemsPerPage]);
+  // Use centralized pagination hook
+  const {
+    currentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages,
+    paginatedItems: paginatedParticipants,
+    goToNextPage,
+    goToPrevPage,
+    totalItems,
+    startIndex,
+    endIndex
+  } = usePagination({
+    items: filteredParticipants,
+    resetDeps: [searchTerm, roleFilter, statusFilter]
+  });
 
   const handleCreate = async (data: any) => {
     setIsSubmitting(true);
@@ -481,50 +484,17 @@ export function ParticipantsContent() {
           )}
         </CardContent>
 
-        {filteredParticipants.length > 0 && (
-          <div className="border-t border-gray-100 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest">
-              <span className="hidden xs:inline">Show</span>
-              <select 
-                className="h-7 sm:h-8 w-[50px] sm:w-[65px] bg-gray-50 border border-gray-200 rounded-lg px-0.5 sm:px-1 outline-none focus:ring-2 focus:ring-primary/20 text-[10px] sm:text-xs font-bold"
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-              </select>
-              <span className="hidden xs:inline">per page</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Button
-                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-lg border-gray-200"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                <KeenIcon icon="black-left" className="text-xs" />
-              </Button>
-              
-              <div className="flex items-center gap-1.5 mx-1 sm:mx-2">
-                <span className="text-[10px] sm:text-xs font-black text-gray-900">{currentPage}</span>
-                <span className="text-[10px] sm:text-xs text-gray-300">/</span>
-                <span className="text-[10px] sm:text-xs font-black text-gray-900">{totalPages || 1}</span>
-              </div>
-
-              <Button
-                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-lg border-gray-200"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                <KeenIcon icon="black-right" className="text-xs" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <DataTablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          onItemsPerPageChange={setItemsPerPage}
+          onPrevPage={goToPrevPage}
+          onNextPage={goToNextPage}
+        />
       </Card>
 
       <ParticipantDialog
