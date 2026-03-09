@@ -57,7 +57,7 @@ export function DataTablePagination({
           onClick={onPrevPage}
           disabled={currentPage === 1}
         >
-          <KeenIcon icon="black-left" className="text-xs" />
+          <KeenIcon icon="black-left" className="text-xs" data-testid="keen-icon-black-left" />
         </Button>
         
         <div className="flex items-center gap-1.5 mx-1 sm:mx-2">
@@ -71,7 +71,7 @@ export function DataTablePagination({
           onClick={onNextPage}
           disabled={currentPage === totalPages || totalPages === 0}
         >
-          <KeenIcon icon="black-right" className="text-xs" />
+          <KeenIcon icon="black-right" className="text-xs" data-testid="keen-icon-black-right" />
         </Button>
       </div>
     </div>

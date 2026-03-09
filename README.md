@@ -47,7 +47,6 @@ All tables use `mp_` prefix:
 - `mp_pair_tasks` - Task completion tracking per pair
 - `mp_evidence` - Evidence submissions with approval workflow
 - `mp_meetings` - Meeting scheduling
-- `mp_notes` - Shared and private notes
 - `mp_notifications` - Universal notification system
 
 ### 🚧 To Be Implemented

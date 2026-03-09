@@ -84,23 +84,65 @@ export function SupervisorChecklistPage() {
     queryFn: fetchEvidenceTypes,
   });
 
-  // Automatically expand all tasks by default
-  useEffect(() => {
-    if (tasks && tasks.length > 0) {
-      setExpandedTasks(new Set(tasks.map(task => task.id)));
-    }
-  }, [tasks]);
+  // Memoize avatar URLs to prevent infinite loops from getAvatarPublicUrl
+  const mentorAvatarUrl = useMemo(() => 
+    selectedPair ? getAvatarPublicUrl(selectedPair.mentor?.avatar_url, selectedPair.mentor?.id) : undefined,
+    [selectedPair?.mentor?.avatar_url, selectedPair?.mentor?.id]
+  );
 
-  // Auto-select first pair if none selected
+  const menteeAvatarUrl = useMemo(() => 
+    selectedPair ? getAvatarPublicUrl(selectedPair.mentee?.avatar_url, selectedPair.mentee?.id) : undefined,
+    [selectedPair?.mentee?.avatar_url, selectedPair?.mentee?.id]
+  );
+
+  // Track which pair was last auto-expanded to avoid loops
+  const [lastAutoExpandedPairId, setLastAutoExpandedPairId] = useState<string | null>(null);
+
+  // Handle URL parameter for pair selection and task deep linking
   useEffect(() => {
-    if (!selectedPairId && pairs.length > 0 && !pairsLoading) {
-      // Check if there's a pair in the search params first (the existing useEffect handles this)
-      const pairIdFromUrl = searchParams.get('pair');
-      if (!pairIdFromUrl) {
+    if (pairsLoading || pairs.length === 0) return;
+
+    const pairIdFromUrl = searchParams.get('pair');
+    const taskIdFromUrl = searchParams.get('taskId');
+
+    // 1. Initial or changing pair selection
+    if (!selectedPairId) {
+      if (pairIdFromUrl && pairs.some(p => p.id === pairIdFromUrl)) {
+        setSelectedPairId(pairIdFromUrl);
+      } else {
         setSelectedPairId(pairs[0].id);
       }
+    } else if (pairIdFromUrl && pairIdFromUrl !== selectedPairId && pairs.some(p => p.id === pairIdFromUrl)) {
+      setSelectedPairId(pairIdFromUrl);
     }
-  }, [pairs, pairsLoading, selectedPairId, searchParams]);
+
+    // 2. Task deep linking
+    if (taskIdFromUrl) {
+      setActiveTab('monitoring');
+      setExpandedTasks(prev => {
+        if (prev.has(taskIdFromUrl)) return prev;
+        return new Set([...Array.from(prev), taskIdFromUrl]);
+      });
+      
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`task-${taskIdFromUrl}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-primary', 'ring-offset-4');
+          setTimeout(() => element.classList.remove('ring-2', 'ring-primary', 'ring-offset-4'), 3000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, pairs, pairsLoading, selectedPairId]);
+
+  // Automatically expand all tasks by default only when the selected pair changes
+  useEffect(() => {
+    if (selectedPairId && tasks.length > 0 && selectedPairId !== lastAutoExpandedPairId) {
+      setExpandedTasks(new Set(tasks.map(task => task.id)));
+      setLastAutoExpandedPairId(selectedPairId);
+    }
+  }, [tasks, selectedPairId, lastAutoExpandedPairId]);
 
   // Enrich tasks with evidence counts AND associated meetings
   const enrichedTasks = useMemo(() => {
@@ -409,7 +451,7 @@ export function SupervisorChecklistPage() {
                     <div className="pt-4 border-t border-gray-100 space-y-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="size-8">
-                          <AvatarImage src={getAvatarPublicUrl(selectedPair.mentor?.avatar_url, selectedPair.mentor?.id)} alt={selectedPair.mentor?.full_name || ''} />
+                          <AvatarImage src={mentorAvatarUrl} alt={selectedPair.mentor?.full_name || ''} />
                           <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                             {getInitials(selectedPair.mentor?.full_name || selectedPair.mentor?.email)}
                           </AvatarFallback>
@@ -421,7 +463,7 @@ export function SupervisorChecklistPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <Avatar className="size-8">
-                          <AvatarImage src={getAvatarPublicUrl(selectedPair.mentee?.avatar_url, selectedPair.mentee?.id)} alt={selectedPair.mentee?.full_name || ''} />
+                          <AvatarImage src={menteeAvatarUrl} alt={selectedPair.mentee?.full_name || ''} />
                           <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                             {getInitials(selectedPair.mentee?.full_name || selectedPair.mentee?.email)}
                           </AvatarFallback>

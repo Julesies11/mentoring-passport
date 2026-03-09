@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sheet';
 import { useNotifications } from '@/hooks/use-notifications';
 import { NotificationItem } from '@/components/notifications/notification-item';
+import { KeenIcon } from '@/components/keenicons';
 
 export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
   const {

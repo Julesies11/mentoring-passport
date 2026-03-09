@@ -247,3 +247,59 @@ create table public.mp_error_logs (
 create index IF not exists idx_error_logs_created_at on public.mp_error_logs using btree (created_at desc) TABLESPACE pg_default;
 
 create index IF not exists idx_error_logs_severity on public.mp_error_logs using btree (severity) TABLESPACE pg_default;
+
+create table public.mp_pair_tasks (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  pair_id uuid not null,
+  master_task_id uuid null,
+  status text not null default 'not_submitted'::text,
+  completed_at timestamp with time zone null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  completed_by_user_id uuid null,
+  name text not null,
+  evidence_type_id uuid not null,
+  sort_order integer not null,
+  last_feedback text null,
+  rejection_reason text null,
+  constraint mp_pair_tasks_pkey primary key (id),
+  constraint mp_pair_tasks_completed_by_user_id_fkey foreign KEY (completed_by_user_id) references mp_profiles (id) on delete set null,
+  constraint mp_pair_tasks_evidence_type_id_fkey foreign KEY (evidence_type_id) references mp_evidence_types (id) on delete RESTRICT,
+  constraint mp_pair_tasks_master_task_id_fkey foreign KEY (master_task_id) references mp_tasks_master (id) on delete CASCADE,
+  constraint mp_pair_tasks_pair_id_fkey foreign KEY (pair_id) references mp_pairs (id) on delete CASCADE,
+  constraint mp_pair_tasks_status_check check (
+    (
+      status = any (
+        array[
+          'not_submitted'::text,
+          'awaiting_review'::text,
+          'completed'::text,
+          'revision_required'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_pair_tasks_master_task_id on public.mp_pair_tasks using btree (master_task_id) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_pair_tasks_evidence_type_id on public.mp_pair_tasks using btree (evidence_type_id) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_pair_tasks_pair on public.mp_pair_tasks using btree (pair_id) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_pair_tasks_status on public.mp_pair_tasks using btree (status) TABLESPACE pg_default;
+
+create unique INDEX IF not exists idx_mp_pair_tasks_pair_master_task on public.mp_pair_tasks using btree (pair_id, master_task_id) TABLESPACE pg_default
+where
+  (master_task_id is not null);
+
+create index IF not exists idx_mp_pair_tasks_completed_by_user_id on public.mp_pair_tasks using btree (completed_by_user_id) TABLESPACE pg_default;
+
+create trigger mp_on_task_completed
+after
+update on mp_pair_tasks for EACH row
+execute FUNCTION mp_notify_task_completed ();
+
+create trigger mp_update_pair_tasks_updated_at BEFORE
+update on mp_pair_tasks for EACH row
+execute FUNCTION mp_update_updated_at_column ();

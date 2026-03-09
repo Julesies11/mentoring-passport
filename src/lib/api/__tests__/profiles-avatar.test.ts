@@ -11,7 +11,21 @@ vi.mock('@/lib/supabase', () => ({
         getPublicUrl: vi.fn(),
       })),
     },
+    from: vi.fn(() => ({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+      })),
+    })),
   },
+}));
+
+// Mock image utilities
+vi.mock('@/lib/utils/image', () => ({
+  resizeImage: vi.fn((file) => Promise.resolve(file)),
+  validateAvatar: vi.fn(() => ({ valid: true, error: null })),
 }));
 
 describe('Profile Avatar Utilities', () => {
@@ -36,11 +50,14 @@ describe('Profile Avatar Utilities', () => {
 
       expect(supabase.storage.from).toHaveBeenCalledWith('mp-avatars');
       expect(mockUpload).toHaveBeenCalledWith(
-        expect.stringContaining(`${userId}/`),
+        expect.stringMatching(new RegExp(`^${userId}/${userId}-\\d+\\.jpg$`)),
         mockFile,
-        { upsert: true }
+        expect.objectContaining({ 
+          upsert: true,
+          contentType: 'image/jpeg'
+        })
       );
-      expect(result).toMatch(new RegExp(`^${userId}-\\d+\\.png$`));
+      expect(result).toMatch(new RegExp(`^${userId}-\\d+\\.jpg$`));
     });
 
     it('should return currentAvatarUrl when no file and not deleting', async () => {

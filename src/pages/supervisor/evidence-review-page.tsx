@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePendingEvidence } from '@/hooks/use-evidence';
+import { useAllEvidence, usePendingEvidence } from '@/hooks/use-evidence';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KeenIcon } from '@/components/keenicons';
 import type { Evidence } from '@/lib/api/evidence';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
@@ -26,15 +27,23 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/lib/helpers';
 import { toast } from 'sonner';
-import { FileText, ExternalLink, CheckCircle, XCircle, Clock, Paperclip, Eye, ImageIcon } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle, XCircle, Clock, Paperclip, Eye, ImageIcon, History, ListFilter } from 'lucide-react';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
 
 export function EvidenceReviewPage() {
   const navigate = useNavigate();
-  const { evidence, stats, isLoading, reviewEvidence, isReviewing } = usePendingEvidence();
+  const { data: allEvidence = [], isLoading } = useAllEvidence();
+  const { stats, reviewEvidence, isReviewing } = usePendingEvidence();
+  const [statusFilter, setStatusFilter] = useState<'to_review' | 'reviewed' | 'all'>('to_review');
   
+  const filteredEvidence = useMemo(() => {
+    if (statusFilter === 'all') return allEvidence;
+    if (statusFilter === 'to_review') return allEvidence.filter(e => e.status === 'pending' || e.status === 'rejected');
+    return allEvidence.filter(e => e.status === 'approved');
+  }, [allEvidence, statusFilter]);
+
   // Use centralized pagination hook
   const {
     currentPage,
@@ -48,8 +57,9 @@ export function EvidenceReviewPage() {
     startIndex,
     endIndex
   } = usePagination({
-    items: evidence,
-    initialItemsPerPage: 10 // Balanced for image-heavy page
+    items: filteredEvidence,
+    initialItemsPerPage: 10,
+    resetDeps: [statusFilter]
   });
 
   // Review Dialog State
@@ -61,7 +71,7 @@ export function EvidenceReviewPage() {
   const handleOpenReview = (item: Evidence, action: 'approve' | 'reject') => {
     setSelectedEvidence(item);
     setReviewAction(action);
-    setRejectionReason('');
+    setRejectionReason(item.task?.rejection_reason || '');
     setReviewDialogOpen(true);
   };
 
@@ -91,18 +101,34 @@ export function EvidenceReviewPage() {
             description="Manage and validate program item submissions"
           />
           <ToolbarActions>
-            {stats && (
-              <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-                <div className="flex flex-col items-center border-r border-gray-100 pr-4">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Pending</span>
-                  <span className="text-sm font-black text-danger">{stats.pending}</span>
+            <div className="flex items-center gap-3">
+              <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+                <SelectTrigger className="w-[160px] h-10 rounded-xl font-bold bg-white border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <ListFilter size={14} className="text-gray-400" />
+                    <SelectValue placeholder="Filter View" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-gray-100 shadow-2xl">
+                  <SelectItem value="to_review" className="font-bold py-2.5">To Review</SelectItem>
+                  <SelectItem value="reviewed" className="font-bold py-2.5">Review History</SelectItem>
+                  <SelectItem value="all" className="font-bold py-2.5">All Submissions</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {stats && (
+                <div className="hidden sm:flex items-center gap-4 bg-white px-4 py-2 h-10 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="flex flex-col items-center border-r border-gray-100 pr-4">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Pending</span>
+                    <span className="text-xs font-black text-danger leading-none">{stats.pending}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Reviewed</span>
+                    <span className="text-xs font-black text-success leading-none">{stats.approved + stats.rejected}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center">
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Reviewed</span>
-                  <span className="text-sm font-black text-success">{stats.approved + stats.rejected}</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </ToolbarActions>
         </Toolbar>
       </Container>
@@ -113,28 +139,40 @@ export function EvidenceReviewPage() {
             <KeenIcon icon="loading" className="animate-spin text-3xl mb-3" />
             <span className="text-sm font-bold uppercase tracking-[0.2em]">Syncing Review Queue...</span>
           </div>
-        ) : evidence.length === 0 ? (
+        ) : filteredEvidence.length === 0 ? (
           <Card className="border-dashed border-2 border-gray-200 bg-gray-50/30">
             <CardContent className="py-24 text-center">
               <div className="size-20 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4 text-gray-200">
-                <CheckCircle size={40} />
+                {statusFilter === 'reviewed' ? <History size={40} /> : <CheckCircle size={40} />}
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Review Queue Cleared</h3>
+              <h3 className="text-xl font-bold text-gray-900">
+                {statusFilter === 'reviewed' ? 'No History Found' : 'Review Queue Cleared'}
+              </h3>
               <p className="text-muted-foreground max-w-sm mx-auto mt-2 font-medium">
-                You've reviewed all pending evidence. New submissions will appear here automatically.
+                {statusFilter === 'reviewed' 
+                  ? "You haven't approved any submissions yet. Once you do, they will appear here."
+                  : "You've reviewed all pending evidence. New submissions will appear here automatically."}
               </p>
+              {statusFilter !== 'all' && (
+                <Button variant="link" onClick={() => setStatusFilter('all')} className="mt-4 text-primary font-bold">
+                  View All Submissions
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-1 gap-6">
               {paginatedItems.map((item) => (
-                <Card key={item.id} className="border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                <Card key={item.id} className={cn(
+                  "border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden",
+                  item.status === 'approved' && "opacity-80 border-gray-100"
+                )}>
                   <div className="grid grid-cols-1 lg:grid-cols-12">
                     {/* Left Section: Info & Notes (7 cols) */}
                     <div className="lg:col-span-7 p-6 lg:p-8 space-y-6">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div className="flex -space-x-3 shrink-0">
                             <div className="size-12 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-sm">
                               <ProfileAvatar 
@@ -153,9 +191,9 @@ export function EvidenceReviewPage() {
                               />
                             </div>
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-lg font-black text-gray-900 leading-tight">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-lg font-black text-gray-900 leading-tight truncate">
                                 <span className="text-primary">{item.pair?.mentor?.full_name}</span>
                                 <span className="text-gray-300 mx-2">&</span>
                                 <span className="text-success">{item.pair?.mentee?.full_name}</span>
@@ -163,27 +201,33 @@ export function EvidenceReviewPage() {
                               <Badge 
                                 className={cn(
                                   "rounded-full font-black uppercase text-[8px] px-2 h-4 border-none",
-                                  item.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                  item.status === 'pending' ? "bg-amber-100 text-amber-700" : 
+                                  item.status === 'approved' ? "bg-success-light text-success" :
+                                  "bg-red-100 text-red-700"
                                 )}
                               >
                                 {item.status === 'rejected' ? 'Revision Required' : item.status}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                              <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter truncate">
                                 Submission for: <span className="text-gray-900 font-black">{item.task?.name || 'Assigned Task'}</span>
                               </p>
-                              <button 
-                                onClick={() => navigate(`/supervisor/checklist?pair=${item.pair_id}&taskId=${item.pair_task_id}`)}
-                                className="text-[10px] font-black uppercase text-primary hover:underline flex items-center gap-1 ml-2 bg-primary/5 px-2 py-0.5 rounded"
-                              >
-                                <KeenIcon icon="exit-right-corner" className="text-[10px]" />
-                                View Context
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <span className="hidden sm:inline text-gray-300">•</span>
+                                <span className="sm:hidden text-[10px] text-gray-400 font-bold uppercase">{format(new Date(item.created_at), 'MMM d, yyyy')}</span>
+                                <button 
+                                  onClick={() => navigate(`/supervisor/checklist?pair=${item.pair_id}&taskId=${item.pair_task_id}`)}
+                                  className="text-[10px] font-black uppercase text-primary hover:underline flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded shrink-0"
+                                >
+                                  <KeenIcon icon="exit-right-corner" className="text-[10px]" />
+                                  View Context
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right hidden sm:block">
+                        <div className="text-right hidden sm:block shrink-0">
                           <div className="flex items-center justify-end gap-1.5 text-gray-400">
                             <Clock size={12} />
                             <span className="text-[10px] font-black uppercase tracking-tight">{format(new Date(item.created_at), 'MMM d, yyyy • p')}</span>
@@ -191,64 +235,103 @@ export function EvidenceReviewPage() {
                         </div>
                       </div>
 
-                      {item.description && (
+                      {(item.description || item.task?.evidence_notes) && (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 px-1">
                             <KeenIcon icon="message-text-2" className="text-gray-400 text-sm" />
                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Submitter's Notes</span>
                           </div>
                           <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 italic text-gray-700 leading-relaxed text-sm">
-                            "{item.description}"
+                            "{item.task?.evidence_notes || item.description}"
                           </div>
                         </div>
                       )}
 
-                      {(item.status === 'rejected' || item.rejection_reason) && (
+                      {(item.status === 'rejected' || item.rejection_reason || item.task?.rejection_reason) && (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 px-1">
                             <KeenIcon icon="information-2" className="text-danger text-sm" />
-                            <span className="text-[10px] font-black uppercase text-danger tracking-widest">Your Previous Feedback</span>
+                            <span className="text-[10px] font-black uppercase text-danger tracking-widest">Supervisor Feedback</span>
                           </div>
                           <div className="p-5 rounded-2xl bg-red-50/50 border border-red-100 text-red-800 leading-relaxed text-sm font-medium">
-                            "{item.rejection_reason || 'Changes requested.'}"
+                            "{item.task?.rejection_reason || item.rejection_reason || 'Changes requested.'}"
                           </div>
                         </div>
                       )}
 
-                      <div className="flex flex-wrap gap-3 pt-2">
-                        <Button 
-                          onClick={() => handleOpenReview(item, 'approve')}
-                          className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 px-8 font-bold shadow-lg shadow-green-200 border-none"
-                        >
-                          <CheckCircle size={18} className="mr-2" />
-                          Approve Submission
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          onClick={() => handleOpenReview(item, 'reject')}
-                          className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 rounded-xl h-11 px-6 font-bold transition-colors"
-                        >
-                          <XCircle size={18} className="mr-2 text-red-600" />
-                          Request Revision
-                        </Button>
-                      </div>
+                      {item.status !== 'approved' && (
+                        <div className="flex flex-wrap gap-3 pt-2">
+                          <Button 
+                            onClick={() => handleOpenReview(item, 'approve')}
+                            className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-11 px-8 font-bold shadow-lg shadow-green-200 border-none"
+                          >
+                            <CheckCircle size={18} className="mr-2" />
+                            Approve Submission
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            onClick={() => handleOpenReview(item, 'reject')}
+                            className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 rounded-xl h-11 px-6 font-bold transition-colors"
+                          >
+                            <XCircle size={18} className="mr-2 text-red-600" />
+                            Request Revision
+                          </Button>
+                        </div>
+                      )}
+
+                      {item.status === 'approved' && (
+                        <div className="flex items-center gap-2 px-1 text-success">
+                          <CheckCircle size={16} />
+                          <span className="text-xs font-black uppercase tracking-widest">Validated Submission</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Right Section: Media Preview (5 cols) */}
-                    <div className="lg:col-span-5 bg-gray-50/50 border-t lg:border-t-0 lg:border-l border-gray-100 p-6 lg:p-8 flex flex-col">
+                    <div className="lg:col-span-5 bg-gray-50/50 border-t lg:border-t-0 lg:border-l border-gray-100 p-6 lg:p-8 flex flex-col min-w-0">
                       <div className="flex items-center gap-2 mb-4 px-1">
-                        <Paperclip size={14} className="text-gray-400" />
-                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Attached Evidence</span>
+                        <KeenIcon icon="folder" className="text-gray-400 text-sm" />
+                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                          {item.file_url || (item.all_files && item.all_files.length > 0) ? 'Attached Evidence' : 'Reflection Details'}
+                        </span>
                       </div>
-                      <div className="flex-1 flex items-center justify-center">
-                        <FilePreviewCard 
-                          fileName={item.file_name}
-                          fileUrl={item.file_url}
-                          mimeType={item.mime_type}
-                          createdAt={item.created_at}
-                          className="w-full"
-                        />
-                      </div>                    </div>
+                      <div className="flex-1 min-w-0">
+                        {item.all_files && item.all_files.length > 0 ? (
+                          <div className="flex flex-col gap-3 w-full">
+                            {item.all_files.map((file) => (
+                              <FilePreviewCard 
+                                key={file.id}
+                                fileName={file.file_name}
+                                fileUrl={file.file_url}
+                                mimeType={file.mime_type}
+                                createdAt={file.created_at}
+                                className="w-full"
+                              />
+                            ))}
+                          </div>
+                        ) : item.file_url ? (
+                          <FilePreviewCard 
+                            fileName={item.file_name}
+                            fileUrl={item.file_url}
+                            mimeType={item.mime_type}
+                            createdAt={item.created_at}
+                            className="w-full"
+                          />
+                        ) : (
+                          <div className="w-full h-full min-h-[200px] p-6 sm:p-8 rounded-3xl bg-primary/[0.03] border border-primary/10 border-dashed flex flex-col items-center justify-center text-center gap-4">
+                            <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                              <KeenIcon icon="message-text-2" className="text-3xl" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-primary uppercase tracking-widest mb-2">Written Submission</p>
+                              <p className="text-sm text-gray-800 font-medium leading-relaxed italic line-clamp-6">
+                                "{item.task?.evidence_notes || item.description || 'No additional notes provided.'}"
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </Card>
               ))}

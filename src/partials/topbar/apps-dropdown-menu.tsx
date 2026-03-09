@@ -31,12 +31,6 @@ export function AppsDropdownMenu({ trigger }: { trigger: ReactNode }) {
       checkbox: true,
     },
     {
-      logo: 'evernote.svg',
-      title: 'Evernote',
-      description: 'Notes management app',
-      checkbox: true,
-    },
-    {
       logo: 'gitlab.svg',
       title: 'Gitlab',
       description: 'DevOps platform',

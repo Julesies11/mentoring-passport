@@ -70,6 +70,7 @@ export function usePendingEvidence() {
       reviewEvidence(evidenceId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence'] });
+      queryClient.invalidateQueries({ queryKey: ['pair-tasks'] });
     },
   });
 
@@ -79,7 +80,7 @@ export function usePendingEvidence() {
     isLoading,
     error,
     reviewEvidence: (evidenceId: string, input: ReviewEvidenceInput) =>
-      reviewMutation.mutate({ evidenceId, input }),
+      reviewMutation.mutateAsync({ evidenceId, input }),
     isReviewing: reviewMutation.isPending,
   };
 }

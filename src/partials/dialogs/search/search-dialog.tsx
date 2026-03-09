@@ -170,17 +170,6 @@ export function SearchDialog({ trigger }: { trigger: ReactNode }) {
       ],
     },
     {
-      logo: 'evernote.svg',
-      name: 'Evernote',
-      description: 'Notes management app',
-      team: [
-        { filename: '300-6.png', variant: 'size-6' },
-        { filename: '300-3.png', variant: 'size-6' },
-        { filename: '300-1.png', variant: 'size-6' },
-        { filename: '300-8.png', variant: 'size-6' },
-      ],
-    },
-    {
       logo: 'gitlab.svg',
       name: 'Gitlab',
       description: 'Version control and CI/CD platform',

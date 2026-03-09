@@ -120,19 +120,6 @@ export function EditProfilePage() {
             title="Edit Profile"
             description="Manage your account settings and profile information"
           />
-          <ToolbarActions>
-            <Button variant="outline" onClick={() => reset()} disabled={isLoading}>
-              <KeenIcon icon="arrows-loop" />
-              Reset
-            </Button>
-            <Button onClick={handleSubmit(handleFormSubmit)} disabled={isLoading}>
-              {isLoading ? (
-                <><KeenIcon icon="loading" className="animate-spin mr-2" /> Saving...</>
-              ) : (
-                <><KeenIcon icon="check" /> Save Changes</>
-              )}
-            </Button>
-          </ToolbarActions>
         </Toolbar>
       </Container>
 
@@ -288,14 +275,20 @@ export function EditProfilePage() {
                       variant="outline"
                       onClick={() => reset()}
                       disabled={isLoading}
+                      className="rounded-xl px-6"
                     >
-                      Discard Changes
+                      Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={isLoading}
+                      className="rounded-xl px-8"
                     >
-                      {isLoading ? 'Saving...' : 'Save Profile Settings'}
+                      {isLoading ? (
+                        <><KeenIcon icon="loading" className="animate-spin mr-2" /> Saving...</>
+                      ) : (
+                        <><KeenIcon icon="check" className="mr-2" /> Save Changes</>
+                      )}
                     </Button>
                   </div>
                 </form>

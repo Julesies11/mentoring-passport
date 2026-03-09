@@ -20,8 +20,11 @@ describe('DataTablePagination Component', () => {
     render(<DataTablePagination {...defaultProps} />);
     
     expect(screen.getByText(/showing 1 to 10 of 45/i)).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
+    
+    // Use more specific selectors for the page numbers in the navigation
+    const navContainer = screen.getByTestId('keen-icon-black-right').closest('div')?.parentElement;
+    expect(navContainer).toHaveTextContent('1');
+    expect(navContainer).toHaveTextContent('5');
   });
 
   it('disables previous button on first page', () => {

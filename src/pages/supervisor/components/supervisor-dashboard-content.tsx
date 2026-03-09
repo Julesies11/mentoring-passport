@@ -56,6 +56,18 @@ export function SupervisorDashboardContent() {
       .slice(0, 5);
   }, [pairs]);
 
+  // Relationship Progress Tracker (Top 10, least progress first)
+  const sortedPairsByProgress = useMemo(() => {
+    return pairs
+      .filter(p => p.status === 'active')
+      .map(p => ({
+        ...p,
+        progress: calculatePairProgress(p.id, allStatuses)
+      }))
+      .sort((a, b) => a.progress.percentage - b.progress.percentage)
+      .slice(0, 10);
+  }, [pairs, allStatuses]);
+
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
       {/* 1. Executive Summary */}
@@ -137,7 +149,7 @@ export function SupervisorDashboardContent() {
               <div className="divide-y divide-gray-100">
                 {pendingEvidenceList.slice(0, 5).map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-3 px-3 sm:p-4 sm:px-6 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                       <div className="flex -space-x-2 shrink-0">
                         <div className="size-7 sm:size-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
                           {item.pair?.mentor?.id && (
@@ -150,20 +162,23 @@ export function SupervisorDashboardContent() {
                           )}
                         </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-bold text-gray-900 break-words leading-tight">
-                          {item.task?.name || 'Task Evidence'}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                            {item.task?.name || 'Task Evidence'}
+                          </p>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase shrink-0">
+                            {format(new Date(item.created_at), 'MMM d')}
+                          </span>
+                        </div>
                         <p className="text-[9px] sm:text-[10px] text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5 uppercase font-bold">
                           <span className="text-primary">{item.pair?.mentor?.full_name}</span>
                           <KeenIcon icon="dots" className="text-[6px] sm:text-[8px] shrink-0" />
                           <span className="text-success">{item.pair?.mentee?.full_name}</span>
-                          <span className="size-1 rounded-full bg-gray-300 ml-1 hidden xs:block shrink-0"></span>
-                          <span className="hidden xs:block shrink-0">{format(new Date(item.created_at), 'MMM d')}</span>
                         </p>
                       </div>
                     </div>
-                    <Button variant="primary" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-lg h-7 sm:h-8 px-2 sm:px-4 font-bold text-[10px] sm:text-[11px] shrink-0 ml-2">
+                    <Button variant="primary" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-lg h-7 sm:h-8 px-2 sm:px-4 font-bold text-[10px] sm:text-[11px] shrink-0 ml-4">
                       {isMobile ? 'Review' : 'Quick Review'}
                     </Button>
                   </div>
@@ -234,8 +249,8 @@ export function SupervisorDashboardContent() {
       <Card className="shadow-none border-0 sm:border border-gray-200">
         <CardHeader className="flex flex-row items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
           <div>
-            <CardTitle className="text-base sm:text-lg font-bold text-gray-900">Relationship Progress Tracker</CardTitle>
-            <CardDescription className="hidden sm:block">Monitor program health across all mentoring pairs</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-bold text-gray-900">Program Health Tracker</CardTitle>
+            <CardDescription className="hidden sm:block">Identifying relationships that may require additional support or intervention</CardDescription>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/supervisor/pairs')} className="rounded-xl font-bold text-[10px] sm:text-xs h-8 sm:h-9">
@@ -254,8 +269,8 @@ export function SupervisorDashboardContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pairs.filter(p => p.status === 'active').slice(0, 8).map((p) => {
-                  const progress = calculatePairProgress(p.id, allStatuses);
+                {sortedPairsByProgress.map((p) => {
+                  const progress = p.progress;
                   return (
                   <tr 
                     key={p.id} 

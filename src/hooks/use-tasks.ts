@@ -108,8 +108,8 @@ export function usePairTasks(pairId: string) {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ taskId, status }: { taskId: string; status: 'not_submitted' | 'awaiting_review' | 'completed' }) =>
-      updatePairTaskStatus(taskId, status, user?.id),
+    mutationFn: ({ taskId, status, evidenceNotes }: { taskId: string; status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required'; evidenceNotes?: string }) =>
+      updatePairTaskStatus(taskId, status, user?.id, evidenceNotes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
@@ -252,8 +252,8 @@ export function usePairTasks(pairId: string) {
     stats,
     isLoading,
     error,
-    updateStatus: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed') =>
-      updateStatusMutation.mutate({ taskId, status }),
+    updateStatus: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required', evidenceNotes?: string) =>
+      updateStatusMutation.mutate({ taskId, status, evidenceNotes }),
     createTask: createPairTaskMutation.mutate,
     updateTask: (taskId: string, updates: Partial<PairTask>, options?: any) =>
       updatePairTaskMutation.mutate({ taskId, updates }, options),

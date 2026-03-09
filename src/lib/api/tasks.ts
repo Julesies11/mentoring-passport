@@ -63,6 +63,8 @@ export interface PairTask {
   sort_order: number;
   status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
   last_feedback?: string | null;
+  evidence_notes?: string | null;
+  rejection_reason?: string | null;
   completed_at: string | null;
   completed_by_id: string | null;
   completed_by?: {
@@ -151,6 +153,8 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       sort_order,
       status,
       last_feedback,
+      evidence_notes,
+      rejection_reason,
       completed_at,
       completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
@@ -240,9 +244,14 @@ export async function reorderMasterTasks(tasks: { id: string; sort_order: number
 export async function updatePairTaskStatus(
   taskId: string,
   status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required',
-  userId?: string
+  userId?: string,
+  evidenceNotes?: string
 ): Promise<PairTask> {
   const updateData: any = { status };
+  
+  if (evidenceNotes !== undefined) {
+    updateData.evidence_notes = evidenceNotes;
+  }
   
   if (status === 'completed') {
     updateData.completed_at = new Date().toISOString();
@@ -279,6 +288,8 @@ export async function updatePairTaskStatus(
       sort_order,
       status,
       last_feedback,
+      evidence_notes,
+      rejection_reason,
       completed_at,
       completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),

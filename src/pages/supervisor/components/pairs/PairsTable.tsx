@@ -125,6 +125,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
     endIndex
   } = usePagination({
     items: sortedPairs,
+    initialItemsPerPage: 10,
     resetDeps: [searchQuery, filterStatus]
   });
 
@@ -145,7 +146,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
             
             <div className="flex items-center gap-2">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger size="sm" className="h-8 sm:h-8.5 w-full sm:w-[120px] text-[10px] sm:text-[0.8125rem]">
+                <SelectTrigger aria-label="Filter by Status" size="sm" className="h-8 sm:h-8.5 w-full sm:w-[120px] text-[10px] sm:text-[0.8125rem]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>

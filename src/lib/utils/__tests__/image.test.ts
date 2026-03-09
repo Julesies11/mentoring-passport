@@ -20,21 +20,22 @@ describe('resizeImage', () => {
     vi.stubGlobal('FileReader', FileReaderMock);
 
     // Mock Image
-    const ImageMock = vi.fn(() => {
-      const img = {
-        width: 1000,
-        height: 1000,
-        onload: null as any,
-        onerror: null as any,
-        set src(value: string) {
-          // Simulate image loading
+    const ImageMock = function(this: any) {
+      this.width = 1000;
+      this.height = 1000;
+      this.onload = null;
+      this.onerror = null;
+      let _src = '';
+      Object.defineProperty(this, 'src', {
+        get: () => _src,
+        set: (value) => {
+          _src = value;
           setTimeout(() => {
-            if (img.onload) img.onload();
+            if (this.onload) this.onload();
           }, 0);
         }
-      };
-      return img;
-    });
+      });
+    };
     vi.stubGlobal('Image', ImageMock);
 
     // Mock Canvas and Context
@@ -72,15 +73,14 @@ describe('resizeImage', () => {
 
   it('should handle aspect ratio correctly for landscape images', async () => {
     // Landscape: 2000x1000
-    vi.stubGlobal('Image', vi.fn(() => {
-      const img = {
-        width: 2000,
-        height: 1000,
-        onload: null as any,
-        set src(v: any) { setTimeout(() => this.onload(), 0); }
-      };
-      return img;
-    }));
+    vi.stubGlobal('Image', function(this: any) {
+      this.width = 2000;
+      this.height = 1000;
+      this.onload = null;
+      Object.defineProperty(this, 'src', {
+        set: (v) => setTimeout(() => this.onload(), 0)
+      });
+    });
 
     const fakeFile = new File(['fake'], 'test.jpg', { type: 'image/jpeg' });
     const result = await resizeImage(fakeFile, 400, 400);
@@ -92,15 +92,14 @@ describe('resizeImage', () => {
 
   it('should handle aspect ratio correctly for portrait images', async () => {
     // Portrait: 1000x2000
-    vi.stubGlobal('Image', vi.fn(() => {
-      const img = {
-        width: 1000,
-        height: 2000,
-        onload: null as any,
-        set src(v: any) { setTimeout(() => this.onload(), 0); }
-      };
-      return img;
-    }));
+    vi.stubGlobal('Image', function(this: any) {
+      this.width = 1000;
+      this.height = 2000;
+      this.onload = null;
+      Object.defineProperty(this, 'src', {
+        set: (v) => setTimeout(() => this.onload(), 0)
+      });
+    });
 
     const fakeFile = new File(['fake'], 'test.jpg', { type: 'image/jpeg' });
     const result = await resizeImage(fakeFile, 400, 400);

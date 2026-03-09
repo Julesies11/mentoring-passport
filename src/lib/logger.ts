@@ -21,8 +21,11 @@ export const logError = async ({
 }: LogErrorParams) => {
   try {
     // Attempt to get the current user session
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData?.session?.user?.id || null;
+    let userId = null;
+    if (supabase?.auth) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      userId = sessionData?.session?.user?.id || null;
+    }
 
     let finalMessage = message;
     if (message.includes('exceeded the maximum allowed size')) {
@@ -44,11 +47,15 @@ export const logError = async ({
       console.error('[GlobalLogger]', errorPayload);
     }
 
-    const { error } = await supabase.from('mp_error_logs').insert(errorPayload);
+    if (supabase?.from) {
+      const { error } = await supabase.from('mp_error_logs').insert(errorPayload);
 
-    if (error) {
-      // If the insert fails (e.g., RLS issue, network down), fallback to console
-      console.error('Failed to save error log to Supabase:', error);
+      if (error) {
+        // If the insert fails (e.g., RLS issue, network down), fallback to console
+        console.error('Failed to save error log to Supabase:', error);
+      }
+    } else {
+      console.warn('Supabase not fully initialized, could not save error log.');
     }
   } catch (err) {
     // Ultimate fallback if the whole logging process crashes

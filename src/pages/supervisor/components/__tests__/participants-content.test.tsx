@@ -134,12 +134,9 @@ describe('ParticipantsContent', () => {
       const nextButton = screen.getByTestId('keen-icon-black-right').closest('button');
       fireEvent.click(nextButton!);
       
-      // 2. Change status filter (Status is usually a Select, we can look for the trigger)
-      const statusTrigger = screen.getByRole('combobox', { name: /active/i });
+      // 2. Change status filter
+      const statusTrigger = screen.getByLabelText(/filter by status/i);
       fireEvent.click(statusTrigger);
-      
-      // Note: In tests, changing a Radix Select requires more complex mocking, 
-      // but we've verified the logic in the component code.
     });
   });
 });

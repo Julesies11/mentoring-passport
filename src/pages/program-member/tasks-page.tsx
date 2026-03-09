@@ -67,23 +67,6 @@ export function ProgramMemberTasksPage() {
     [meetings, selectedPair?.id]
   );
 
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-
-  // Meeting Dialog State
-  const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
-  const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
-  const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
-  const [isEvidenceSubmitting, setIsEvidenceSubmitting] = useState(false);
-
-  // Automatically expand all tasks by default
-  useEffect(() => {
-    if (tasks && tasks.length > 0) {
-      setExpandedTasks(new Set(tasks.map(task => task.id)));
-    }
-  }, [tasks]);
-
   // Enrich tasks with evidence counts AND associated meetings
   const enrichedTasks = useMemo(() => {
     if (!tasks) return [];
@@ -110,6 +93,31 @@ export function ProgramMemberTasksPage() {
       };
     });
   }, [tasks, pairEvidence, pairMeetings]);
+
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [lastAutoExpandedPairId, setLastAutoExpandedPairId] = useState<string | null>(null);
+
+  // Automatically expand all tasks by default only when the selected pair changes
+  useEffect(() => {
+    if (selectedPair?.id && tasks.length > 0 && selectedPair.id !== lastAutoExpandedPairId) {
+      setExpandedTasks(new Set(tasks.map(task => task.id)));
+      setLastAutoExpandedPairId(selectedPair.id);
+    }
+  }, [tasks, selectedPair?.id, lastAutoExpandedPairId]);
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const selectedTask = useMemo(() => 
+    enrichedTasks.find(t => t.id === selectedTaskId),
+    [enrichedTasks, selectedTaskId]
+  );
+
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+
+  // Meeting Dialog State
+  const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
+  const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
+  const [isEvidenceSubmitting, setIsEvidenceSubmitting] = useState(false);
 
   const handleToggleExpand = (taskId: string) => {
     setExpandedTasks(prev => {
@@ -139,7 +147,7 @@ export function ProgramMemberTasksPage() {
       
       const fileUrls = await Promise.all(uploadPromises);
 
-      // 2. Create evidence record(s)
+      // 2. Create evidence record(s) for files
       if (evidence.files.length > 0) {
         for (let i = 0; i < fileUrls.length; i++) {
           const file = evidence.files[i];
@@ -150,35 +158,32 @@ export function ProgramMemberTasksPage() {
             file_name: file.name,
             mime_type: file.type,
             file_size: file.size,
-            description: i === 0 ? evidence.description : `Additional file: ${file.name}`,
+            description: `File upload for task: ${selectedTask?.name || taskId}`,
             status: submitForReview ? 'pending' : 'approved'
           });
-
         }
-      } else if (evidence.description.trim()) {
-        // Just notes
-        await createEvidence({
-          pair_id: selectedPair.id,
-          pair_task_id: taskId,
-          file_url: '', // Empty for text only
-          description: evidence.description,
-          status: submitForReview ? 'pending' : 'approved'
-        });
       }
 
       // 3. Update task status if submitting for review or marking as completed
       if (submitForReview) {
         const requiresReview = selectedTask?.evidence_type?.requires_submission;
-        const nextStatus = requiresReview ? 'awaiting_review' : 'completed';
+        const hasFiles = evidence.files.length > 0;
+        // If it strictly requires review OR they uploaded files, it must go to awaiting_review
+        const nextStatus = (requiresReview || hasFiles) ? 'awaiting_review' : 'completed';
         
-        await updateStatus(taskId, nextStatus);
+        // Save notes directly to the task's evidence_notes field
+        await updateStatus(taskId, nextStatus, evidence.description);
         
-        if (requiresReview) {
+        if (nextStatus === 'awaiting_review') {
           toast.success('Evidence submitted for review');
         } else {
           toast.success('Task marked as completed');
         }
       } else {
+        // Just save notes/draft
+        if (evidence.description.trim()) {
+          await updateStatus(taskId, selectedTask?.status || 'not_submitted', evidence.description);
+        }
         toast.success('Progress saved successfully');
       }
 
@@ -198,23 +203,13 @@ export function ProgramMemberTasksPage() {
       queryClient.invalidateQueries({ queryKey: ['pair-evidence', selectedPair?.id] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', selectedPair?.id] });
       toast.success('Evidence removed');
-      
-      // Update selectedTask state to immediately reflect removal in dialog
-      setSelectedTask((prev: any) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          evidence: prev.evidence?.filter((e: any) => e.id !== evidenceId) || [],
-          evidence_count: Math.max(0, (prev.evidence_count || 0) - 1)
-        };
-      });
     } catch (error) {
       toast.error('Failed to remove evidence');
     }
   };
 
   const handleViewDetails = (task: any) => {
-    setSelectedTask(task);
+    setSelectedTaskId(task.id);
     setIsTaskDialogOpen(true);
   };
 
@@ -384,11 +379,10 @@ export function ProgramMemberTasksPage() {
                 onToggleExpand={handleToggleExpand}
                 onViewDetails={handleViewDetails}
                 onToggleTask={handleToggleTask}
-                onToggleSubTask={handleToggleSubTask}
+                onToggleSubTask={updateSubTask}
                 onCreateMeeting={handleCreateMeeting}
                 onEditMeeting={handleEditMeeting}
-              />
-            </div>
+              />            </div>
           </div>
         </div>
       </Container>
@@ -403,6 +397,8 @@ export function ProgramMemberTasksPage() {
             name: selectedTask.name,
             status: selectedTask.status,
             last_feedback: selectedTask.last_feedback,
+            evidence_notes: selectedTask.evidence_notes,
+            rejection_reason: selectedTask.rejection_reason,
             description: selectedTask.task?.description,
             evidence_type: selectedTask.evidence_type,
             completed_at: selectedTask.completed_at,

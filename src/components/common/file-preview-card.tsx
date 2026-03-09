@@ -34,6 +34,54 @@ export function FilePreviewCard({
 
   // Handle case where file record exists but URL failed to generate (missing in storage)
   const isMissing = !fileUrl;
+  const isTextOnly = !fileUrl && fileName === null && mimeType === null;
+
+  if (isTextOnly) {
+    return (
+      <div className={cn(
+        "flex flex-col gap-2 p-4 bg-primary/[0.03] border border-primary/10 rounded-xl shadow-sm hover:border-primary/30 transition-all group",
+        className
+      )}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+              <KeenIcon icon="message-text-2" className="text-primary text-xl" />
+            </div>
+            
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-bold text-gray-800 line-clamp-2 leading-snug">
+                {fileName || 'Reflection / Note'}
+              </span>
+              {showDetails && (
+                <span className="text-[9px] text-primary/60 uppercase font-black tracking-widest mt-0.5">
+                  Text-only Evidence {createdAt && ` • ${new Date(createdAt).toLocaleDateString()}`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {onDelete && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="size-8 rounded-lg text-gray-400 hover:text-danger hover:bg-danger/10" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('Are you sure you want to remove this note?')) {
+                    onDelete();
+                  }
+                }}
+                title="Delete note"
+              >
+                <KeenIcon icon="trash" className="text-base" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showFullPreview && isImage && fileUrl) {
     return (

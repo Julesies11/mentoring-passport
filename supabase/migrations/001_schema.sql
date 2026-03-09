@@ -109,17 +109,6 @@ CREATE TABLE mp_evidence (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Notes table (shared and private notes)
-CREATE TABLE mp_notes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  pair_id UUID NOT NULL REFERENCES mp_pairs(id) ON DELETE CASCADE,
-  author_id UUID NOT NULL REFERENCES mp_profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  is_private BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 -- Notifications table
 CREATE TABLE mp_notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -161,7 +150,6 @@ CREATE INDEX idx_mp_meetings_pair ON mp_meetings(pair_id);
 CREATE INDEX idx_mp_meetings_date ON mp_meetings(date_time);
 CREATE INDEX idx_mp_evidence_pair ON mp_evidence(pair_id);
 CREATE INDEX idx_mp_evidence_status ON mp_evidence(status);
-CREATE INDEX idx_mp_notes_pair ON mp_notes(pair_id);
 CREATE INDEX idx_mp_notifications_recipient ON mp_notifications(recipient_id);
 CREATE INDEX idx_mp_notifications_unread ON mp_notifications(recipient_id, is_read);
 
@@ -198,9 +186,6 @@ CREATE TRIGGER mp_update_meetings_updated_at BEFORE UPDATE ON mp_meetings
   FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
 CREATE TRIGGER mp_update_evidence_updated_at BEFORE UPDATE ON mp_evidence
-  FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
-
-CREATE TRIGGER mp_update_notes_updated_at BEFORE UPDATE ON mp_notes
   FOR EACH ROW EXECUTE FUNCTION mp_update_updated_at_column();
 
 -- Function to auto-create profile when user signs up
@@ -252,7 +237,6 @@ ALTER TABLE mp_pair_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mp_meetings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mp_meeting_subtasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mp_evidence ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mp_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mp_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get current user's role
@@ -501,53 +485,6 @@ CREATE POLICY "Users can update own pending evidence"
 -- Supervisors can manage all evidence
 CREATE POLICY "Supervisors can manage all evidence"
   ON mp_evidence FOR ALL
-  TO authenticated
-  USING (mp_get_my_role() = 'supervisor')
-  WITH CHECK (mp_get_my_role() = 'supervisor');
-
--- ============================================================================
--- RLS POLICIES: mp_notes
--- ============================================================================
-
--- Users can view notes for their pairs (respecting privacy)
-CREATE POLICY "Users can view their notes"
-  ON mp_notes FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM mp_pairs
-      WHERE mp_pairs.id = pair_id
-      AND (
-        (mentor_id = auth.uid() OR mentee_id = auth.uid())
-        OR mp_get_my_role() = 'supervisor'
-      )
-    )
-    AND (is_private = false OR author_id = auth.uid() OR mp_get_my_role() = 'supervisor')
-  );
-
--- Pair members can create notes
-CREATE POLICY "Pair members can create notes"
-  ON mp_notes FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM mp_pairs
-      WHERE mp_pairs.id = pair_id
-      AND (mentor_id = auth.uid() OR mentee_id = auth.uid())
-    )
-    AND author_id = auth.uid()
-  );
-
--- Users can update/delete their own notes
-CREATE POLICY "Users can manage own notes"
-  ON mp_notes FOR ALL
-  TO authenticated
-  USING (author_id = auth.uid())
-  WITH CHECK (author_id = auth.uid());
-
--- Supervisors can manage all notes
-CREATE POLICY "Supervisors can manage all notes"
-  ON mp_notes FOR ALL
   TO authenticated
   USING (mp_get_my_role() = 'supervisor')
   WITH CHECK (mp_get_my_role() = 'supervisor');

@@ -277,14 +277,14 @@ export function MeetingDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 pt-3 sm:pt-4 space-y-3 sm:space-y-5 overflow-y-auto max-h-[85vh]">
-          <div className="space-y-3 sm:space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 pt-2 sm:pt-3 space-y-3 sm:space-y-4 overflow-y-auto max-h-[85vh]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="grid gap-1 sm:gap-1.5">
               <Label className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider px-1">{partnerRoleLabel}</Label>
               {(isSupervisor || pairings.length > 1) && !meeting ? (
                 <Select value={internalPairId} onValueChange={setInternalPairId}>
                   <SelectTrigger 
-                    className="h-auto min-h-10 sm:min-h-11 py-2 sm:py-3 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm" 
+                    className="h-9 sm:h-10 py-2 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm" 
                     aria-label="Select a mentoring pair"
                     data-testid="pair-select-trigger"
                   >
@@ -299,11 +299,9 @@ export function MeetingDialog({
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="size-7 sm:size-8 rounded-full bg-primary-light flex items-center justify-center text-[10px] sm:text-xs text-primary font-black">
-                    <KeenIcon icon="users" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold text-gray-700 truncate" data-testid="pair-display">{pairDisplay}</span>
+                <div className="flex items-center gap-2 px-3 h-9 sm:h-10 bg-gray-50 rounded-xl border border-gray-100">
+                  <KeenIcon icon="users" className="text-primary text-xs shrink-0" />
+                  <span className="text-xs font-bold text-gray-700 truncate" data-testid="pair-display">{pairDisplay}</span>
                 </div>
               )}
             </div>
@@ -325,7 +323,7 @@ export function MeetingDialog({
                 required
                 disabled={!internalPairId || isTasksLoading}
               >
-                <SelectTrigger id="pair_task_id" data-testid="task-select-trigger" className="h-auto min-h-10 sm:min-h-11 py-2 sm:py-3 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm text-left">
+                <SelectTrigger id="pair_task_id" data-testid="task-select-trigger" className="h-9 sm:h-10 py-2 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm text-left">
                   <SelectValue placeholder={!internalPairId ? "Select a pair first" : "Select a task"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[450px]">
@@ -334,12 +332,12 @@ export function MeetingDialog({
                     const isAwaiting = task.status === 'awaiting_review';
                     
                     return (
-                      <SelectItem key={task.id} value={task.id} className="py-2 sm:py-2.5" data-testid={`task-option-${task.id}`}>
-                        <div className="flex items-start justify-between w-full gap-3 sm:gap-4">
-                          <span className="font-bold text-[11px] sm:text-xs leading-normal">{task.name}</span>
+                      <SelectItem key={task.id} value={task.id} className="py-2" data-testid={`task-option-${task.id}`}>
+                        <div className="flex items-start justify-between w-full gap-3">
+                          <span className="font-bold text-[11px] leading-normal">{task.name}</span>
                           <Badge 
                             variant={isCompleted ? 'success' : (isAwaiting ? 'warning' : 'outline')} 
-                            className="shrink-0 text-[7px] sm:text-[8px] h-3.5 sm:h-4 uppercase font-black tracking-widest border-none mt-0.5"
+                            className="shrink-0 text-[7px] h-3.5 uppercase font-black tracking-widest border-none mt-0.5"
                           >
                             {isCompleted ? 'Validated' : (isAwaiting ? 'Review' : 'Pending')}
                           </Badge>
@@ -359,7 +357,7 @@ export function MeetingDialog({
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="e.g., Monthly Progress Sync"
-              className="h-10 sm:h-11 rounded-xl border-gray-200 font-bold text-xs sm:text-sm"
+              className="h-9 sm:h-10 rounded-xl border-gray-200 font-bold text-xs"
               required
             />
           </div>
@@ -372,7 +370,7 @@ export function MeetingDialog({
                 type="datetime-local"
                 value={formData.date_time}
                 onChange={(e) => setFormData({ ...formData, date_time: e.target.value })}
-                className="h-10 sm:h-11 rounded-xl border-gray-200 font-bold text-xs sm:text-sm"
+                className="h-9 sm:h-10 rounded-xl border-gray-200 font-bold text-xs"
                 required
               />
             </div>
@@ -383,7 +381,7 @@ export function MeetingDialog({
                 value={formData.meeting_type} 
                 onValueChange={(value: any) => setFormData({...formData, meeting_type: value})}
               >
-                <SelectTrigger className="h-10 sm:h-11 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm">
+                <SelectTrigger className="h-9 sm:h-10 rounded-xl border-gray-200 bg-white font-bold text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-2xl border-gray-100">
@@ -402,7 +400,7 @@ export function MeetingDialog({
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               placeholder="e.g., Zoom Link or Meeting Room"
-              className="h-10 sm:h-11 rounded-xl border-gray-200 font-bold text-xs sm:text-sm"
+              className="h-9 sm:h-10 rounded-xl border-gray-200 font-bold text-xs"
             />
           </div>
 
@@ -413,21 +411,20 @@ export function MeetingDialog({
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="What would you like to discuss?"
-              rows={2}
-              className="rounded-xl border-gray-200 font-medium text-xs sm:text-sm resize-none p-3 sm:p-4 min-h-[60px] sm:min-h-[80px]"
+              className="rounded-xl border-gray-200 font-medium text-xs resize-none p-3 min-h-[60px] sm:min-h-[70px]"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4 pb-1 sm:pb-2">
-            <div className="flex flex-1 gap-2 sm:gap-3 order-2 sm:order-1">
-              <Button type="button" variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest border-gray-200" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-3">
+            <div className="flex flex-1 gap-2 sm:gap-3">
+              <Button type="button" variant="outline" className="flex-1 h-10 rounded-xl font-bold text-xs border-gray-200" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !formData.pair_task_id || !internalPairId}>
+              <Button type="submit" className="flex-1 h-10 rounded-xl font-bold text-xs shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !formData.pair_task_id || !internalPairId}>
                 {isSubmitting ? (
-                  <KeenIcon icon="loading" className="animate-spin mr-1.5 sm:mr-2" />
+                  <KeenIcon icon="loading" className="animate-spin mr-1.5" />
                 ) : (
-                  <KeenIcon icon="check" className="mr-1.5 sm:mr-2" />
+                  <KeenIcon icon="check" className="mr-1.5" />
                 )}
                 {meeting ? 'Update' : 'Schedule'}
               </Button>
@@ -437,11 +434,11 @@ export function MeetingDialog({
               <Button 
                 type="button" 
                 variant="outline" 
-                className="h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest border-danger/20 text-danger hover:bg-danger hover:text-white transition-all order-1 sm:order-2 px-6"
+                className="h-10 rounded-xl font-bold text-xs border-danger/20 text-danger hover:bg-danger hover:text-white transition-all px-4"
                 onClick={handleCancelMeeting}
               >
-                <KeenIcon icon="trash" className="mr-1.5 sm:mr-2" />
-                Cancel Meeting
+                <KeenIcon icon="trash" className="mr-1.5" />
+                Cancel
               </Button>
             )}
           </div>

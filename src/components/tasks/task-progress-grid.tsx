@@ -142,11 +142,11 @@ export function TaskProgressGrid({
                 {/* Actions Column - Desktop Only */}
                 <div className="flex items-center justify-end gap-2 shrink-0">
                   {!readOnly && (
-                    <button className="size-9 rounded-xl border border-transparent bg-success-light text-success hover:bg-success hover:text-white transition-all flex items-center justify-center shadow-sm" onClick={() => onCreateMeeting?.(task.id)}>
+                    <button className="size-9 rounded-xl border border-transparent bg-info-light text-info hover:bg-info hover:text-white transition-all flex items-center justify-center shadow-sm" onClick={() => onCreateMeeting?.(task.id)} title="Add Meeting">
                       <KeenIcon icon="calendar-add" className="text-lg" />
                     </button>
                   )}
-                  <button className="size-9 rounded-xl border border-transparent bg-primary-light text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center shadow-sm" onClick={() => onViewDetails(task)}>
+                  <button className="size-9 rounded-xl border border-transparent bg-primary-light text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center shadow-sm" onClick={() => onViewDetails(task)} title="View Details">
                     <KeenIcon icon="pencil" className="text-lg" />
                   </button>
                 </div>
@@ -157,7 +157,7 @@ export function TaskProgressGrid({
                 className="lg:hidden flex flex-col p-3 bg-white gap-3 relative cursor-pointer active:bg-gray-50 transition-colors min-w-0 w-full overflow-hidden"
                 onClick={() => onViewDetails(task)}
               >
-                <div className="flex items-start gap-3 pr-20 min-w-0 w-full">
+                <div className="flex items-start gap-3 pr-[80px] min-w-0 w-full">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -222,7 +222,7 @@ export function TaskProgressGrid({
                   {!readOnly && (
                     <Button 
                       variant="outline" 
-                      className="size-8 p-0 rounded-lg border-success/20 bg-success-light text-success shadow-xs" 
+                      className="size-8 p-0 rounded-lg border-info/20 bg-info-light text-info shadow-xs" 
                       onClick={(e) => {
                         e.stopPropagation();
                         onCreateMeeting?.(task.id);
@@ -288,41 +288,45 @@ export function TaskProgressGrid({
               )}
 
               {/* Attachments & Meetings Section (Bottom of card) */}
-              {(task.evidence_count > 0 || (task.meetings && task.meetings.length > 0)) && (
+              {(task.evidence_count > 0 || task.evidence_notes || (task.meetings && task.meetings.length > 0)) && (
                 <div className="border-t border-gray-100 pt-3 px-3 pb-3 lg:pt-4 lg:px-10 lg:pb-5 space-y-3 lg:space-y-4 bg-gray-50/10">
-                  {/* Evidence Files */}
-                  {task.evidence_count > 0 && (
+                  {/* Evidence Files & Reflections */}
+                  {(task.evidence_count > 0 || task.evidence_notes) && (
                     <div className="space-y-1.5">
-                      <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest lg:ml-1">Uploaded Evidence</p>
+                      <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest lg:ml-1">Progress & Reflections</p>
                       <div className="flex flex-wrap gap-2">
-                        {task.evidence?.map((evidence: any) => (
-                          evidence.file_url ? (
-                            <a 
-                              key={evidence.id}
-                              href={evidence.file_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-primary/5 hover:border-primary/20 transition-all group max-w-full"
-                            >
-                              <div className="size-4 shrink-0">
-                                <img src={getFileIcon(evidence.file_name)} alt="icon" className="size-full" />
-                              </div>
-                              <span className="text-[10px] font-bold text-gray-700 group-hover:text-primary truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
-                              <KeenIcon icon="cloud-download" className="text-gray-400 group-hover:text-primary text-[10px] ml-1 shrink-0" />
-                            </a>
-                          ) : (
-                            <div 
-                              key={evidence.id}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 max-w-full opacity-70"
-                            >
-                              <div className="size-4 shrink-0 grayscale">
-                                <img src={getFileIcon(evidence.file_name)} alt="icon" className="size-full" />
-                              </div>
-                              <span className="text-[10px] font-bold text-gray-500 truncate max-w-[120px] sm:max-w-[150px] line-through">{evidence.file_name || 'Unknown File'}</span>
+                        {/* Actual File Uploads */}
+                        {task.evidence?.filter(e => !!e.file_url).map((evidence: any) => (
+                          <a 
+                            key={evidence.id}
+                            href={evidence.file_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-primary/5 hover:border-primary/20 transition-all group max-w-full"
+                          >
+                            <div className="size-4 shrink-0">
+                              <img src={getFileIcon(evidence.file_name)} alt="icon" className="size-full" />
                             </div>
-                          )
+                            <span className="text-[10px] font-bold text-gray-700 group-hover:text-primary truncate max-w-[120px] sm:max-w-[150px]">{evidence.file_name || 'View File'}</span>
+                            <KeenIcon icon="cloud-download" className="text-gray-400 group-hover:text-primary text-[10px] ml-1 shrink-0" />
+                          </a>
                         ))}
+
+                        {/* Text-only reflections from evidence_notes field */}
+                        {task.evidence_notes && (
+                          <div 
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/[0.03] border border-primary/10 max-w-full"
+                            title={task.evidence_notes}
+                          >
+                            <div className="size-4 shrink-0 flex items-center justify-center">
+                              <KeenIcon icon="message-text-2" className="text-primary text-xs" />
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-700 truncate max-w-[150px] sm:max-w-[200px]">
+                              Note: {task.evidence_notes.substring(0, 30)}{task.evidence_notes.length > 30 ? '...' : ''}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

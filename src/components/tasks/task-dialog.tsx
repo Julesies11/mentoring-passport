@@ -22,8 +22,6 @@ import {
   X, 
   AlertCircle,
   FileCheck,
-  Eye,
-  ExternalLink,
   XCircle
 } from 'lucide-react';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
@@ -36,6 +34,8 @@ interface TaskDialogProps {
     name: string;
     status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
     last_feedback?: string | null;
+    evidence_notes?: string | null;
+    rejection_reason?: string | null;
     description?: string | null;
     evidence_type?: {
       id: string;
@@ -63,26 +63,38 @@ export function TaskDialog({
 }: TaskDialogProps) {
   const [evidenceNotes, setEvidenceNotes] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [submittingAction, setSubmittingAction] = useState<'draft' | 'review' | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setEvidenceNotes('');
+      setEvidenceNotes(task.evidence_notes || '');
       setSelectedFiles([]);
+      setSubmittingAction(null);
+      setHasChanges(false);
     }
-  }, [open, task.status]);
+  }, [open, task.status, task.evidence_notes]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setSelectedFiles(Array.from(e.target.files));
+      setHasChanges(true);
     }
   };
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setHasChanges(true);
   };
 
   const handleSubmit = async (submitForReview: boolean) => {
-    await onSubmitEvidence(task.id, { description: evidenceNotes, files: selectedFiles }, submitForReview);
+    setSubmittingAction(submitForReview ? 'review' : 'draft');
+    try {
+      await onSubmitEvidence(task.id, { description: evidenceNotes, files: selectedFiles }, submitForReview);
+      setHasChanges(false);
+    } finally {
+      setSubmittingAction(null);
+    }
   };
 
   const statusLabels = {
@@ -101,18 +113,18 @@ export function TaskDialog({
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="flex flex-col h-full max-h-[85dvh]">
-          {/* Header with Background Pattern */}
+        <div className="flex flex-col h-full max-h-[85dvh] focus:outline-none bg-white">
+          {/* Header */}
           <div className="bg-primary/5 p-5 sm:p-8 border-b border-primary/10 relative overflow-hidden">
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-3">
-                {['awaiting_review', 'completed'].includes(task.status) && (
-                  <Badge variant="outline" className={cn("rounded-full font-black uppercase text-[10px] px-3 border-none shadow-sm", TASK_STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-700')}>
+                {['awaiting_review', 'completed', 'revision_required'].includes(task.status) && (
+                  <Badge variant="outline" className={cn("rounded-full font-black uppercase text-[10px] px-3 border-none shadow-sm", TASK_STATUS_COLORS[task.status])}>
                     {statusLabels[task.status as keyof typeof statusLabels]}
                   </Badge>
                 )}
                 {requiresSubmission && (
-                  <Badge variant="destructive" size="xs" className="h-4 text-[8px] font-black px-1.5 uppercase tracking-widest">
+                  <Badge variant="destructive" size="xs" className="h-4 text-[8px] font-black px-1.5 uppercase tracking-widest bg-red-500 text-white border-none shadow-xs">
                     Evidence Required
                   </Badge>
                 )}
@@ -120,45 +132,117 @@ export function TaskDialog({
               <DialogTitle className="text-xl sm:text-2xl font-black text-gray-900 leading-tight">
                 {task.name}
               </DialogTitle>
-              <DialogDescription className="sr-only">
-                Task details and evidence submission for {task.name}
-              </DialogDescription>
             </div>
-            {/* Decorative Icon */}
             <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.03] rotate-12">
               <KeenIcon icon="clipboard" className="text-[120px]" />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-5 sm:p-8 space-y-6 sm:space-y-8">
-            {/* Revision Feedback Section */}
-            {task.status === 'revision_required' && task.last_feedback && (
-              <section className="space-y-3 sm:space-y-4">
+          <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-5 sm:p-8 space-y-8">
+            {/* 1. Task Description */}
+            {task.description && (
+              <section className="space-y-2">
+                <div className="flex items-center gap-2 px-1">
+                  <KeenIcon icon="information-2" className="text-primary text-sm" />
+                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">About this Task</span>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-600 leading-relaxed">
+                  {task.description}
+                </div>
+              </section>
+            )}
+
+            {/* 2. Feedback from Supervisor */}
+            {(task.status === 'revision_required' && (task.rejection_reason || task.last_feedback)) && (
+              <section className="space-y-3">
                 <div className="flex items-center gap-2 px-1">
                   <KeenIcon icon="message-notif" className="text-danger" />
-                  <span className="text-[10px] font-black uppercase text-danger tracking-widest">Feedback from Supervisor</span>
+                  <span className="text-[10px] font-black uppercase text-danger tracking-widest">Revision Requested</span>
                 </div>
-                <div className="p-4 sm:p-5 rounded-2xl bg-red-50 border border-red-100 border-dashed">
-                  <p className="text-sm text-red-800 leading-relaxed font-medium italic">
-                    "{task.last_feedback}"
+                <div className="p-5 rounded-xl bg-red-50 border border-red-100 relative group overflow-hidden">
+                  <p className="text-sm text-red-900 leading-relaxed font-bold italic relative z-10">
+                    "{task.rejection_reason || task.last_feedback || 'Please review your submission and make necessary changes.'}"
                   </p>
                 </div>
               </section>
             )}
 
-            {/* Evidence Submission Area */}
+            {/* 3. Notes / Reflection */}
             {task.status !== 'completed' && (
-              <section className="space-y-5 sm:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-2 px-1">
-                  <Upload size={16} className="text-primary" />
-                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Submit Progress</span>
+              <section className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <KeenIcon icon="message-text-2" className="text-primary" />
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Reflection & Progress</span>
+                  </div>
+                  {hasChanges && (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[8px] h-4 px-1.5 uppercase font-black animate-pulse border-none">Unsaved</Badge>
+                  )}
+                </div>
+                
+                <Textarea
+                  placeholder="What progress have you made? Share your key takeaways, challenges, or questions..."
+                  value={evidenceNotes}
+                  onChange={(e) => {
+                    setEvidenceNotes(e.target.value);
+                    setHasChanges(e.target.value !== (task.evidence_notes || '') || selectedFiles.length > 0);
+                  }}
+                  className="rounded-xl border-gray-200 resize-none p-4 text-sm focus:border-primary transition-all min-h-[140px] bg-white shadow-xs"
+                />
+              </section>
+            )}
+
+            {/* 4. Evidence Upload */}
+            {task.status !== 'completed' && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <KeenIcon icon="cloud-upload" className="text-primary" />
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Supportive Evidence</span>
+                  </div>
+                  {requiresSubmission && (
+                    <span className="text-[9px] font-black text-danger uppercase tracking-tighter bg-red-50 px-2 py-1 rounded-full border border-red-100 flex items-center gap-1">
+                      <AlertCircle size={10} />
+                      Required
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-4">
-                  {/* Existing Evidence */}
+                  <div className="relative group">
+                    <input
+                      type="file"
+                      id="file-upload"
+                      multiple
+                      onChange={handleFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                    />
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center group-hover:border-primary/50 group-hover:bg-primary/[0.02] transition-all bg-gray-50/50 flex flex-col items-center">
+                      <Upload size={24} className="text-primary mb-2" />
+                      <p className="text-sm font-bold text-gray-900">Click or drag to upload files</p>
+                      <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">PDF, IMAGES, DOCX</p>
+                    </div>
+                  </div>
+
+                  {selectedFiles.length > 0 && (
+                    <div className="grid gap-2">
+                      {selectedFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText size={16} className="text-primary/60 shrink-0" />
+                            <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
+                          </div>
+                          <Button variant="ghost" size="sm" mode="icon" className="size-8 rounded-lg text-gray-400 hover:text-danger" onClick={() => removeFile(idx)}>
+                            <X size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {task.evidence && task.evidence.length > 0 && (
-                    <div className="space-y-3 mb-6">
-                      <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Previously Uploaded Evidence</Label>
+                    <div className="space-y-3 mt-4">
+                      <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Previously Shared</Label>
                       <div className="grid gap-2.5">
                         {task.evidence.map((evidence: any) => (
                           <FilePreviewCard
@@ -167,87 +251,38 @@ export function TaskDialog({
                             fileUrl={evidence.file_url}
                             mimeType={evidence.mime_type}
                             createdAt={evidence.created_at}
-                            onDelete={onDeleteEvidence ? () => onDeleteEvidence(evidence.id) : undefined}
+                            onDelete={onDeleteEvidence ? async () => {
+                              if (confirm('Are you sure you want to remove this evidence?')) {
+                                await onDeleteEvidence(evidence.id);
+                                setHasChanges(true);
+                              }
+                            } : undefined}
                           />
                         ))}
                       </div>
                     </div>
                   )}
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-gray-600 uppercase px-1">Notes / Reflections</Label>
-                    <Textarea
-                      placeholder="What progress have you made? Any reflections to share?"
-                      value={evidenceNotes}
-                      onChange={(e) => setEvidenceNotes(e.target.value)}
-                      className="rounded-xl border-gray-200 resize-none p-3 sm:p-4 text-sm focus:border-primary transition-colors min-h-[100px]"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
-                      <Label className="text-xs font-bold text-gray-600 uppercase">Upload Documents/Photos</Label>
-                      {requiresSubmission && (
-                        <span className="text-[9px] font-black text-danger uppercase tracking-tighter bg-danger/5 px-1.5 py-0.5 rounded border border-danger/10 w-fit">Required for Review</span>
-                      )}
-                    </div>
-                    
-                    {/* Dropzone Proxy */}
-                    <div className="relative">
-                      <input
-                        type="file"
-                        id="file-upload"
-                        multiple
-                        onChange={handleFileChange}
-                        className="absolute inset-0 opacity-0 cursor-pointer z-20"
-                      />
-                      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 sm:p-8 text-center hover:border-primary/50 hover:bg-primary/[0.02] transition-all bg-gray-50/50">
-                        <div className="size-10 sm:size-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
-                          <Upload size={18} className="text-primary" />
-                        </div>
-                        <p className="text-sm font-bold text-gray-900">Click or drag to upload</p>
-                        <p className="text-[10px] text-gray-500 mt-1 uppercase font-medium tracking-tighter">PDF, JPG, PNG, DOCX</p>
-                      </div>
-                    </div>
-
-                    {/* File List */}
-                    {selectedFiles.length > 0 && (
-                      <div className="grid gap-2">
-                        {selectedFiles.map((file, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2.5 sm:p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <FileText size={16} className="text-primary/60 shrink-0" />
-                              <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
-                            </div>
-                            <Button variant="ghost" size="sm" mode="icon" className="size-7 rounded-lg text-gray-400 hover:text-danger" onClick={() => removeFile(idx)}>
-                              <X size={14} />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </section>
             )}
 
-            {/* Completed State Info */}
+            {/* Completed State */}
             {task.status === 'completed' && (
-              <section className="flex flex-col items-center justify-center py-6 sm:py-10 text-center space-y-4">
-                <div className="size-16 sm:size-20 rounded-full bg-success/10 flex items-center justify-center text-success mb-2">
-                  <FileCheck size={32} className="sm:size-10" />
+              <section className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+                <div className="size-20 rounded-full bg-success/10 flex items-center justify-center text-success mb-2">
+                  <FileCheck size={40} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900">Task Validated</h3>
-                  <p className="text-sm text-gray-500 max-w-xs mx-auto mt-1 px-4">
-                    Completed on {task.completed_at ? format(new Date(task.completed_at), 'MMMM d, yyyy') : 'No date recorded'}
+                  <h3 className="text-xl font-black text-gray-900 tracking-tight">Task Successfully Validated</h3>
+                  <p className="text-sm text-gray-500 max-w-xs mx-auto mt-1 px-4 leading-relaxed">
+                    Completed on {task.completed_at ? format(new Date(task.completed_at), 'MMMM d, yyyy') : 'an unrecorded date'}.
                   </p>
                 </div>
               </section>
             )}
           </div>
 
-          {/* Footer Actions */}
+          {/* Footer */}
           <DialogFooter className="p-5 sm:p-6 border-t border-gray-100 bg-gray-50/50 flex flex-col-reverse sm:flex-row sm:justify-between items-stretch sm:items-center gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl h-10 sm:h-11 px-6 font-bold w-full sm:w-auto">
               Close
@@ -259,24 +294,36 @@ export function TaskDialog({
                   <Button 
                     variant="secondary" 
                     onClick={() => handleSubmit(false)}
-                    disabled={isSubmitting || (!evidenceNotes.trim() && selectedFiles.length === 0)}
+                    disabled={isSubmitting || !hasChanges}
                     className="rounded-xl h-10 sm:h-11 px-6 font-bold w-full sm:w-auto"
                   >
-                    Save Draft
+                    {submittingAction === 'draft' ? (
+                      <>
+                        <KeenIcon icon="loading" className="animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Draft'
+                    )}
                   </Button>
                   <Button 
                     onClick={() => handleSubmit(true)}
-                    disabled={isSubmitting}
-                    className="bg-primary hover:bg-primary-dark text-white rounded-xl h-10 sm:h-11 px-8 font-bold shadow-lg shadow-primary/20 border-none w-full sm:w-auto"
+                    disabled={isSubmitting || (requiresSubmission && selectedFiles.length === 0 && (!task.evidence || task.evidence.length === 0))}
+                    className={cn(
+                      "rounded-xl h-10 sm:h-11 px-8 font-bold border-none w-full sm:w-auto shadow-lg",
+                      requiresSubmission && selectedFiles.length === 0 && (!task.evidence || task.evidence.length === 0)
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                        : "bg-primary hover:bg-primary-dark text-white shadow-primary/20"
+                    )}
                   >
-                    {isSubmitting ? (
+                    {submittingAction === 'review' ? (
                       <>
                         <KeenIcon icon="loading" className="animate-spin mr-2" />
-                        Submitting...
+                        {requiresSubmission ? 'Submitting...' : 'Completing...'}
                       </>
                     ) : (
                       <>
-                        Submit for Review
+                        {requiresSubmission ? 'Submit for Review' : 'Complete Task'}
                       </>
                     )}
                   </Button>
@@ -288,7 +335,7 @@ export function TaskDialog({
                   onClick={() => onUpdateStatus(task.id, 'not_submitted')}
                   className="rounded-xl h-10 sm:h-11 px-6 font-bold text-gray-500 border-gray-200 w-full sm:w-auto"
                 >
-                  Request Re-open
+                  Request to Re-open
                 </Button>
               )}
             </div>

@@ -101,6 +101,7 @@ export function ParticipantsContent() {
     endIndex
   } = usePagination({
     items: filteredParticipants,
+    initialItemsPerPage: 10,
     resetDeps: [searchTerm, roleFilter, statusFilter]
   });
 
@@ -289,7 +290,7 @@ export function ParticipantsContent() {
             <div className="flex items-center gap-2 w-full sm:w-auto">
               {!isMobile && (
                 <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val)}>
-                  <SelectTrigger className="w-full sm:w-[140px] h-9 sm:h-10 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
+                  <SelectTrigger aria-label="Filter by Role" className="w-full sm:w-[140px] h-9 sm:h-10 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -301,7 +302,7 @@ export function ParticipantsContent() {
               )}
 
               <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
-                <SelectTrigger className="w-full sm:w-[120px] h-9 sm:h-10 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
+                <SelectTrigger aria-label="Filter by Status" className="w-full sm:w-[120px] h-9 sm:h-10 rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>

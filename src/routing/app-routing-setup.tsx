@@ -20,7 +20,6 @@ const SupervisorErrorLogsPage = lazy(() => import('@/pages/supervisor/error-logs
 const ProgramMemberDashboardPage = lazy(() => import('@/pages/dashboards/program-member-dashboard').then(m => ({ default: m.ProgramMemberDashboardPage })));
 const ProgramMemberTasksPage = lazy(() => import('@/pages/program-member').then(m => ({ default: m.ProgramMemberTasksPage })));
 const ProgramMemberMeetingsPage = lazy(() => import('@/pages/program-member').then(m => ({ default: m.ProgramMemberMeetingsPage })));
-const ProgramMemberNotesPage = lazy(() => import('@/pages/program-member').then(m => ({ default: m.ProgramMemberNotesPage })));
 const RelationshipPage = lazy(() => import('@/pages/program-member').then(m => ({ default: m.ProgramMemberRelationshipPage })));
 
 const EditProfilePage = lazy(() => import('@/pages/profile/edit-profile').then(m => ({ default: m.EditProfilePage })));
@@ -167,14 +166,6 @@ export function AppRoutingSetup() {
               element={
                 <RequireRole allowedRoles={['program-member']}>
                   <ProgramMemberMeetingsPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/program-member/notes"
-              element={
-                <RequireRole allowedRoles={['program-member']}>
-                  <ProgramMemberNotesPage />
                 </RequireRole>
               }
             />
