@@ -423,7 +423,7 @@ export function MeetingDialog({
               <Button type="button" variant="outline" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest border-gray-200" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !internalPairId}>
+              <Button type="submit" className="flex-1 h-10 sm:h-12 rounded-xl font-black uppercase text-[9px] sm:text-[10px] tracking-widest shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !formData.pair_task_id || !internalPairId}>
                 {isSubmitting ? (
                   <KeenIcon icon="loading" className="animate-spin mr-1.5 sm:mr-2" />
                 ) : (

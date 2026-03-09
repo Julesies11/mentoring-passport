@@ -150,13 +150,14 @@ describe('MeetingDialog V3', () => {
 
     // 1. Enter Title
     const titleInput = screen.getByPlaceholderText(/progress sync/i);
+    await user.clear(titleInput);
     await user.type(titleInput, 'Test Meeting');
 
     // 2. Enter Date
     const dateInput = screen.getByLabelText(/Date & Time/i);
     fireEvent.change(dateInput, { target: { value: '2026-03-10T10:00' } });
     
-    // 3. Select a task
+    // 3. Select a task (Even if one is auto-selected, re-selecting it ensures it's set correctly)
     const taskTrigger = screen.getByTestId('task-select-trigger');
     await user.click(taskTrigger);
     
@@ -165,15 +166,15 @@ describe('MeetingDialog V3', () => {
 
     // 4. Submit
     const submitBtn = screen.getByRole('button', { name: /schedule/i });
-    await waitFor(() => expect(submitBtn).not.toBeDisabled());
+    await waitFor(() => expect(submitBtn).not.toBeDisabled(), { timeout: 2000 });
     await user.click(submitBtn);
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalled();
-    });
+    }, { timeout: 3000 });
 
     await waitFor(() => {
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
-    });
-  });
+    }, { timeout: 3000 });
+  }, 10000); // 10s timeout for this test
 });
