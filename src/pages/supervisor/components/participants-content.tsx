@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { cn } from '@/lib/utils';
 import { KeenIcon } from '@/components/keenicons';
+import { logError } from '@/lib/logger';
 import { handleAvatarUpload } from '@/lib/api/profiles';
 
 export function ParticipantsContent() {
@@ -60,6 +61,7 @@ export function ParticipantsContent() {
   
   // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
   const [newCredentials, setNewCredentials] = useState({ email: '', password: '', name: '', role: '' as any });
@@ -73,10 +75,8 @@ export function ParticipantsContent() {
 
   // Reset to first page when search or filters change
   useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    }
-  }, [searchTerm, roleFilter, statusFilter, itemsPerPage, currentPage]);
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, statusFilter, itemsPerPage]);
 
   const filteredParticipants = useMemo(() => {
     return participants.filter(p => {
@@ -102,17 +102,26 @@ export function ParticipantsContent() {
   }, [filteredParticipants, currentPage, itemsPerPage]);
 
   const handleCreate = async (data: any) => {
+    setIsSubmitting(true);
+    let newParticipantId = null;
     try {
       const { avatar_file, ...input } = data;
       
       // 1. Create the participant first to get the ID
       const newParticipant = await createParticipantAsync(input);
+      newParticipantId = newParticipant.id;
       
-      // 2. If there's an avatar file, upload it
-      if (newParticipant?.id) {
-        const avatarUrl = await handleAvatarUpload(newParticipant.id, avatar_file);
-        if (avatarUrl) {
-          await updateParticipantAsync(newParticipant.id, { avatar_url: avatarUrl });
+      // 2. If there's an avatar file, upload it in a separate try-catch
+      // to ensure we still show credentials even if upload fails
+      if (newParticipantId && avatar_file) {
+        try {
+          const avatarUrl = await handleAvatarUpload(newParticipantId, avatar_file);
+          if (avatarUrl) {
+            await updateParticipantAsync(newParticipantId, { avatar_url: avatarUrl });
+          }
+        } catch (avatarErr) {
+          console.error('Avatar upload failed, but user was created:', avatarErr);
+          toast.error('User created, but profile picture failed to upload');
         }
       }
 
@@ -125,14 +134,26 @@ export function ParticipantsContent() {
       setIsDialogOpen(false);
       setShowCredentials(true);
       toast.success('Participant created successfully');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating participant:', err);
-      toast.error('Failed to create participant');
+      
+      await logError({
+        message: `Member creation failed: ${err.message}`,
+        stack: err.stack,
+        componentName: 'participants-content',
+        metadata: { email: data.email, role: data.role }
+      });
+
+      // Re-throw so the dialog can catch it and display it in the error state
+      throw err;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdate = async (data: any) => {
     if (!editingParticipant) return;
+    setIsSubmitting(true);
     try {
       const { avatar_file, delete_avatar, ...input } = data;
       
@@ -151,9 +172,20 @@ export function ParticipantsContent() {
       setIsDialogOpen(false);
       setEditingParticipant(null);
       toast.success('Participant updated successfully');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating participant:', err);
-      toast.error('Failed to update participant');
+
+      await logError({
+        message: `Member update failed: ${err.message}`,
+        stack: err.stack,
+        componentName: 'participants-content',
+        metadata: { participantId: editingParticipant.id }
+      });
+
+      // Re-throw so the dialog can catch it and display it in the error state
+      throw err;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -181,14 +213,6 @@ export function ParticipantsContent() {
     setEditingParticipant(participant);
     setIsDialogOpen(true);
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
@@ -293,170 +317,176 @@ export function ParticipantsContent() {
           </CardToolbar>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="w-full overflow-x-auto overflow-y-hidden">
-            <Table className="table-fixed md:table-auto w-full min-w-full">
-              <TableHeader className="bg-gray-50/50">
-                <TableRow>
-                  <TableHead className="w-[45%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Participant</TableHead>
-                  <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Contact & Info</TableHead>
-                  <TableHead className="w-[30%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Pairings</TableHead>
-                  <TableHead className="w-[25%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
-                  <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
-                  <TableHead className="hidden md:table-cell w-[80px] px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedParticipants.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto overflow-y-hidden">
+              <Table className="table-fixed md:table-auto w-full min-w-full">
+                <TableHeader className="bg-gray-50/50">
                   <TableRow>
-                    <TableCell colSpan={isMobile ? 3 : 6} className="text-center py-20 text-muted-foreground font-medium italic">
-                      No participants found matching your criteria.
-                    </TableCell>
+                    <TableHead className="w-[45%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Participant</TableHead>
+                    <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Contact & Info</TableHead>
+                    <TableHead className="w-[30%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Pairings</TableHead>
+                    <TableHead className="w-[25%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
+                    <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
+                    <TableHead className="hidden md:table-cell w-[80px] px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  paginatedParticipants.map((p) => {
-                    const activePairings = pairs.filter(pair => 
-                      pair.status === 'active' && (pair.mentor_id === p.id || pair.mentee_id === p.id)
-                    ).length;
-                    
-                    return (
-                      <TableRow 
-                        key={p.id} 
-                        className="hover:bg-primary/[0.01] transition-colors group cursor-pointer"
-                        onClick={() => openEditDialog(p)}
-                      >
-                        <TableCell className="px-3 sm:px-6 py-3 sm:py-4 overflow-hidden">
-                          <div className="flex items-center gap-2 sm:gap-4">
-                            <ProfileAvatar 
-                              userId={p.id} 
-                              currentAvatar={p.avatar_url} 
-                              userName={p.full_name || p.email} 
-                              size={isMobile ? "sm" : "md"} 
-                            />
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-gray-900 truncate leading-tight mb-0.5 text-xs sm:text-sm">
-                                {p.full_name || 'No Name Set'}
-                              </span>
-                              <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium truncate flex items-center gap-1">
-                                <Briefcase size={10} className="text-gray-400 shrink-0" />
-                                <span className="truncate">{p.job_title || 'No Job Title'}</span>
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell px-6 py-4">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                              <Mail size={12} className="text-gray-400" />
-                              {p.email}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                              <Building2 size={12} className="text-gray-400" />
-                              {p.department || 'General'}
-                            </div>
-                            {p.phone && (
-                              <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                                <Phone size={12} className="text-gray-400" />
-                                {p.phone}
+                </TableHeader>
+                <TableBody>
+                  {paginatedParticipants.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isMobile ? 3 : 6} className="text-center py-20 text-muted-foreground font-medium italic">
+                        No participants found matching your criteria.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedParticipants.map((p) => {
+                      const activePairings = pairs.filter(pair => 
+                        pair.status === 'active' && (pair.mentor_id === p.id || pair.mentee_id === p.id)
+                      ).length;
+                      
+                      return (
+                        <TableRow 
+                          key={p.id} 
+                          className="hover:bg-primary/[0.01] transition-colors group cursor-pointer"
+                          onClick={() => openEditDialog(p)}
+                        >
+                          <TableCell className="px-3 sm:px-6 py-3 sm:py-4 overflow-hidden">
+                            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                              <ProfileAvatar 
+                                userId={p.id} 
+                                currentAvatar={p.avatar_url} 
+                                userName={p.full_name || p.email} 
+                                size={isMobile ? "sm" : "md"} 
+                              />
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-gray-900 leading-tight mb-0.5 text-xs sm:text-sm break-words">
+                                  {p.full_name || 'No Name Set'}
+                                </span>
+                                <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium truncate flex items-center gap-1">
+                                  <Briefcase size={10} className="text-gray-400 shrink-0" />
+                                  <span className="truncate">{p.job_title || 'No Job Title'}</span>
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-3 sm:py-4 text-center">
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "rounded-full font-black text-[10px] px-2.5 h-6 border-none",
-                              activePairings > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                            )}
-                          >
-                            {activePairings}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-3 sm:py-4">
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell px-6 py-4">
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                <Mail size={12} className="text-gray-400" />
+                                {p.email}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                <Building2 size={12} className="text-gray-400" />
+                                {p.department || 'General'}
+                              </div>
+                              {p.phone && (
+                                <div className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                  <Phone size={12} className="text-gray-400" />
+                                  {p.phone}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "rounded-full font-black text-[10px] px-2.5 h-6 border-none",
+                                activePairings > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                              )}
+                            >
+                              {activePairings}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="px-3 sm:px-6 py-3 sm:py-4">
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
+                                p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                              )}
+                            >
+                              {p.role === 'supervisor' ? 'Supervisor' : 'Member'}
+                            </Badge>
+                          </TableCell>
+                        <TableCell className="hidden md:table-cell px-6 py-4 text-center">
                           <Badge 
                             variant="outline" 
                             className={cn(
                               "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                              p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                              p.status === 'active' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                             )}
                           >
-                            {p.role === 'supervisor' ? 'Supervisor' : 'Member'}
+                            {p.status}
                           </Badge>
                         </TableCell>
-                      <TableCell className="hidden md:table-cell px-6 py-4 text-center">
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                            p.status === 'active' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                          )}
-                        >
-                          {p.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            mode="icon" 
-                            className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all text-gray-400" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditDialog(p);
-                            }}
-                            title="Edit Member"
-                          >
-                            <KeenIcon icon="pencil" className="text-lg" />
-                          </Button>
-                          
-                          {p.status === 'active' ? (
+                        <TableCell className="hidden md:table-cell px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
                             <Button 
                               variant="ghost" 
                               size="sm" 
                               mode="icon" 
-                              className="size-9 rounded-full hover:bg-danger/10 hover:text-danger transition-all text-gray-400" 
+                              className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all text-gray-400" 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleArchive(p.id);
+                                openEditDialog(p);
                               }}
-                              title="Archive Member"
+                              title="Edit Member"
                             >
-                              <KeenIcon icon="trash" className="text-lg" />
+                              <KeenIcon icon="pencil" className="text-lg" />
                             </Button>
-                          ) : (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              mode="icon" 
-                              className="size-9 rounded-full hover:bg-success/10 hover:text-success transition-all text-gray-400" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRestore(p.id);
-                              }}
-                              title="Restore Member"
-                            >
-                              <KeenIcon icon="check-circle" className="text-lg" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                      );
-                      })
-                      )}
-                      </TableBody>
+                            
+                            {p.status === 'active' ? (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                mode="icon" 
+                                className="size-9 rounded-full hover:bg-danger/10 hover:text-danger transition-all text-gray-400" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleArchive(p.id);
+                                }}
+                                title="Archive Member"
+                              >
+                                <KeenIcon icon="trash" className="text-lg" />
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                mode="icon" 
+                                className="size-9 rounded-full hover:bg-success/10 hover:text-success transition-all text-gray-400" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRestore(p.id);
+                                }}
+                                title="Restore Member"
+                              >
+                                <KeenIcon icon="check-circle" className="text-lg" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                        );
+                        })
+                        )}
+                        </TableBody>
 
-            </Table>
-          </div>
+              </Table>
+            </div>
+          )}
         </CardContent>
 
         {filteredParticipants.length > 0 && (
-          <div className="border-t border-gray-100 px-3 sm:px-5 py-3 sm:py-4 flex flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-sm text-muted-foreground">
+          <div className="border-t border-gray-100 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest">
               <span className="hidden xs:inline">Show</span>
               <select 
-                className="h-7 sm:h-8 w-[50px] sm:w-[70px] bg-gray-50 border border-gray-200 rounded-md px-0.5 sm:px-1 outline-none focus:ring-2 focus:ring-primary/20 text-[10px] sm:text-xs"
+                className="h-7 sm:h-8 w-[50px] sm:w-[65px] bg-gray-50 border border-gray-200 rounded-lg px-0.5 sm:px-1 outline-none focus:ring-2 focus:ring-primary/20 text-[10px] sm:text-xs font-bold"
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
@@ -466,35 +496,28 @@ export function ParticipantsContent() {
                 <option value={5}>5</option>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
-                <option value={50}>50</option>
               </select>
               <span className="hidden xs:inline">per page</span>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-1.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Button
-                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentPage(prev => Math.max(1, prev - 1));
-                }}
+                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-lg border-gray-200"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
               >
                 <KeenIcon icon="black-left" className="text-xs" />
               </Button>
               
-              <div className="flex items-center gap-1 mx-1 sm:mx-2">
-                <span className="text-[10px] sm:text-xs font-bold text-gray-900">{currentPage}</span>
-                <span className="text-[10px] sm:text-xs text-gray-400">/</span>
-                <span className="text-[10px] sm:text-xs font-bold text-gray-900">{totalPages || 1}</span>
+              <div className="flex items-center gap-1.5 mx-1 sm:mx-2">
+                <span className="text-[10px] sm:text-xs font-black text-gray-900">{currentPage}</span>
+                <span className="text-[10px] sm:text-xs text-gray-300">/</span>
+                <span className="text-[10px] sm:text-xs font-black text-gray-900">{totalPages || 1}</span>
               </div>
 
               <Button
-                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentPage(prev => Math.min(totalPages, prev + 1));
-                }}
+                variant="outline" size="sm" mode="icon" className="size-7 sm:size-8 rounded-lg border-gray-200"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages || totalPages === 0}
               >
                 <KeenIcon icon="black-right" className="text-xs" />
@@ -509,7 +532,7 @@ export function ParticipantsContent() {
         onOpenChange={setIsDialogOpen}
         onSubmit={editingParticipant ? handleUpdate : handleCreate}
         participant={editingParticipant || undefined}
-        isLoading={isCreating || isUpdating}
+        isLoading={isSubmitting}
       />
 
       <CredentialsDialog

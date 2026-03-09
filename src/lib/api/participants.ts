@@ -117,7 +117,13 @@ export async function createParticipant(input: CreateParticipantInput & { avatar
 
   if (rpcError) {
     console.error('Error in mp_admin_create_user RPC:', rpcError);
-    throw new Error(`Failed to create user: ${rpcError.message}`);
+    
+    // Handle specific PostgreSQL error for duplicate keys (23505)
+    if (rpcError.message?.includes('users_email_partial_key') || rpcError.message?.includes('unique constraint')) {
+      throw new Error('A user with this email address already exists.');
+    }
+    
+    throw new Error(rpcError.message || 'Failed to create user account.');
   }
 
   // Fetch the newly created profile

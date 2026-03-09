@@ -30,7 +30,7 @@ export function useParticipants() {
   const createMutation = useMutation({
     mutationFn: createParticipant,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      return queryClient.invalidateQueries({ queryKey: ['participants'] });
     },
   });
 
@@ -38,21 +38,21 @@ export function useParticipants() {
     mutationFn: ({ id, input }: { id: string; input: UpdateParticipantInput }) =>
       updateParticipant(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      return queryClient.invalidateQueries({ queryKey: ['participants'] });
     },
   });
 
   const archiveMutation = useMutation({
     mutationFn: archiveParticipant,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      return queryClient.invalidateQueries({ queryKey: ['participants'] });
     },
   });
 
   const restoreMutation = useMutation({
     mutationFn: restoreParticipant,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      return queryClient.invalidateQueries({ queryKey: ['participants'] });
     },
   });
 

@@ -151,19 +151,19 @@ export function SupervisorDashboardContent() {
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                        <p className="text-xs sm:text-sm font-bold text-gray-900 break-words leading-tight">
                           {item.task?.name || 'Task Evidence'}
                         </p>
-                        <p className="text-[9px] sm:text-[10px] text-muted-foreground flex items-center gap-1 sm:gap-1.5 mt-0.5 uppercase font-bold truncate">
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5 uppercase font-bold">
                           <span className="text-primary">{item.pair?.mentor?.full_name}</span>
-                          <KeenIcon icon="dots" className="text-[6px] sm:text-[8px]" />
+                          <KeenIcon icon="dots" className="text-[6px] sm:text-[8px] shrink-0" />
                           <span className="text-success">{item.pair?.mentee?.full_name}</span>
-                          <span className="size-1 rounded-full bg-gray-300 ml-1 hidden xs:block"></span>
-                          <span className="hidden xs:block">{format(new Date(item.created_at), 'MMM d')}</span>
+                          <span className="size-1 rounded-full bg-gray-300 ml-1 hidden xs:block shrink-0"></span>
+                          <span className="hidden xs:block shrink-0">{format(new Date(item.created_at), 'MMM d')}</span>
                         </p>
                       </div>
                     </div>
-                    <Button variant="primary" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-lg h-7 sm:h-8 px-2 sm:px-4 font-bold text-[10px] sm:text-[11px] shrink-0">
+                    <Button variant="primary" size="sm" onClick={() => navigate('/supervisor/evidence-review')} className="rounded-lg h-7 sm:h-8 px-2 sm:px-4 font-bold text-[10px] sm:text-[11px] shrink-0 ml-2">
                       {isMobile ? 'Review' : 'Quick Review'}
                     </Button>
                   </div>
@@ -248,9 +248,9 @@ export function SupervisorDashboardContent() {
             <table className="table-fixed md:table-auto w-full min-w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="w-[45%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Mentor / Mentee</th>
+                  <th className="w-[55%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Mentor / Mentee</th>
                   <th className="w-[25%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Progress</th>
-                  <th className="w-[30%] md:w-auto text-left py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Last Update</th>
+                  <th className="w-[20%] md:w-auto text-center py-2 sm:py-3 px-3 sm:px-6 text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-widest">Last Update</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -277,10 +277,10 @@ export function SupervisorDashboardContent() {
                           </div>
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-gray-900 truncate group-hover:text-primary transition-colors text-xs sm:text-sm">
+                          <span className="font-bold text-gray-900 group-hover:text-primary transition-colors text-xs sm:text-sm leading-tight break-words">
                             <span className="text-primary">{p.mentor?.full_name}</span> & <span className="text-success">{p.mentee?.full_name}</span>
                           </span>
-                          <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-tighter truncate">
+                          <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-tighter truncate md:whitespace-normal">
                             {p.mentor?.job_title || 'N/A'} • {p.mentee?.job_title || 'N/A'}
                           </span>
                         </div>
@@ -300,7 +300,7 @@ export function SupervisorDashboardContent() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 sm:py-4 px-3 sm:px-6 text-[10px] sm:text-xs text-gray-600 font-medium">
+                    <td className="py-3 sm:py-4 px-3 sm:px-6 text-[10px] sm:text-xs text-gray-600 font-medium text-center">
                       {format(new Date(p.updated_at), 'MMM d')}
                     </td>
                   </tr>

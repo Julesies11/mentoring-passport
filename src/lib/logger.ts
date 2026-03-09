@@ -24,9 +24,14 @@ export const logError = async ({
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id || null;
 
+    let finalMessage = message;
+    if (message.includes('exceeded the maximum allowed size')) {
+      finalMessage = `Supabase Storage Limit Hit: ${message}`;
+    }
+
     const errorPayload = {
       user_id: userId,
-      message,
+      message: finalMessage,
       stack: stack || null,
       url: window.location.href,
       component_name: componentName || null,

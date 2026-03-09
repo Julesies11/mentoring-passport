@@ -121,8 +121,8 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
   }, [sortedPairs, currentPage, itemsPerPage]);
 
   useEffect(() => {
-    if (currentPage !== 1) setCurrentPage(1);
-  }, [searchQuery, filterStatus, itemsPerPage, currentPage]);
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, itemsPerPage]);
 
   return (
     <Card className="border-0 sm:border">

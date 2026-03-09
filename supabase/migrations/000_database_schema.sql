@@ -229,3 +229,21 @@ execute FUNCTION mp_notify_meeting_created ();
 create trigger mp_update_meetings_updated_at BEFORE
 update on mp_meetings for EACH row
 execute FUNCTION mp_update_updated_at_column ();
+
+create table public.mp_error_logs (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid null,
+  message text not null,
+  stack text null,
+  url text null,
+  component_name text null,
+  metadata jsonb null default '{}'::jsonb,
+  severity text null default 'error'::text,
+  created_at timestamp with time zone not null default now(),
+  constraint mp_error_logs_pkey primary key (id),
+  constraint mp_error_logs_user_id_fkey foreign KEY (user_id) references mp_profiles (id) on delete set null
+) TABLESPACE pg_default;
+
+create index IF not exists idx_error_logs_created_at on public.mp_error_logs using btree (created_at desc) TABLESPACE pg_default;
+
+create index IF not exists idx_error_logs_severity on public.mp_error_logs using btree (severity) TABLESPACE pg_default;

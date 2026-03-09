@@ -27,6 +27,8 @@ import { ImageInput, type ImageInputFile } from '@/components/image-input';
 import { getAvatarUrl } from '@/lib/api/profiles';
 import type { Participant } from '@/lib/api/participants';
 
+import { validateAvatar } from '@/lib/utils/image';
+
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -153,16 +155,20 @@ export function ParticipantDialog({
         className="sm:max-w-[500px] w-[calc(100%-32px)] sm:w-full max-h-[85dvh] p-0 overflow-hidden flex flex-col rounded-2xl border-none shadow-2xl"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="p-4 sm:p-6 pb-0 shrink-0">
+        <DialogHeader className="p-4 sm:p-6 pb-2 shrink-0 border-b border-gray-100">
           <DialogTitle className="text-lg sm:text-xl font-bold">{isEdit ? 'Edit Participant' : 'Add New Participant'}</DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+          <DialogDescription className="text-[10px] sm:text-xs uppercase font-bold text-gray-400 tracking-wider">
             {isEdit
               ? 'Update participant information'
               : 'Create a new participant account'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 overflow-y-auto kt-scrollable-y-hover p-4 sm:p-6 pt-2 space-y-5 sm:space-y-6">
+        <form 
+          id="participant-form"
+          onSubmit={handleSubmit(handleFormSubmit)} 
+          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6"
+        >
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm font-medium border border-red-100">
               {error}
@@ -171,18 +177,27 @@ export function ParticipantDialog({
 
           {/* Avatar Section */}
           <div className="flex flex-col items-center gap-3">
-            <Label className="text-sm font-bold text-gray-700 uppercase tracking-wider self-start">Profile Picture</Label>
+            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest self-start">Profile Picture</Label>
             <div className="relative group">
               <ImageInput
                 value={avatar}
                 onChange={(selectedAvatar) => {
+                  setError(null);
+                  if (selectedAvatar.length > 0 && selectedAvatar[0].file) {
+                    const validation = validateAvatar(selectedAvatar[0].file);
+                    if (validation.error) {
+                      setError(validation.error);
+                      setAvatar([]);
+                      return;
+                    }
+                  }
                   setAvatar(selectedAvatar);
                   setDeleteAvatar(selectedAvatar.length === 0);
                 }}
               >
                 {({ onImageUpload }) => (
                   <div
-                    className="size-24 relative cursor-pointer group rounded-full border-2 border-gray-200 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center shadow-sm p-0"
+                    className="size-20 sm:size-24 relative cursor-pointer group rounded-full border-2 border-gray-200 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center shadow-sm p-0"
                     onClick={onImageUpload}
                   >
                     {avatar.length > 0 ? (
@@ -193,7 +208,7 @@ export function ParticipantDialog({
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
-                    <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[10px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[9px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
                       Upload
                     </div>
                   </div>
@@ -220,29 +235,29 @@ export function ParticipantDialog({
           <div className="grid gap-4">
             {!isEdit && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-bold text-gray-600 uppercase">Email *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Email *</Label>
                   <Input
                     id="email"
                     type="email"
                     {...register('email')}
                     placeholder="user@example.com"
-                    className="h-10 border-gray-200"
+                    className="h-9 sm:h-10 border-gray-200 text-sm"
                   />
                   {errors.email && (
-                    <p className="text-xs text-red-600 font-medium">{(errors.email.message as string)}</p>
+                    <p className="text-[10px] text-red-600 font-medium">{(errors.email.message as string)}</p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-xs font-bold text-gray-600 uppercase">Password *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Password *</Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       {...register('password')}
                       placeholder="Minimum 8 characters"
-                      className="h-10 pr-10 border-gray-200"
+                      className="h-9 sm:h-10 pr-10 border-gray-200 text-sm"
                     />
                     <Button
                       type="button"
@@ -259,20 +274,20 @@ export function ParticipantDialog({
                     </Button>
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-red-600 font-medium">{(errors.password.message as string)}</p>
+                    <p className="text-[10px] text-red-600 font-medium">{(errors.password.message as string)}</p>
                   )}
                 </div>
               </>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-xs font-bold text-gray-600 uppercase">Role *</Label>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="role" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Role *</Label>
                 <Select
                   value={watch('role')}
                   onValueChange={(value) => setValue('role', value)}
                 >
-                  <SelectTrigger className="h-10 border-gray-200">
+                  <SelectTrigger className="h-9 sm:h-10 border-gray-200 text-sm">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -281,77 +296,77 @@ export function ParticipantDialog({
                   </SelectContent>
                 </Select>
                 {errors.role && (
-                  <p className="text-xs text-red-600 font-medium">{(errors.role.message as string)}</p>
+                  <p className="text-[10px] text-red-600 font-medium">{(errors.role.message as string)}</p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="full_name" className="text-xs font-bold text-gray-600 uppercase">Full Name *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Full Name *</Label>
                 <Input
                   id="full_name"
                   {...register('full_name')}
                   placeholder="John Doe"
-                  className="h-10 border-gray-200"
+                  className="h-9 sm:h-10 border-gray-200 text-sm"
                 />
                 {errors.full_name && (
-                  <p className="text-xs text-red-600 font-medium">{(errors.full_name.message as string)}</p>
+                  <p className="text-[10px] text-red-600 font-medium">{(errors.full_name.message as string)}</p>
                 )}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="job_title" className="text-xs font-bold text-gray-600 uppercase">Job Title</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="job_title" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Job Title</Label>
               <Input
                 id="job_title"
                 {...register('job_title')}
                 placeholder="Senior Registrar"
-                className="h-10 border-gray-200"
+                className="h-9 sm:h-10 border-gray-200 text-sm"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="department" className="text-xs font-bold text-gray-600 uppercase">Department</Label>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="department" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Department</Label>
                 <Input
                   id="department"
                   {...register('department')}
                   placeholder="Medicine"
-                  className="h-10 border-gray-200"
+                  className="h-9 sm:h-10 border-gray-200 text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-xs font-bold text-gray-600 uppercase">Phone</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Phone</Label>
                 <Input
                   id="phone"
                   type="tel"
                   {...register('phone')}
                   placeholder="+1234567890"
-                  className="h-10 border-gray-200"
+                  className="h-9 sm:h-10 border-gray-200 text-sm"
                 />
               </div>
             </div>
 
             {isEdit && (
-              <div className="space-y-2">
-                <Label htmlFor="bio" className="text-xs font-bold text-gray-600 uppercase">Bio</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="bio" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Bio</Label>
                 <Textarea
                   id="bio"
                   {...register('bio')}
                   placeholder="Brief description..."
-                  rows={3}
-                  className="border-gray-200"
+                  rows={2}
+                  className="border-gray-200 text-sm"
                 />
               </div>
             )}
 
             {isEdit && (
-              <div className="space-y-2">
-                <Label htmlFor="status" className="text-xs font-bold text-gray-600 uppercase">Status</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="status" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</Label>
                 <Select
                   value={watch('status')}
                   onValueChange={(value) => setValue('status', value)}
                 >
-                  <SelectTrigger className="h-10 border-gray-200">
+                  <SelectTrigger className="h-9 sm:h-10 border-gray-200 text-sm">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -362,16 +377,21 @@ export function ParticipantDialog({
               </div>
             )}
           </div>
-
-          <DialogFooter className="p-4 sm:p-6 sm:py-5 border-t border-gray-100 flex-shrink-0 bg-gray-50/30 flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Button type="button" variant="outline" onClick={handleClose} className="h-10 sm:h-11 px-6 font-bold rounded-xl w-full sm:w-auto order-2 sm:order-1">
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading} className="h-10 sm:h-11 px-8 font-bold shadow-lg shadow-primary/20 rounded-xl w-full sm:w-auto order-1 sm:order-2">
-              {isLoading ? 'Saving...' : isEdit ? 'Update Participant' : 'Create Participant'}
-            </Button>
-          </DialogFooter>
         </form>
+
+        <DialogFooter className="p-4 sm:p-6 sm:py-4 border-t border-gray-100 shrink-0 bg-gray-50/50 flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <Button type="button" variant="outline" onClick={handleClose} className="h-10 sm:h-11 px-6 font-bold rounded-xl w-full sm:w-auto order-2 sm:order-1 text-xs">
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            form="participant-form"
+            disabled={isLoading} 
+            className="h-10 sm:h-11 px-8 font-bold shadow-lg shadow-primary/20 rounded-xl w-full sm:w-auto order-1 sm:order-2 text-xs"
+          >
+            {isLoading ? 'Saving...' : isEdit ? 'Update Participant' : 'Create Participant'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

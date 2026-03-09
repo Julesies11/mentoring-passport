@@ -21,6 +21,8 @@ import { supabase } from '@/lib/supabase';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 
+import { handleAvatarUpload } from '@/lib/api/profiles';
+
 interface ProfileAvatarProps {
   userId: string;
   currentAvatar?: string | null;
@@ -77,39 +79,26 @@ export function ProfileAvatar({
 
     setIsUploading(true);
     try {
-      // Generate unique file name with user ID folder structure
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${userId}/${userId}-${Date.now()}.${fileExt}`;
-      
-      // Upload to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('mp-avatars')
-        .upload(fileName, selectedFile, {
-          upsert: true,
-          contentType: selectedFile.type,
-        });
+      // Use the Gold Standard handler instead of raw upload
+      const fileName = await handleAvatarUpload(userId, selectedFile);
 
-      if (uploadError) throw uploadError;
+      if (fileName) {
+        // Update database to link the new filename
+        const { error: updateError } = await supabase
+          .from('mp_profiles')
+          .update({ avatar_url: fileName })
+          .eq('id', userId);
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('mp-avatars')
-        .getPublicUrl(fileName);
+        if (updateError) throw updateError;
 
-      // Update user profile in database (store only the filename, not full path)
-      const { error: updateError } = await supabase
-        .from('mp_profiles')
-        .update({ avatar_url: fileName.split('/').pop() })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
-
-      onAvatarChange?.(fileName.split('/').pop() || null);
-      setDialogOpen(false);
-      setSelectedFile(null);
-      setPreviewUrl('');
+        onAvatarChange?.(fileName);
+        setDialogOpen(false);
+        setSelectedFile(null);
+        setPreviewUrl('');
+      }
     } catch (error) {
       console.error('Error uploading avatar:', error);
+      // handleAvatarUpload already logs to mp_error_logs
     } finally {
       setIsUploading(false);
     }
