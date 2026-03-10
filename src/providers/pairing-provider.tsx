@@ -14,8 +14,31 @@ const PairingContext = createContext<PairingContextType | undefined>(undefined);
 
 export function PairingProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { data: pairings = [], isLoading } = useUserPairs(user?.id || '');
+  const { data: rawPairings = [], isLoading } = useUserPairs(user?.id || '');
   const [selectedPairingId, setSelectedPairingId] = useState<string | null>(null);
+
+  // Apply custom sorting: Active status > Latest Program > Name
+  const pairings = React.useMemo(() => {
+    return [...rawPairings].sort((a, b) => {
+      // 1. Sort by Status (Active Pair AND Active Program first)
+      const aActive = a.status === 'active' && a.program?.status === 'active';
+      const bActive = b.status === 'active' && b.program?.status === 'active';
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      // 2. Sort by Latest Program Start Date (desc)
+      const aDate = a.program?.start_date ? new Date(a.program.start_date).getTime() : 0;
+      const bDate = b.program?.start_date ? new Date(b.program.start_date).getTime() : 0;
+      if (aDate !== bDate) return bDate - aDate;
+
+      // 3. Sort by Name
+      const aIsMentor = a.mentor_id === user?.id;
+      const bIsMentor = b.mentor_id === user?.id;
+      const aName = (aIsMentor ? a.mentee?.full_name : a.mentor?.full_name) || '';
+      const bName = (bIsMentor ? b.mentee?.full_name : b.mentor?.full_name) || '';
+      return aName.localeCompare(bName);
+    });
+  }, [rawPairings, user?.id]);
 
   // Initialize selected pairing
   useEffect(() => {
@@ -28,9 +51,8 @@ export function PairingProvider({ children }: { children: React.ReactNode }) {
           setSelectedPairingId(savedId);
         }
       } else {
-        // Default to the first active pairing or just the first pairing
-        const firstActive = pairings.find(p => p.status === 'active');
-        const defaultId = firstActive?.id || pairings[0].id;
+        // Default to the first pairing in the list (which is now sorted by "Double-Active" first)
+        const defaultId = pairings[0].id;
         if (selectedPairingId !== defaultId) {
           setSelectedPairingId(defaultId);
         }
@@ -40,7 +62,7 @@ export function PairingProvider({ children }: { children: React.ReactNode }) {
         setSelectedPairingId(null);
       }
     }
-  }, [pairings, isLoading, user?.id]); // Removed selectedPairingId from deps to avoid loop
+  }, [pairings, isLoading, user?.id, selectedPairingId]);
 
   // Persist selection
   const handleSetSelectedPairingId = (id: string | null) => {

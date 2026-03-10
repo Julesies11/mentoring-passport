@@ -76,7 +76,7 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
   // updating parent state during rendering of this component.
   useEffect(() => {
     onFilesChange?.(state.files);
-  }, [state.files]);
+  }, [state.files, onFilesChange]);
 
   const validateFile = useCallback(
     (file: File | FileMetadata): string | null => {

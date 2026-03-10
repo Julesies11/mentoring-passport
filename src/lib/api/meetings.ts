@@ -77,19 +77,25 @@ export function getMeetingStatus(dateTime: string): 'upcoming' | 'past' {
 /**
  * Fetch all meetings (supervisor only)
  */
-export async function fetchAllMeetings(): Promise<Meeting[]> {
-  const { data, error } = await supabase
+export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
+  let query = supabase
     .from('mp_meetings')
     .select(`
       *,
-      mp_pairs(
+      mp_pairs!inner(
         id,
+        program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
-    `)
-    .order('date_time', { ascending: false });
+    `);
+
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    query = query.eq('mp_pairs.program_id', programId);
+  }
+
+  const { data, error } = await query.order('date_time', { ascending: false });
 
   if (error) {
     console.error('Error fetching meetings:', error);
@@ -235,17 +241,22 @@ export async function deleteMeeting(meetingId: string): Promise<void> {
 /**
  * Get meeting statistics
  */
-export async function fetchMeetingStats() {
-  const { data: meetingsData, error: meetingsError } = await supabase
+export async function fetchMeetingStats(programId?: string) {
+  let query = supabase
     .from('mp_meetings')
-    .select('date_time');
+    .select('date_time, mp_pairs!inner(program_id)');
+
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    query = query.eq('mp_pairs.program_id', programId);
+  }
+
+  const { data: meetingsData, error: meetingsError } = await query;
 
   if (meetingsError) {
     console.error('Error fetching meeting stats:', meetingsError);
     throw meetingsError;
   }
 
-  const now = new Date();
   const stats = {
     total: meetingsData.length,
     upcoming: meetingsData.filter(m => isFuture(new Date(m.date_time))).length,

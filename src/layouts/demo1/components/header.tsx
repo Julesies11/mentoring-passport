@@ -1,7 +1,7 @@
 import { NotificationsSheet } from '@/partials/topbar/notifications-sheet';
 import { UserDropdownMenu } from '@/partials/topbar/user-dropdown-menu';
 import { Bell } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Breadcrumb } from './breadcrumb';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function Header() {
   const mobileMode = useIsMobile();
@@ -47,8 +48,9 @@ export function Header() {
           </div>
         )}
 
-        {/* Right: Notifications + User Avatar */}
-        <div className="flex items-center gap-3">
+        {/* Right: Program Selector + Notifications + User Avatar */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ProgramSelector />
           <NotificationsSheet
             trigger={
               <Button

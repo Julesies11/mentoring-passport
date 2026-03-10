@@ -4,6 +4,14 @@ import { usePairs } from '../use-pairs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as pairsApi from '@/lib/api/pairs';
 
+// Mock useOrganisation
+vi.mock('@/providers/organisation-provider', () => ({
+  useOrganisation: vi.fn(() => ({
+    activeProgram: { id: 'prog1' },
+    isLoading: false
+  })),
+}));
+
 // Mock the API layer
 vi.mock('@/lib/api/pairs', () => ({
   fetchPairs: vi.fn(),
@@ -35,7 +43,7 @@ describe('usePairs', () => {
   it('fetches pairs correctly', async () => {
     const mockPairs = [{ id: 'p1', status: 'active' }];
     vi.mocked(pairsApi.fetchPairs).mockResolvedValue(mockPairs);
-    vi.mocked(pairsApi.fetchPairStats).mockResolvedValue({ total: 1 });
+    vi.mocked(pairsApi.fetchPairStats).mockResolvedValue({ total: 1 } as any);
 
     const { result } = renderHook(() => usePairs(), { wrapper: createWrapper() });
 
@@ -58,7 +66,7 @@ describe('usePairs', () => {
     await result.current.createPairAsync(newPair);
 
     expect(pairsApi.createPair).toHaveBeenCalledWith(
-      expect.objectContaining(newPair),
+      expect.objectContaining({ ...newPair, program_id: 'prog1' }),
       expect.anything()
     );
   });

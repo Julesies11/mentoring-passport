@@ -33,12 +33,12 @@ export function ProgramMemberDashboardPage() {
 
   // Group pairings by role for the user (only active ones for dashboard)
   const mentorPairings = useMemo(() => 
-    pairings.filter(p => p.mentor_id === user?.id && p.status === 'active'),
+    pairings.filter(p => p.mentor_id === user?.id && p.status === 'active' && p.program?.status === 'active'),
     [pairings, user?.id]
   );
   
   const menteePairings = useMemo(() => 
-    pairings.filter(p => p.mentee_id === user?.id && p.status === 'active'),
+    pairings.filter(p => p.mentee_id === user?.id && p.status === 'active' && p.program?.status === 'active'),
     [pairings, user?.id]
   );
 
@@ -126,6 +126,21 @@ export function ProgramMemberDashboardPage() {
 
     return (
       <div key={stat.pair.id} className="mb-8 sm:mb-12 last:mb-0">
+        {/* Program Header */}
+        <div className="flex items-center gap-2 mb-4 px-1">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full border border-gray-200 shadow-sm">
+            <KeenIcon icon="abstract-24" className="text-primary text-[10px]" />
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">
+              {stat.pair.program?.name || 'Standard Program'}
+            </span>
+          </div>
+          {stat.pair.program?.status !== 'active' && (
+            <Badge variant="outline" className="bg-gray-100 text-gray-500 border-none text-[8px] font-black uppercase h-5">
+              Inactive Program
+            </Badge>
+          )}
+        </div>
+
         {/* Progress Card (Full Width at Top) */}
         <Card className="border-primary/10 bg-primary/[0.02] shadow-none mb-3 sm:mb-5 lg:mb-7.5 border-0 sm:border">
           <CardContent className="p-4 sm:p-6">

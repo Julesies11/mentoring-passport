@@ -98,6 +98,7 @@ export const SupabaseAdapter = {
     password_confirmation: string,
     firstName?: string,
     lastName?: string,
+    organisationId?: string,
   ): Promise<AuthModel> {
     if (password !== password_confirmation) {
       throw new Error('Passwords do not match');
@@ -111,8 +112,9 @@ export const SupabaseAdapter = {
           username: email.split('@')[0], // Default username from email
           first_name: firstName || '',
           last_name: lastName || '',
-          fullname:
+          full_name:
             firstName && lastName ? `${firstName} ${lastName}`.trim() : '',
+          organisation_id: organisationId,
           created_at: new Date().toISOString(),
         },
       },
@@ -269,6 +271,7 @@ export const SupabaseAdapter = {
       department: profile.department,
       bio: profile.bio,
       status: profile.status,
+      organisation_id: profile.organisation_id,
       must_change_password: profile.must_change_password,
     };
   },

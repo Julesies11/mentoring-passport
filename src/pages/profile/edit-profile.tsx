@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAvatarUrl, handleAvatarUpload } from '@/lib/api/profiles';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { ImageInput, type ImageInputFile } from '@/components/image-input';
 import { KeenIcon } from '@/components/keenicons';

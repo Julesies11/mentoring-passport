@@ -1,5 +1,3 @@
-import { logError } from '../logger';
-
 /**
  * Validates an image file before processing.
  * @returns { error?: string }
@@ -23,11 +21,6 @@ export function validateAvatar(file: File): { error?: string } {
 /**
  * Resizes an image to a specific dimension using a "step-down" approach for better quality 
  * and memory safety. Optimized for mobile.
- * 
- * @param file The original image file
- * @param targetWidth Target width
- * @param targetHeight Target height
- * @returns A Promise that resolves to a Blob
  */
 export async function resizeImage(
   file: File,
@@ -42,54 +35,62 @@ export async function resizeImage(
       URL.revokeObjectURL(imageUri);
       
       try {
-        let width = img.width;
-        let height = img.height;
+        const originalWidth = img.width;
+        const originalHeight = img.height;
         
-        // Calculate final dimensions
-        const ratio = width / height;
-        if (width > height) {
-          width = targetWidth;
-          height = targetWidth / ratio;
-        } else {
-          height = targetHeight;
-          width = targetHeight * ratio;
+        // Calculate final dimensions while maintaining aspect ratio
+        let finalWidth = originalWidth;
+        let finalHeight = originalHeight;
+        const ratio = originalWidth / originalHeight;
+
+        if (originalWidth > targetWidth || originalHeight > targetHeight) {
+          if (originalWidth > originalHeight) {
+            finalWidth = targetWidth;
+            finalHeight = targetWidth / ratio;
+          } else {
+            finalHeight = targetHeight;
+            finalWidth = targetHeight * ratio;
+          }
         }
 
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Optimization: no alpha
+        const ctx = canvas.getContext('2d', { alpha: false });
         
-        if (!ctx) {
-          throw new Error('Could not get canvas context');
-        }
+        if (!ctx) throw new Error('Could not get canvas context');
 
-        // --- STEP DOWN SCALING (GOLD STANDARD) ---
-        // We scale down in 50% increments to avoid aliasing artifacts and high memory spikes
-        let cur = {
-          width: Math.floor(img.width),
-          height: Math.floor(img.height)
-        };
-
-        const tmpCanvas = document.createElement('canvas');
-        const tmpCtx = tmpCanvas.getContext('2d', { alpha: false });
-        
-        if (!tmpCtx) throw new Error('Could not get temp canvas context');
-
-        // Scale down loop
-        while (cur.width * 0.5 > width) {
-          cur.width = Math.floor(cur.width * 0.5);
-          cur.height = Math.floor(cur.height * 0.5);
-          
-          tmpCanvas.width = cur.width;
-          tmpCanvas.height = cur.height;
-          tmpCtx.drawImage(img, 0, 0, cur.width, cur.height);
-        }
-
-        // Final scale
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = finalWidth;
+        canvas.height = finalHeight;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(tmpCanvas.width > 0 ? tmpCanvas : img, 0, 0, width, height);
+
+        // --- STEP DOWN SCALING ---
+        // Only step down if the image is at least 2x the target size
+        if (originalWidth > finalWidth * 2) {
+          const tmpCanvas = document.createElement('canvas');
+          const tmpCtx = tmpCanvas.getContext('2d', { alpha: false });
+          if (!tmpCtx) throw new Error('Could not get temp canvas context');
+
+          let cw = originalWidth;
+          let ch = originalHeight;
+
+          // Start from original image
+          let source: CanvasImageSource = img;
+
+          while (cw * 0.5 > finalWidth) {
+            cw = Math.floor(cw * 0.5);
+            ch = Math.floor(ch * 0.5);
+            
+            tmpCanvas.width = cw;
+            tmpCanvas.height = ch;
+            tmpCtx.drawImage(source, 0, 0, cw, ch);
+            source = tmpCanvas; // Next iteration uses the scaled-down version
+          }
+          
+          ctx.drawImage(tmpCanvas, 0, 0, finalWidth, finalHeight);
+        } else {
+          // Direct draw for smaller images or those not needing step-down
+          ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
+        }
         
         canvas.toBlob(
           (blob) => {

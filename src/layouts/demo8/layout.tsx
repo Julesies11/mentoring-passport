@@ -4,10 +4,8 @@ import { SearchDialog } from '@/partials/dialogs/search/search-dialog';
 import { ChatSheet } from '@/partials/topbar/chat-sheet';
 import { Download, MessageCircleMore, Search } from 'lucide-react';
 
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { MENU_SIDEBAR } from '@/config/menu.config';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useBodyClass } from '@/hooks/use-body-class';
-import { useMenu } from '@/hooks/use-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSettings } from '@/providers/settings-provider';
 import { Button } from '@/components/ui/button';
@@ -20,8 +18,6 @@ export function Demo8Layout() {
   const isMobile = useIsMobile();
   const { setOption } = useSettings();
   const { pathname } = useLocation();
-  const { getCurrentItem } = useMenu(pathname);
-  const item = getCurrentItem(MENU_SIDEBAR);
 
   // Using the custom hook to set classes on the body
   useBodyClass(`

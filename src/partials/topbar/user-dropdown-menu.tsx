@@ -1,11 +1,10 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import {
-  IdCard,
   UserCircle,
+  Layers,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
-import { toAbsoluteUrl } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,19 +13,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
-import { getAvatarUrl } from '@/lib/api/profiles';
+import { 
+  Avatar, 
+  AvatarFallback, 
+  AvatarImage 
+} from '@/components/ui/avatar';
+import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
-  const { logout, user } = useAuth();
+  const { logout, user, isSupervisor } = useAuth();
   const navigate = useNavigate();
 
   // Use display data from currentUser
   const displayName = user?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
-  const displayAvatar = user?.avatar_url ? 
-    getAvatarUrl(user.id, user.avatar_url) :
-    toAbsoluteUrl('/media/avatars/300-2.png');
+  const avatarUrl = getAvatarPublicUrl(user?.avatar_url, user?.id);
 
   const handleLogout = () => {
     logout();
@@ -39,11 +40,12 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
       <DropdownMenuContent className="w-64" side="bottom" align="end">
         {/* Header */}
         <div className="flex items-center gap-3 p-3">
-          <img
-            className="size-10 rounded-full border border-gray-200 object-cover"
-            src={displayAvatar}
-            alt="User avatar"
-          />
+          <Avatar className="size-10">
+            <AvatarImage src={avatarUrl} alt={displayName} />
+            <AvatarFallback className="bg-primary text-primary-foreground font-bold">
+              {getInitials(displayName)}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold text-gray-900 truncate">
               {displayName}
@@ -62,10 +64,22 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             to="/profile/edit"
             className="flex items-center gap-2"
           >
-            <UserCircle />
+            <UserCircle className="size-4" />
             My Profile
           </Link>
         </DropdownMenuItem>
+
+        {isSupervisor && (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/supervisor/programs"
+              className="flex items-center gap-2"
+            >
+              <Layers className="size-4" />
+              Mentoring Programs
+            </Link>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuSeparator />
 

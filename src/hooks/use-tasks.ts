@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { toast } from 'sonner';
 import {
   fetchTasks,
@@ -23,15 +24,13 @@ import {
 export function useTasks() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeOrganisation } = useOrganisation();
+  const organisationId = activeOrganisation?.id;
 
   const { data: tasks = [], isLoading, error } = useQuery<Task[]>({
-    queryKey: ['tasks'],
-    queryFn: () => fetchTasks(),
-  });
-
-  const { data: allStatuses = [] } = useQuery({
-    queryKey: ['pair-tasks', 'all-statuses'],
-    queryFn: fetchAllPairTaskStatuses,
+    queryKey: ['tasks', organisationId],
+    queryFn: () => typeof organisationId === 'string' ? fetchTasks(organisationId) : Promise.resolve([]),
+    enabled: typeof organisationId === 'string',
   });
 
   const reorderTasksMutation = useMutation({

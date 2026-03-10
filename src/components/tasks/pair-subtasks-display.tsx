@@ -15,7 +15,6 @@ interface PairSubTasksDisplayProps {
 
 export function PairSubTasksDisplay({
   subtasks,
-  pairTaskId,
 }: PairSubTasksDisplayProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();

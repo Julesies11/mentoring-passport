@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -49,7 +50,9 @@ import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 
 export function SupervisorMasterTasksPage() {
   const { user } = useAuth();
+  const { activeOrganisation } = useOrganisation();
   const queryClient = useQueryClient();
+  const organisationId = activeOrganisation?.id;
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -78,9 +81,9 @@ export function SupervisorMasterTasksPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['master-tasks'],
-    queryFn: () => fetchTasks(true),
-    enabled: user?.role === 'supervisor',
+    queryKey: ['master-tasks', organisationId],
+    queryFn: () => fetchTasks(organisationId, true),
+    enabled: user?.role === 'supervisor' && !!organisationId,
   });
 
   // Automatically expand all tasks by default
@@ -93,7 +96,13 @@ export function SupervisorMasterTasksPage() {
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (data: { task: Omit<Task, 'id' | 'created_at' | 'updated_at'>, subtasks: any[] }) => {
-      const newTask = await createTask(data.task);
+      if (!organisationId) throw new Error('Organisation not found');
+      
+      const newTask = await createTask({
+        ...data.task,
+        organisation_id: organisationId
+      });
+      
       if (data.subtasks && data.subtasks.length > 0) {
         await Promise.all(
           data.subtasks.map((st, index) => 
@@ -445,6 +454,7 @@ export function SupervisorMasterTasksPage() {
           <div className="border-0 sm:border sm:rounded-xl sm:bg-card sm:shadow-sm min-w-0 w-full">
             <CardHeader className="hidden sm:flex flex-row items-center justify-end py-4">
               <Button
+                variant="outline"
                 size="sm"
                 onClick={openCreateDialog}
               >

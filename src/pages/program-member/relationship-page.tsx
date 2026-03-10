@@ -9,15 +9,14 @@ import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 export function ProgramMemberRelationshipPage() {
-  const { isMentor, isMentee } = useAuth();
-  const { pairings: pairs = [], isLoading, selectedPairing } = usePairing();
+  const { isMentor } = useAuth();
+  const { pairings: pairs = [], isLoading } = usePairing();
   const navigate = useNavigate();
 
   const getStatusVariant = (status: string) => {
@@ -35,7 +34,6 @@ export function ProgramMemberRelationshipPage() {
 
   const renderRelationshipCard = (pair: any) => {
     const person = isMentor ? pair.mentee : pair.mentor;
-    const roleLabel = isMentor ? 'Mentee' : 'Mentor';
 
     if (!person) return null;
 

@@ -13,8 +13,10 @@ describe('SupervisorChecklistPage Integration', () => {
     expect(screen.getByText(/Choose a pair/)).toBeInTheDocument();
 
     // Select a pair from dropdown
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'p1' } });
+    await waitFor(() => {
+      const select = screen.getByRole('combobox');
+      fireEvent.change(select, { target: { value: 'p1' } });
+    });
 
     // Wait for tasks to load
     await waitFor(() => {
@@ -26,7 +28,10 @@ describe('SupervisorChecklistPage Integration', () => {
     render(<SupervisorChecklistPage />);
 
     // Select pair first
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'p1' } });
+    await waitFor(() => {
+      const select = screen.getByRole('combobox');
+      fireEvent.change(select, { target: { value: 'p1' } });
+    });
 
     // Click "Add Custom Task"
     await waitFor(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   type Meeting, 
@@ -14,7 +14,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -75,7 +74,7 @@ export function MeetingDialog({
   });
 
   const contextPair = pairings.find(p => p.id === internalPairId);
-  const { data: fetchedPair, isLoading: isPairLoading } = useQuery({
+  const { data: fetchedPair } = useQuery({
     queryKey: ['pair', internalPairId],
     queryFn: () => fetchPair(internalPairId),
     enabled: !!internalPairId && open && !contextPair,
@@ -217,20 +216,25 @@ export function MeetingDialog({
     const partner = isUserMentor ? pair.mentee : pair.mentor;
     const partnerName = partner?.full_name || partner?.email || 'Unknown User';
     const partnerRole = isUserMentor ? 'Mentee' : 'Mentor';
-    const isActive = pair.status === 'active';
+    const isProgramActive = pair.program?.status === 'active';
 
     if (isSupervisor) {
       return (
-        <div className="flex items-center justify-between w-full py-1 gap-2">
-          <div className="flex flex-col min-w-0">
-            <span className="font-bold text-xs truncate">{pair.mentor?.full_name}</span>
-            <span className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Mentor</span>
+        <div className="flex flex-col w-full py-1 gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-xs truncate">{pair.mentor?.full_name}</span>
+              <span className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Mentor</span>
+            </div>
+            <span className="text-gray-300 shrink-0 text-[10px]">↔</span>
+            <div className="flex flex-col items-end min-w-0 text-right">
+              <span className="font-bold text-xs truncate">{pair.mentee?.full_name}</span>
+              <span className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Mentee</span>
+            </div>
           </div>
-          <span className="text-gray-300 shrink-0 text-[10px]">↔</span>
-          <div className="flex flex-col items-end min-w-0 text-right">
-            <span className="font-bold text-xs truncate">{pair.mentee?.full_name}</span>
-            <span className="text-[8px] text-gray-400 uppercase font-black tracking-tighter">Mentee</span>
-          </div>
+          <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest truncate border-t border-gray-50 pt-1">
+            {pair.program?.name || 'Standard Program'}
+          </span>
         </div>
       );
     }
@@ -244,7 +248,7 @@ export function MeetingDialog({
             userName={partnerName}
             size="sm"
           />
-          {isActive && (
+          {isProgramActive && (
             <span className="absolute bottom-0 right-0 size-2 bg-success rounded-full border border-white"></span>
           )}
         </div>
@@ -253,12 +257,35 @@ export function MeetingDialog({
           <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight truncate block">
             {partnerRole} • {partner?.job_title || 'Participant'}
           </span>
+          <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest truncate block">
+            {pair.program?.name || 'Standard Program'}
+          </span>
         </div>
       </div>
     );
   };
 
-  const availablePairs = isSupervisor ? allPairs : pairings;
+  const availablePairs = useMemo(() => {
+    const sourcePairs = isSupervisor ? allPairs : pairings;
+    
+    // 1. Only show "Double-Active" pairs (Active Pair AND Active Program)
+    const activeOnly = sourcePairs.filter(p => 
+      p.status === 'active' && p.program?.status === 'active'
+    );
+
+    // 2. Apply Gold Standard Sorting
+    return [...activeOnly].sort((a, b) => {
+      // Latest Program Start Date (desc)
+      const aDate = a.program?.start_date ? new Date(a.program.start_date).getTime() : 0;
+      const bDate = b.program?.start_date ? new Date(b.program.start_date).getTime() : 0;
+      if (aDate !== bDate) return bDate - aDate;
+
+      // Name alphabetical
+      const aName = (isSupervisor ? a.mentor?.full_name : (a.mentor_id === user?.id ? a.mentee?.full_name : a.mentor?.full_name)) || '';
+      const bName = (isSupervisor ? b.mentor?.full_name : (b.mentor_id === user?.id ? b.mentee?.full_name : b.mentor?.full_name)) || '';
+      return aName.localeCompare(bName);
+    });
+  }, [allPairs, pairings, isSupervisor, user?.id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -284,11 +311,13 @@ export function MeetingDialog({
               {(isSupervisor || pairings.length > 1) && !meeting ? (
                 <Select value={internalPairId} onValueChange={setInternalPairId}>
                   <SelectTrigger 
-                    className="h-9 sm:h-10 py-2 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm" 
+                    className="h-9 sm:h-10 py-2 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm overflow-hidden" 
                     aria-label="Select a mentoring pair"
                     data-testid="pair-select-trigger"
                   >
-                    <SelectValue placeholder="Select a mentoring pair" />
+                    <div className="flex-1 min-w-0 overflow-hidden text-left">
+                      <SelectValue placeholder="Select a mentoring pair" />
+                    </div>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[450px]">
                     {availablePairs.map((pair) => (
@@ -323,21 +352,23 @@ export function MeetingDialog({
                 required
                 disabled={!internalPairId || isTasksLoading}
               >
-                <SelectTrigger id="pair_task_id" data-testid="task-select-trigger" className="h-9 sm:h-10 py-2 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm text-left">
-                  <SelectValue placeholder={!internalPairId ? "Select a pair first" : "Select a task"} />
+                <SelectTrigger id="pair_task_id" data-testid="task-select-trigger" className="h-9 sm:h-10 py-2 rounded-xl border-gray-200 bg-white font-bold text-xs sm:text-sm text-left overflow-hidden">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <SelectValue placeholder={!internalPairId ? "Select a pair first" : "Select a task"} />
+                  </div>
                 </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[450px]">
+                <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[calc(100vw-2rem)] sm:max-w-[450px]">
                   {tasks.filter(t => t.status !== 'completed' || t.id === formData.pair_task_id).map((task) => {
                     const isCompleted = task.status === 'completed';
                     const isAwaiting = task.status === 'awaiting_review';
                     
                     return (
                       <SelectItem key={task.id} value={task.id} className="py-2" data-testid={`task-option-${task.id}`}>
-                        <div className="flex items-start justify-between w-full gap-3">
-                          <span className="font-bold text-[11px] leading-normal">{task.name}</span>
+                        <div className="flex items-center justify-between w-full gap-3 min-w-0">
+                          <span className="font-bold text-[11px] leading-normal truncate flex-1 min-w-0">{task.name}</span>
                           <Badge 
                             variant={isCompleted ? 'success' : (isAwaiting ? 'warning' : 'outline')} 
-                            className="shrink-0 text-[7px] h-3.5 uppercase font-black tracking-widest border-none mt-0.5"
+                            className="shrink-0 text-[7px] h-3.5 uppercase font-black tracking-widest border-none"
                           >
                             {isCompleted ? 'Validated' : (isAwaiting ? 'Review' : 'Pending')}
                           </Badge>
@@ -415,10 +446,10 @@ export function MeetingDialog({
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-3">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-3">
             <div className="flex flex-1 gap-2 sm:gap-3">
               <Button type="button" variant="outline" className="flex-1 h-10 rounded-xl font-bold text-xs border-gray-200" onClick={() => onOpenChange(false)}>
-                Cancel
+                Dismiss
               </Button>
               <Button type="submit" className="flex-1 h-10 rounded-xl font-bold text-xs shadow-lg shadow-primary/20" disabled={isSubmitting || !formData.title || !formData.date_time || !formData.pair_task_id || !internalPairId}>
                 {isSubmitting ? (
@@ -434,11 +465,11 @@ export function MeetingDialog({
               <Button 
                 type="button" 
                 variant="outline" 
-                className="h-10 rounded-xl font-bold text-xs border-danger/20 text-danger hover:bg-danger hover:text-white transition-all px-4"
+                className="h-10 sm:w-auto w-full rounded-xl font-bold text-[10px] sm:text-xs border-danger/20 text-danger hover:bg-danger hover:text-white transition-all px-4"
                 onClick={handleCancelMeeting}
               >
                 <KeenIcon icon="trash" className="mr-1.5" />
-                Cancel
+                Cancel Meeting
               </Button>
             )}
           </div>

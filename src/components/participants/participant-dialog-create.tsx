@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,7 +23,6 @@ import {
 import { Eye, EyeOff, X } from 'lucide-react';
 import { KeenIcon } from '@/components/keenicons';
 import { ImageInput, type ImageInputFile } from '@/components/image-input';
-import { toAbsoluteUrl } from '@/lib/helpers';
 import type { CreateParticipantInput } from '@/lib/api/participants';
 
 const createParticipantSchema = z.object({

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@/test/utils';
+import { render, screen, waitFor } from '@/test/utils';
 import userEvent from '@testing-library/user-event';
 import { TaskDialog } from '../task-dialog';
 import { describe, it, expect, vi } from 'vitest';
@@ -36,14 +36,9 @@ describe('TaskDialog', () => {
   });
 
   it('initializes notes field with task.evidence_notes', async () => {
-    const user = userEvent.setup();
     render(<TaskDialog {...defaultProps} />);
     
-    // 1. Click "Get Started" to go to Step 2 (Reflection)
-    const startBtn = screen.getByText(/Get Started/i);
-    await user.click(startBtn);
-
-    // 2. Find notes area
+    // Find notes area
     const notesArea = screen.getByPlaceholderText(/What progress have you made/);
     expect(notesArea).toHaveValue('Initial progress note');
   });
@@ -53,23 +48,17 @@ describe('TaskDialog', () => {
     const onSubmitEvidence = vi.fn().mockResolvedValue(undefined);
     render(<TaskDialog {...defaultProps} onSubmitEvidence={onSubmitEvidence} />);
     
-    // 1. Go to Reflection (Step 2)
-    await user.click(screen.getByText(/Get Started/i));
-    
-    // 2. Update notes
+    // 1. Update notes
     const notesArea = screen.getByPlaceholderText(/What progress have you made/);
     await user.clear(notesArea);
     await user.type(notesArea, 'Updated progress note');
     
-    // 3. Go to Evidence (Step 3)
-    await user.click(screen.getByText(/Next: Evidence/i));
-
-    // 4. Upload a mock file (Required because requires_submission: true)
+    // 2. Upload a mock file (Required because requires_submission: true)
     const file = new File(['hello'], 'test.png', { type: 'image/png' });
     const input = document.getElementById('file-upload') as HTMLInputElement;
     await user.upload(input, file);
     
-    // 5. Click submit
+    // 3. Click submit
     const submitButton = screen.getByText('Submit for Review');
     // Ensure button is enabled
     await waitFor(() => expect(submitButton).not.toBeDisabled());
@@ -91,7 +80,6 @@ describe('TaskDialog', () => {
   });
 
   it('renders "Complete Task" instead of "Submit for Review" when no submission is required', async () => {
-    const user = userEvent.setup();
     const noSubmissionTask = {
       ...mockTask,
       evidence_type: {
@@ -103,13 +91,7 @@ describe('TaskDialog', () => {
     
     render(<TaskDialog {...defaultProps} task={noSubmissionTask} />);
     
-    // Go to Step 3
-    await user.click(screen.getByText(/Get Started/i));
-    await user.click(screen.getByText(/Next: Evidence/i));
-    
     const completeBtn = screen.getByText('Complete Task');
-    await waitFor(() => expect(completeBtn).not.toBeDisabled());
-    
     expect(completeBtn).toBeInTheDocument();
     expect(screen.queryByText('Submit for Review')).not.toBeInTheDocument();
   });
@@ -119,14 +101,11 @@ describe('TaskDialog', () => {
     const onSubmitEvidence = vi.fn().mockResolvedValue(undefined);
     render(<TaskDialog {...defaultProps} onSubmitEvidence={onSubmitEvidence} />);
     
-    // 1. Go to Reflection (Step 2)
-    await user.click(screen.getByText(/Get Started/i));
-    
-    // 2. Update notes
+    // 1. Update notes
     const notesArea = screen.getByPlaceholderText(/What progress have you made/);
     await user.type(notesArea, '...more');
     
-    // 3. Click Save Draft (available in footer)
+    // 2. Click Save Draft
     const saveButton = screen.getByText('Save Draft');
     await waitFor(() => expect(saveButton).not.toBeDisabled());
     await user.click(saveButton);
@@ -143,7 +122,6 @@ describe('TaskDialog', () => {
   });
 
   it('renders feedback from supervisor when in revision_required status', async () => {
-    const user = userEvent.setup();
     const revisionTask = {
       ...mockTask,
       status: 'revision_required' as const,
@@ -151,11 +129,6 @@ describe('TaskDialog', () => {
     };
     
     render(<TaskDialog {...defaultProps} task={revisionTask} />);
-    
-    // Dialog starts on Step 2 for revision_required
-    // Click Back to Overview (Step 1)
-    const backBtn = screen.getByText(/Back to Overview/i);
-    await user.click(backBtn);
     
     // Use getAllByText as there might be a badge and a section header
     const feedbackLabels = screen.getAllByText(/Revision Requested/i);

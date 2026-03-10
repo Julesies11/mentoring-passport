@@ -1,11 +1,9 @@
 import { ChevronDown, ChevronRight, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { KeenIcon } from '@/components/keenicons';
 
 interface SubTaskRowProps {
-  taskId: string;
   subtasks?: any[];
   isExpanded: boolean;
   onToggle: () => void;
@@ -13,7 +11,6 @@ interface SubTaskRowProps {
 }
 
 export function SubTaskRow({
-  taskId,
   subtasks = [],
   isExpanded,
   onToggle,

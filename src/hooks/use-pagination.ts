@@ -19,11 +19,11 @@ export function usePagination<T>({
     return Math.ceil(items.length / itemsPerPage) || 1;
   }, [items.length, itemsPerPage]);
 
-  // Reset to page 1 when filters or items per page change
-  // We exclude currentPage from deps to avoid the infinite loop bug
+  // Reset to page 1 when filters, items length, or items per page change
+  // We exclude items directly from deps to avoid potential infinite loops if items reference changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [...resetDeps, itemsPerPage]);
+  }, [resetDeps, items.length, itemsPerPage]);
 
   // Get current slice of items
   const paginatedItems = useMemo(() => {

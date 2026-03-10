@@ -86,12 +86,21 @@ export function TaskProgressGrid({
                     {task.status === 'awaiting_review' && <Badge className="bg-yellow-100 text-yellow-700 border-none text-[8px] h-4 uppercase font-black px-1.5 ml-2 align-middle">Awaiting Review</Badge>}
                     {isRevision && <Badge className="bg-red-100 text-red-700 border-none text-[7px] h-3.5 uppercase font-black px-1 ml-1.5 align-middle animate-pulse">Revision Required</Badge>}
                   </div>
-                  {task.status === 'completed' && task.completed_at && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
-                      <KeenIcon icon="check-circle" className="text-success text-[12px]" />
-                      <span>Completed by {task.completed_by?.full_name || 'System'} on {format(new Date(task.completed_at), 'MMM d, yyyy')}</span>
-                    </div>
-                  )}
+
+                  <div className="flex flex-col gap-1">
+                    {task.submitted_at && (task.status === 'awaiting_review' || task.status === 'completed' || task.status === 'revision_required') && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+                        <KeenIcon icon="send" className="text-gray-400 text-[12px]" />
+                        <span>Submitted {format(new Date(task.submitted_at), 'MMM d, yyyy')}</span>
+                      </div>
+                    )}
+                    {task.status === 'completed' && task.completed_at && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+                        <KeenIcon icon="check-circle" className="text-success text-[12px]" />
+                        <span>Completed by {task.completed_by?.full_name || 'System'} on {format(new Date(task.completed_at), 'MMM d, yyyy')}</span>
+                      </div>
+                    )}
+                  </div>
                   {isRevision && task.last_feedback && (
                     <div className="bg-red-50/50 border border-red-100 p-3 rounded-xl mt-1 space-y-1">
                       <p className="text-[9px] font-black text-red-700 uppercase tracking-widest leading-none">Supervisor Feedback</p>
@@ -209,11 +218,18 @@ export function TaskProgressGrid({
                         <p className="text-[11px] text-red-800 font-medium italic leading-snug break-words">"{task.last_feedback}"</p>
                       </div>
                     )}
-                    {task.status === 'completed' && task.completed_at && (
-                      <p className="text-[10px] text-muted-foreground mt-1 font-medium">
-                        Completed {format(new Date(task.completed_at), 'MMM d')}
-                      </p>
-                    )}
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      {task.submitted_at && (task.status === 'awaiting_review' || task.status === 'completed' || task.status === 'revision_required') && (
+                        <p className="text-[10px] text-muted-foreground font-medium">
+                          Submitted {format(new Date(task.submitted_at), 'MMM d')}
+                        </p>
+                      )}
+                      {task.status === 'completed' && task.completed_at && (
+                        <p className="text-[10px] text-muted-foreground font-medium">
+                          Completed {format(new Date(task.completed_at), 'MMM d')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

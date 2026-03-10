@@ -4,7 +4,6 @@ import React from 'react';
 import {
   formatBytes,
   useFileUpload,
-  type FileWithPreview,
 } from '@/hooks/use-file-upload';
 import {
   Alert,
@@ -13,8 +12,6 @@ import {
   AlertIcon,
   AlertTitle,
 } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { KeenIcon } from '@/components/keenicons';
 import {
   FileArchiveIcon,

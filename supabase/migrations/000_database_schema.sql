@@ -77,9 +77,11 @@ create table public.mp_profiles (
   updated_at timestamp with time zone not null default now(),
   must_change_password boolean not null default false,
   job_title text null,
+  organisation_id uuid null,
   constraint mp_profiles_pkey primary key (id),
   constraint mp_profiles_email_key unique (email),
   constraint mp_profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE,
+  constraint mp_profiles_organisation_id_fkey foreign KEY (organisation_id) references mp_organisations (id) on delete set null,
   constraint mp_profiles_role_check check (
     (
       role = any (array['supervisor'::text, 'program-member'::text])
@@ -95,6 +97,8 @@ create table public.mp_profiles (
 create index IF not exists idx_mp_profiles_role on public.mp_profiles using btree (role) TABLESPACE pg_default;
 
 create index IF not exists idx_mp_profiles_status on public.mp_profiles using btree (status) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_profiles_organisation_id on public.mp_profiles using btree (organisation_id) TABLESPACE pg_default;
 
 create trigger mp_update_profiles_updated_at BEFORE
 update on mp_profiles for EACH row
@@ -147,9 +151,11 @@ create table public.mp_pairs (
   status text not null default 'active'::text,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
+  program_id uuid null,
   constraint mp_pairs_pkey primary key (id),
   constraint mp_pairs_mentee_id_fkey foreign KEY (mentee_id) references mp_profiles (id) on delete CASCADE,
   constraint mp_pairs_mentor_id_fkey foreign KEY (mentor_id) references mp_profiles (id) on delete CASCADE,
+  constraint mp_pairs_program_id_fkey foreign KEY (program_id) references mp_programs (id) on delete CASCADE,
   constraint different_users check ((mentor_id <> mentee_id)),
   constraint mp_pairs_status_check check (
     (
@@ -169,6 +175,8 @@ create index IF not exists idx_mp_pairs_mentor on public.mp_pairs using btree (m
 create index IF not exists idx_mp_pairs_mentee on public.mp_pairs using btree (mentee_id) TABLESPACE pg_default;
 
 create index IF not exists idx_mp_pairs_status on public.mp_pairs using btree (status) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_pairs_program_id on public.mp_pairs using btree (program_id) TABLESPACE pg_default;
 
 create unique INDEX IF not exists idx_mp_pairs_active_uniqueness on public.mp_pairs using btree (mentor_id, mentee_id) TABLESPACE pg_default
 where
@@ -302,4 +310,45 @@ execute FUNCTION mp_notify_task_completed ();
 
 create trigger mp_update_pair_tasks_updated_at BEFORE
 update on mp_pair_tasks for EACH row
+execute FUNCTION mp_update_updated_at_column ();
+
+create table public.mp_organisations (
+  id uuid not null default gen_random_uuid (),
+  name text not null,
+  logo_url text null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint mp_organisations_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create trigger mp_update_organisations_updated_at BEFORE
+update on mp_organisations for EACH row
+execute FUNCTION mp_update_updated_at_column ();
+
+create table public.mp_programs (
+  id uuid not null default gen_random_uuid (),
+  organisation_id uuid not null,
+  name text not null,
+  start_date date null,
+  end_date date null,
+  status text not null default 'active'::text,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint mp_programs_pkey primary key (id),
+  constraint mp_programs_organisation_id_fkey foreign KEY (organisation_id) references mp_organisations (id) on delete CASCADE,
+  constraint mp_programs_status_check check (
+    (
+      status = any (
+        array[
+          'active'::text,
+          'inactive'::text,
+          'archived'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create trigger mp_update_programs_updated_at BEFORE
+update on mp_programs for EACH row
 execute FUNCTION mp_update_updated_at_column ();

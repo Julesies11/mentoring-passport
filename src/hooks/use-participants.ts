@@ -8,7 +8,6 @@ import {
   archiveParticipant,
   restoreParticipant,
   fetchParticipantStats,
-  type CreateParticipantInput,
   type UpdateParticipantInput,
 } from '@/lib/api/participants';
 
@@ -19,12 +18,12 @@ export function useParticipants() {
 
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['participants'],
-    queryFn: fetchParticipants,
+    queryFn: () => fetchParticipants(),
   });
 
   const { data: stats } = useQuery({
     queryKey: ['participants', 'stats'],
-    queryFn: fetchParticipantStats,
+    queryFn: () => fetchParticipantStats(),
   });
 
   const createMutation = useMutation({

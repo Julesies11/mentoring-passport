@@ -40,5 +40,6 @@ export interface UserModel {
   department?: string;
   bio?: string;
   status?: 'active' | 'archived';
+  organisation_id?: UUID;
   must_change_password?: boolean; // Flag to force password change on first login
 }

@@ -45,7 +45,6 @@ describe('usePagination Hook', () => {
   });
 
   it('should reset to page 1 when dependencies change', () => {
-    let searchTerm = '';
     const { result, rerender } = renderHook(
       ({ search }) => usePagination({ items: mockItems, resetDeps: [search], initialItemsPerPage: 10 }),
       { initialProps: { search: '' } }

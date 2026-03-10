@@ -1,4 +1,5 @@
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SignUpPage } from '../signup-page';
 import { render } from '@/test/utils';
@@ -16,6 +17,9 @@ vi.mock('react-router-dom', async () => {
 
 describe('SignUpPage', () => {
   const mockRegister = vi.fn().mockResolvedValue(undefined);
+  
+  // Use a longer timeout for userEvent and animations
+  vi.setConfig({ testTimeout: 15000 });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,19 +31,32 @@ describe('SignUpPage', () => {
   });
 
   it('submits the form with valid data', async () => {
+    const user = userEvent.setup();
     render(<SignUpPage />, { authValue: { register: mockRegister } });
     
-    fireEvent.change(screen.getByPlaceholderText(/enter your first name/i), { target: { value: 'John' } });
-    fireEvent.change(screen.getByPlaceholderText(/enter your last name/i), { target: { value: 'Doe' } });
-    fireEvent.change(screen.getByPlaceholderText(/your email address/i), { target: { value: 'john@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/create a password/i), { target: { value: 'Password123!' } });
-    fireEvent.change(screen.getByPlaceholderText(/confirm your password/i), { target: { value: 'Password123!' } });
+    // 1. Wait for organisations to finish loading (Select becomes enabled)
+    await waitFor(() => {
+      expect(screen.queryByText(/Loading organisations.../i)).not.toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    await user.type(screen.getByPlaceholderText(/^First Name$/i), 'John');
+    await user.type(screen.getByPlaceholderText(/^Last Name$/i), 'Doe');
+    await user.type(screen.getByPlaceholderText(/your email address/i), 'john@example.com');
+    
+    // 2. Select organisation
+    const selectTrigger = screen.getByRole('combobox', { name: /organisation/i });
+    await user.click(selectTrigger);
+    const option = await screen.findByRole('option', { name: 'Fiona Stanley Hospital' });
+    await user.click(option);
+
+    await user.type(screen.getByPlaceholderText(/create a password/i), 'Password123!');
+    await user.type(screen.getByPlaceholderText(/confirm your password/i), 'Password123!');
     
     const termsCheckbox = screen.getByRole('checkbox');
-    fireEvent.click(termsCheckbox);
+    await user.click(termsCheckbox);
     
     const submitButton = screen.getByRole('button', { name: /create account/i });
-    fireEvent.submit(submitButton.closest('form')!);
+    await user.click(submitButton);
 
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith(
@@ -47,45 +64,63 @@ describe('SignUpPage', () => {
         'Password123!',
         'Password123!',
         'John',
-        'Doe'
+        'Doe',
+        'org1'
       );
-    }, { timeout: 4000 });
+    }, { timeout: 10000 });
     
     expect(screen.getByText(/registration successful/i)).toBeInTheDocument();
   });
 
   it('shows error message if registration fails', async () => {
+    const user = userEvent.setup();
     const errorMsg = 'Email already in use';
     const failingRegister = vi.fn().mockRejectedValue(new Error(errorMsg));
     
     render(<SignUpPage />, { authValue: { register: failingRegister } });
     
-    fireEvent.change(screen.getByPlaceholderText(/enter your first name/i), { target: { value: 'John' } });
-    fireEvent.change(screen.getByPlaceholderText(/enter your last name/i), { target: { value: 'Doe' } });
-    fireEvent.change(screen.getByPlaceholderText(/your email address/i), { target: { value: 'existing@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/create a password/i), { target: { value: 'Password123!' } });
-    fireEvent.change(screen.getByPlaceholderText(/confirm your password/i), { target: { value: 'Password123!' } });
-    fireEvent.click(screen.getByRole('checkbox'));
+    // Wait for organisations to load
+    await waitFor(() => {
+      expect(screen.queryByText(/Loading organisations.../i)).not.toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText(/^First Name$/i), 'John');
+    await user.type(screen.getByPlaceholderText(/^Last Name$/i), 'Doe');
+    await user.type(screen.getByPlaceholderText(/your email address/i), 'existing@example.com');
     
-    fireEvent.submit(screen.getByRole('button', { name: /create account/i }).closest('form')!);
+    // Select organisation
+    await user.click(screen.getByRole('combobox', { name: /organisation/i }));
+    await user.click(await screen.findByRole('option', { name: 'Fiona Stanley Hospital' }));
+
+    await user.type(screen.getByPlaceholderText(/create a password/i), 'Password123!');
+    await user.type(screen.getByPlaceholderText(/confirm your password/i), 'Password123!');
+    await user.click(screen.getByRole('checkbox'));
+    
+    await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(screen.getByText(errorMsg)).toBeInTheDocument();
-    }, { timeout: 4000 });
+    }, { timeout: 10000 });
   });
 
   it('shows validation error if passwords do not match', async () => {
+    const user = userEvent.setup();
     render(<SignUpPage />, { authValue: { register: mockRegister } });
     
-    fireEvent.change(screen.getByPlaceholderText(/create a password/i), { target: { value: 'Password123!' } });
-    fireEvent.change(screen.getByPlaceholderText(/confirm your password/i), { target: { value: 'WrongPassword!' } });
-    fireEvent.click(screen.getByRole('checkbox'));
+    // Wait for organisations to load to ensure UI is ready
+    await waitFor(() => {
+      expect(screen.queryByText(/Loading organisations.../i)).not.toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText(/create a password/i), 'Password123!');
+    await user.type(screen.getByPlaceholderText(/confirm your password/i), 'WrongPassword!');
+    await user.click(screen.getByRole('checkbox'));
     
-    fireEvent.submit(screen.getByRole('button', { name: /create account/i }).closest('form')!);
+    await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/passwords don't match/i)).toBeInTheDocument();
-    }, { timeout: 4000 });
+    }, { timeout: 10000 });
     expect(mockRegister).not.toHaveBeenCalled();
   });
 });

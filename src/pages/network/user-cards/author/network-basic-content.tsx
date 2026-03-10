@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { useState } from 'react';
 import { CardAuthor, CardAuthorRow } from '@/partials/cards';
 import { LayoutGrid, List, Search, Settings2 } from 'lucide-react';

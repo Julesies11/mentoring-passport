@@ -1,0 +1,67 @@
+import { useOrganisation } from '@/providers/organisation-provider';
+import { useAuth } from '@/auth/context/auth-context';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select';
+
+export function ProgramSelector() {
+  const { programs, activeProgram, isLoading, setActiveProgram } = useOrganisation();
+  const { isSupervisor } = useAuth();
+
+  // Only show for supervisors
+  if (!isSupervisor) return null;
+  
+  // Show skeleton during initial load
+  if (isLoading) {
+    return <div className="h-8 w-40 animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
+  }
+  
+  if (programs.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select
+        value={activeProgram?.id || ''}
+        onValueChange={(id) => setActiveProgram(id)}
+      >
+        <SelectTrigger 
+          className="h-8 w-[220px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-left min-w-0 flex-1">
+            <div className="flex-1 min-w-0 overflow-hidden leading-tight">
+              <span className="text-[10px] font-black text-primary uppercase tracking-tighter truncate block">
+                {activeProgram?.name || 'Select Program'}
+              </span>
+            </div>
+          </div>
+        </SelectTrigger>
+        <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[350px]">
+          <div className="px-3 py-2 border-b border-gray-50 mb-1">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Switch View Context</span>
+          </div>
+          {programs.map((program) => (
+            <SelectItem 
+              key={program.id} 
+              value={program.id} 
+              className="text-xs font-bold py-2 px-3"
+            >
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className={program.status !== 'active' ? 'text-gray-500' : ''}>
+                  {program.name}
+                </span>
+                {program.status !== 'active' && (
+                  <span className="text-[8px] uppercase font-black text-gray-400 tracking-widest">
+                    {program.status}
+                  </span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}

@@ -4,9 +4,7 @@ import { CalendarDays } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
 import { Outlet, useLocation } from 'react-router-dom';
-import { MENU_SIDEBAR } from '@/config/menu.config';
 import { useBodyClass } from '@/hooks/use-body-class';
-import { useMenu } from '@/hooks/use-menu';
 import { useSettings } from '@/providers/settings-provider';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -22,8 +20,6 @@ import { Toolbar, ToolbarActions, ToolbarHeading } from './components/toolbar';
 
 export function Demo2Layout() {
   const { pathname } = useLocation();
-  const { getCurrentItem } = useMenu(pathname);
-  const item = getCurrentItem(MENU_SIDEBAR);
   const { setOption } = useSettings();
 
   useEffect(() => {

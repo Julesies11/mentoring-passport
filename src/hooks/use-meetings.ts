@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOrganisation } from '@/providers/organisation-provider';
 import {
   fetchAllMeetings,
   fetchPairMeetings,
@@ -13,15 +14,19 @@ import {
 
 export function useAllMeetings() {
   const queryClient = useQueryClient();
+  const { activeProgram } = useOrganisation();
+  const programId = activeProgram?.id;
 
   const { data: meetings = [], isLoading, error } = useQuery({
-    queryKey: ['meetings', 'all'],
-    queryFn: fetchAllMeetings,
+    queryKey: ['meetings', 'all', programId],
+    queryFn: () => fetchAllMeetings(programId),
+    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['meetings', 'stats'],
-    queryFn: fetchMeetingStats,
+    queryKey: ['meetings', 'stats', programId],
+    queryFn: () => fetchMeetingStats(programId),
+    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
   });
 
   const createMutation = useMutation({

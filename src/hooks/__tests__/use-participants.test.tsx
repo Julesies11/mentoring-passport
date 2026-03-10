@@ -4,6 +4,14 @@ import { useParticipants } from '../use-participants';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as participantsApi from '@/lib/api/participants';
 
+// Mock useOrganisation
+vi.mock('@/providers/organisation-provider', () => ({
+  useOrganisation: vi.fn(() => ({
+    activeProgram: { id: 'prog1' },
+    isLoading: false
+  })),
+}));
+
 // Mock the API layer
 vi.mock('@/lib/api/participants', () => ({
   fetchParticipants: vi.fn(),

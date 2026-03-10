@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,14 +13,12 @@ import { KeenIcon } from '@/components/keenicons';
 import { cn } from '@/lib/utils';
 import { TASK_STATUS_COLORS } from '@/config/constants';
 import { format } from 'date-fns';
-import { getFileIcon } from '@/lib/helpers';
 import { 
   FileText, 
   Upload, 
   X, 
   AlertCircle,
-  FileCheck,
-  XCircle
+  FileCheck
 } from 'lucide-react';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
 

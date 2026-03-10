@@ -35,6 +35,11 @@ export const MENU_SUPERVISOR: MenuConfig = [
     path: '/supervisor/evidence-review',
   },
   {
+    title: 'Mentoring Programs',
+    icon: () => <KeenIcon icon="layers" />,
+    path: '/supervisor/programs',
+  },
+  {
     title: 'Calendar',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/supervisor/calendar',

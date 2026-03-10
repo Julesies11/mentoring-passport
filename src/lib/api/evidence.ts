@@ -86,7 +86,7 @@ export async function getEvidenceUrl(path: string | null): Promise<string> {
     }
       
     return data.signedUrl;
-  } catch (err: any) {
+  } catch (_err: any) {
     console.warn('Inaccessible evidence file:', path);
     return '';
   }
@@ -95,21 +95,27 @@ export async function getEvidenceUrl(path: string | null): Promise<string> {
 /**
  * Fetch all evidence (supervisor only)
  */
-export async function fetchAllEvidence(): Promise<Evidence[]> {
-  const { data, error } = await supabase
+export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> {
+  let query = supabase
     .from('mp_evidence_uploads')
     .select(`
       *,
       task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
       subtask:mp_pair_subtasks!pair_subtask_id(id, name),
-      pair:mp_pairs(
+      pair:mp_pairs!inner(
         id,
+        program_id,
         mentor:mentor_id(id, full_name, job_title),
         mentee:mentee_id(id, full_name, job_title)
       ),
       reviewer:mp_profiles!reviewed_by(id, full_name)
-    `)
-    .order('created_at', { ascending: false });
+    `);
+
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    query = query.eq('pair.program_id', programId);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw error;
 
@@ -120,21 +126,27 @@ export async function fetchAllEvidence(): Promise<Evidence[]> {
  * Fetch pending and rejected evidence (supervisor only)
  * Groups multiple file uploads for the same task into a single submission record.
  */
-export async function fetchPendingEvidence(): Promise<Evidence[]> {
-  const { data, error } = await supabase
+export async function fetchPendingEvidence(programId?: string): Promise<Evidence[]> {
+  let query = supabase
     .from('mp_evidence_uploads')
     .select(`
       *,
       task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
       subtask:mp_pair_subtasks!pair_subtask_id(id, name),
-      pair:mp_pairs(
+      pair:mp_pairs!inner(
         id,
+        program_id,
         mentor:mentor_id(id, full_name, avatar_url, job_title),
         mentee:mentee_id(id, full_name, avatar_url, job_title)
       )
     `)
-    .in('status', ['pending', 'rejected'])
-    .order('created_at', { ascending: false });
+    .in('status', ['pending', 'rejected']);
+
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    query = query.eq('pair.program_id', programId);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw error;
 
@@ -281,7 +293,7 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
       const { data: supervisor } = await supabase.from('mp_profiles').select('id').eq('role', 'supervisor').maybeSingle();
       if (supervisor && data.status === 'pending') createNotification(supervisor.id, 'evidence_uploaded', 'Review Required', 'New evidence is awaiting review.', '/supervisor/evidence-review');
     }
-  } catch (e) { /* ignore notification errors */ }
+  } catch (_e) { /* ignore notification errors */ }
 
   return returnData;
 }
@@ -394,8 +406,14 @@ export async function uploadEvidenceFile(file: File, pairId: string): Promise<st
 /**
  * Get evidence statistics
  */
-export async function fetchEvidenceStats() {
-  const { data, error } = await supabase.from('mp_evidence_uploads').select('status');
+export async function fetchEvidenceStats(programId?: string) {
+  let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id)');
+  
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    query = query.eq('pair.program_id', programId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
   return {

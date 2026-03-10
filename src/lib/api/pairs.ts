@@ -4,6 +4,7 @@ export interface Pair {
   id: string;
   mentor_id: string;
   mentee_id: string;
+  program_id: string | null;
   status: 'active' | 'completed' | 'archived';
   created_at: string;
   updated_at: string;
@@ -25,11 +26,18 @@ export interface Pair {
     avatar_url: string | null;
     phone?: string | null;
   };
+  program?: {
+    id: string;
+    name: string;
+    status: string;
+    start_date: string | null;
+  };
 }
 
 export interface CreatePairInput {
   mentor_id: string;
   mentee_id: string;
+  program_id: string;
 }
 
 export interface UpdatePairInput {
@@ -37,16 +45,28 @@ export interface UpdatePairInput {
 }
 
 /**
- * Fetch all pairs with mentor and mentee details
+ * Fetch all pairs for a specific program
  */
-export async function fetchPairs(): Promise<Pair[]> {
-  const { data, error } = await supabase
+export async function fetchPairs(programId?: string): Promise<Pair[]> {
+  // Defensive check: Ensure programId is a string and not an object
+  if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
+    console.warn('fetchPairs called with invalid programId:', programId);
+    return [];
+  }
+
+  let query = supabase
     .from('mp_pairs')
     .select(`
       *,
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
       mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
-    `)
+    `);
+
+  if (programId) {
+    query = query.eq('program_id', programId);
+  }
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(1000);
 
@@ -85,7 +105,19 @@ export async function fetchPair(id: string): Promise<Pair | null> {
  * Also creates pair_tasks for all existing tasks (moved from database trigger to application layer)
  */
 export async function createPair(input: CreatePairInput): Promise<Pair> {
-  // Step 1: Fetch the "Not Applicable" evidence type to use as a fallback
+  // Step 1: Fetch program to get organisation_id
+  const { data: program, error: programError } = await supabase
+    .from('mp_programs')
+    .select('organisation_id')
+    .eq('id', input.program_id)
+    .single();
+
+  if (programError) {
+    console.error('Error fetching program:', programError);
+    throw new Error('Could not find program for the new pair');
+  }
+
+  // Step 2: Fetch the "Not Applicable" evidence type to use as a fallback
   const { data: naEvidenceType } = await supabase
     .from('mp_evidence_types')
     .select('id')
@@ -95,7 +127,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
 
   const fallbackEvidenceTypeId = naEvidenceType?.id;
 
-  // Step 2: Create the pair
+  // Step 3: Create the pair
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
     .insert(input)
@@ -111,11 +143,12 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw pairError;
   }
 
-  // Step 3: Fetch all active tasks from master list
+  // Step 4: Fetch all active tasks from master list FOR THIS ORGANISATION
   const { data: tasks, error: tasksError } = await supabase
     .from('mp_tasks_master')
     .select('id, name, evidence_type_id, sort_order')
     .eq('is_active', true)
+    .eq('organisation_id', program.organisation_id)
     .order('sort_order', { ascending: true });
 
   if (tasksError) {
@@ -123,7 +156,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw tasksError;
   }
 
-  // Step 4: Create pair_tasks for this new pair
+  // Step 5: Create pair_tasks for this new pair
   if (tasks && tasks.length > 0) {
     const pairTasks = tasks.map(task => ({
       pair_id: pair.id,
@@ -146,7 +179,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
         console.error('Error creating pair tasks:', pairTasksError);
       }
 
-      // Step 5: Create pair_subtasks for each pair task
+      // Step 6: Create pair_subtasks for each pair task
       for (const task of tasks) {
         // Fetch master subtasks for this task
         const { data: masterSubtasks, error: subtasksError } = await supabase
@@ -254,10 +287,22 @@ export async function restorePair(id: string): Promise<void> {
 /**
  * Get pair statistics
  */
-export async function fetchPairStats() {
-  const { data, error } = await supabase
+export async function fetchPairStats(programId?: string) {
+  // Defensive check: Ensure programId is a string and not an object
+  if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
+    console.warn('fetchPairStats called with invalid programId:', programId);
+    return { total: 0, active: 0, completed: 0, archived: 0 };
+  }
+
+  let query = supabase
     .from('mp_pairs')
     .select('status');
+
+  if (programId) {
+    query = query.eq('program_id', programId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching meeting stats:', error);
@@ -283,10 +328,10 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     .select(`
       *,
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      program:mp_programs(id, name, status, start_date)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
-    .in('status', ['active', 'completed'])
     .order('created_at', { ascending: false })
     .limit(1000);
 

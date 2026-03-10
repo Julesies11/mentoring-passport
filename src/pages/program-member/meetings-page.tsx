@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '@/auth/context/auth-context';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { Container } from '@/components/common/container';
 import {
@@ -7,7 +6,6 @@ import {
   ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { KeenIcon } from '@/components/keenicons';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
@@ -16,9 +14,9 @@ import { UpcomingMeetingsList } from '@/components/meetings/upcoming-meetings-li
 import { toast } from 'sonner';
 import { usePairing } from '@/providers/pairing-provider';
 import type { Meeting } from '@/lib/api/meetings';
-
 export function ProgramMemberMeetingsPage() {
   const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
+  const isArchived = activePair?.program?.status === 'inactive' || activePair?.status === 'archived';
   const { 
     meetings = [], 
     isLoading, 
@@ -57,7 +55,7 @@ export function ProgramMemberMeetingsPage() {
         toast.success('Meeting scheduled successfully');
       }
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (_error) {
       console.error('Error saving meeting:', error);
       toast.error('Failed to save meeting');
     }
@@ -67,7 +65,7 @@ export function ProgramMemberMeetingsPage() {
     try {
       await deleteMeeting(meetingId);
       toast.success('Meeting removed');
-    } catch (error) {
+    } catch (_error) {
       console.error('Error deleting meeting:', error);
       toast.error('Failed to remove meeting');
     }
@@ -78,7 +76,7 @@ export function ProgramMemberMeetingsPage() {
       const { id, ...updates } = meeting;
       await updateMeeting(id, updates);
       toast.success('Meeting updated successfully');
-    } catch (err) {
+    } catch (_err) {
       console.error('Error updating meeting:', err);
       toast.error('Failed to update meeting');
     }
@@ -94,10 +92,12 @@ export function ProgramMemberMeetingsPage() {
               description="Schedule and manage your mentoring sessions"
             />
             <ToolbarActions>
-              <Button onClick={handleCreateNew}>
-                <KeenIcon icon="plus" />
-                Schedule Meeting
-              </Button>
+              {!isArchived && (
+                <Button onClick={handleCreateNew}>
+                  <KeenIcon icon="plus" />
+                  Schedule Meeting
+                </Button>
+              )}
             </ToolbarActions>
           </Toolbar>
         </Container>
@@ -120,12 +120,14 @@ export function ProgramMemberMeetingsPage() {
               />
               
               {/* Mobile-only Add Button */}
-              <div className="sm:hidden mb-4">
-                 <Button onClick={handleCreateNew} className="w-full h-12 rounded-xl font-bold gap-2">
-                    <KeenIcon icon="plus" />
-                    Schedule New Meeting
-                  </Button>
-              </div>
+              {!isArchived && (
+                <div className="sm:hidden mb-4">
+                   <Button onClick={handleCreateNew} className="w-full h-12 rounded-xl font-bold gap-2">
+                      <KeenIcon icon="plus" />
+                      Schedule New Meeting
+                    </Button>
+                </div>
+              )}
 
               {/* Calendar Section */}
               <div className="space-y-4 pt-4">
@@ -146,6 +148,7 @@ export function ProgramMemberMeetingsPage() {
                     onMeetingDelete={handleDeleteMeeting}
                     onMeetingClick={handleEditMeeting}
                     showAddButton={false}
+                    readOnly={isArchived}
                   />
                 </div>
               </div>

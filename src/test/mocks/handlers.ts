@@ -7,9 +7,17 @@ const mockEvidenceTypes = [
 ];
 
 const mockProfiles = [
-  { id: 'm1', full_name: 'Mentor One', role: 'mentor' },
-  { id: 'me1', full_name: 'Mentee One', role: 'mentee' },
-  { id: 'u1', full_name: 'Supervisor User', role: 'supervisor' },
+  { id: 'm1', full_name: 'Mentor One', role: 'mentor', organisation_id: 'org1' },
+  { id: 'me1', full_name: 'Mentee One', role: 'mentee', organisation_id: 'org1' },
+  { id: 'u1', full_name: 'Supervisor User', role: 'supervisor', organisation_id: 'org1' },
+];
+
+const mockOrganisations = [
+  { id: 'org1', name: 'Fiona Stanley Hospital', logo_url: null },
+];
+
+const mockPrograms = [
+  { id: 'prog1', organisation_id: 'org1', name: 'General Program', status: 'active' },
 ];
 
 const mockPairs = [
@@ -19,6 +27,8 @@ const mockPairs = [
     mentee_id: 'me1',
     mentor: mockProfiles[0],
     mentee: mockProfiles[1],
+    program_id: 'prog1',
+    program: mockPrograms[0],
     status: 'active'
   },
 ];
@@ -96,5 +106,29 @@ export const handlers = [
   // Fetch Subtasks
   http.get('*/rest/v1/mp_pair_subtasks*', () => {
     return HttpResponse.json([]);
+  }),
+
+  // Fetch Organisations
+  http.get('*/rest/v1/mp_organisations*', ({ request }) => {
+    const url = new URL(request.url);
+    const idParam = url.searchParams.get('id');
+    if (idParam) {
+      const id = idParam.includes('.') ? idParam.split('.')[1] : idParam;
+      const org = mockOrganisations.find(o => o.id === id);
+      return HttpResponse.json(org ? [org] : []);
+    }
+    return HttpResponse.json(mockOrganisations);
+  }),
+
+  // Fetch Programs
+  http.get('*/rest/v1/mp_programs*', ({ request }) => {
+    const url = new URL(request.url);
+    const orgIdParam = url.searchParams.get('organisation_id');
+    if (orgIdParam) {
+      const orgId = orgIdParam.includes('.') ? orgIdParam.split('.')[1] : orgIdParam;
+      const filtered = mockPrograms.filter(p => p.organisation_id === orgId);
+      return HttpResponse.json(filtered);
+    }
+    return HttpResponse.json(mockPrograms);
   }),
 ];

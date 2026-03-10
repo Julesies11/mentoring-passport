@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOrganisation } from '@/providers/organisation-provider';
 import {
   fetchAllEvidence,
   fetchPairEvidence,
@@ -12,9 +13,13 @@ import {
 } from '@/lib/api/evidence';
 
 export function useAllEvidence() {
+  const { activeProgram } = useOrganisation();
+  const programId = activeProgram?.id;
+
   return useQuery({
-    queryKey: ['evidence', 'all'],
-    queryFn: fetchAllEvidence,
+    queryKey: ['evidence', 'all', programId],
+    queryFn: () => fetchAllEvidence(programId),
+    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
   });
 }
 
@@ -54,15 +59,19 @@ export function usePairEvidence(pairId: string) {
 
 export function usePendingEvidence() {
   const queryClient = useQueryClient();
+  const { activeProgram } = useOrganisation();
+  const programId = activeProgram?.id;
 
   const { data: evidence = [], isLoading, error } = useQuery({
-    queryKey: ['evidence', 'pending'],
-    queryFn: fetchPendingEvidence,
+    queryKey: ['evidence', 'pending', programId],
+    queryFn: () => fetchPendingEvidence(programId),
+    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['evidence', 'stats'],
-    queryFn: fetchEvidenceStats,
+    queryKey: ['evidence', 'stats', programId],
+    queryFn: () => fetchEvidenceStats(programId),
+    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
   });
 
   const reviewMutation = useMutation({

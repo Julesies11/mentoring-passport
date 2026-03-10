@@ -25,9 +25,8 @@ import type { Evidence } from '@/lib/api/evidence';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { getFileIcon } from '@/lib/helpers';
 import { toast } from 'sonner';
-import { FileText, ExternalLink, CheckCircle, XCircle, Clock, Paperclip, Eye, ImageIcon, History, ListFilter } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, History, ListFilter } from 'lucide-react';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
@@ -87,7 +86,7 @@ export function EvidenceReviewPage() {
       toast.success(reviewAction === 'approve' ? 'Evidence approved' : 'Evidence rejected');
       setReviewDialogOpen(false);
       setSelectedEvidence(null);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to process review');
     }
   };
@@ -280,9 +279,24 @@ export function EvidenceReviewPage() {
                       )}
 
                       {item.status === 'approved' && (
-                        <div className="flex items-center gap-2 px-1 text-success">
-                          <CheckCircle size={16} />
-                          <span className="text-xs font-black uppercase tracking-widest">Validated Submission</span>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 pt-2">
+                          <div className="flex items-center gap-2 px-1 text-success">
+                            <CheckCircle size={16} />
+                            <span className="text-xs font-black uppercase tracking-widest">Validated Submission</span>
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-4 border-l border-gray-100 sm:pl-6">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Submitted</span>
+                              <span className="text-[11px] font-bold text-gray-600">{format(new Date(item.created_at), 'MMM d, yyyy • p')}</span>
+                            </div>
+                            {item.reviewed_at && (
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Reviewed</span>
+                                <span className="text-[11px] font-bold text-gray-600">{format(new Date(item.reviewed_at), 'MMM d, yyyy • p')}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

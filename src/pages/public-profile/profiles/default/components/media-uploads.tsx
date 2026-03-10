@@ -97,7 +97,7 @@ const MediaUploads = () => {
     },
     tooltip: {
       enabled: true,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
         const number = parseInt(series[seriesIndex][dataPointIndex]) * 1000;
         const month = w.globals.seriesX[seriesIndex][dataPointIndex];

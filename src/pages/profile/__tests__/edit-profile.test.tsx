@@ -41,14 +41,14 @@ describe('EditProfilePage', () => {
     });
   });
 
-  it('resets form when discard changes is clicked', () => {
+  it('resets form when cancel is clicked', () => {
     render(<EditProfilePage />);
     
     const nameInput = screen.getByLabelText(/Full Name/i);
     fireEvent.change(nameInput, { target: { value: 'New Name' } });
     
-    const discardButton = screen.getByText(/Discard Changes/i);
-    fireEvent.click(discardButton);
+    const cancelButton = screen.getByText(/Cancel/i);
+    fireEvent.click(cancelButton);
     
     expect(nameInput).toHaveValue('Test Supervisor');
   });

@@ -43,12 +43,38 @@ export interface UpdateParticipantInput {
 /**
  * Fetch all participants
  */
-export async function fetchParticipants(): Promise<Participant[]> {
-  const { data, error } = await supabase
+export async function fetchParticipants(programId?: string): Promise<Participant[]> {
+  let query = supabase
     .from('mp_profiles')
     .select('id, email, role, full_name, job_title, department, avatar_url, phone, status, created_at')
     .order('created_at', { ascending: false })
     .limit(1000);
+
+  // If programId is provided, filter participants who are part of that program
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    // We join through mp_pairs to find participants in the program
+    // A participant is in a program if they are either a mentor or a mentee in a pair
+    const { data: pairProfiles } = await supabase
+      .from('mp_pairs')
+      .select('mentor_id, mentee_id')
+      .eq('program_id', programId);
+    
+    if (pairProfiles) {
+      const ids = new Set<string>();
+      pairProfiles.forEach(p => {
+        if (p.mentor_id) ids.add(p.mentor_id);
+        if (p.mentee_id) ids.add(p.mentee_id);
+      });
+      
+      if (ids.size > 0) {
+        query = query.in('id', Array.from(ids));
+      } else {
+        return []; // No participants in this program
+      }
+    }
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching participants:', error);
@@ -61,14 +87,37 @@ export async function fetchParticipants(): Promise<Participant[]> {
 /**
  * Fetch participants by role
  */
-export async function fetchParticipantsByRole(role: 'supervisor' | 'program-member'): Promise<Participant[]> {
-  const { data, error } = await supabase
+export async function fetchParticipantsByRole(role: 'supervisor' | 'program-member', programId?: string): Promise<Participant[]> {
+  let query = supabase
     .from('mp_profiles')
     .select('id, email, role, full_name, job_title, department, avatar_url, phone, status')
     .eq('role', role)
     .eq('status', 'active')
     .order('full_name', { ascending: true })
     .limit(1000);
+
+  if (programId && typeof programId === 'string' && programId !== '[object Object]' && role === 'program-member') {
+    const { data: pairProfiles } = await supabase
+      .from('mp_pairs')
+      .select('mentor_id, mentee_id')
+      .eq('program_id', programId);
+    
+    if (pairProfiles) {
+      const ids = new Set<string>();
+      pairProfiles.forEach(p => {
+        if (p.mentor_id) ids.add(p.mentor_id);
+        if (p.mentee_id) ids.add(p.mentee_id);
+      });
+      
+      if (ids.size > 0) {
+        query = query.in('id', Array.from(ids));
+      } else {
+        return [];
+      }
+    }
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching participants by role:', error);
@@ -193,10 +242,31 @@ export async function restoreParticipant(id: string): Promise<void> {
 /**
  * Get participant statistics
  */
-export async function fetchParticipantStats() {
-  const { data, error } = await supabase
-    .from('mp_profiles')
-    .select('role, status');
+export async function fetchParticipantStats(programId?: string) {
+  let query = supabase.from('mp_profiles').select('id, role, status');
+
+  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
+    const { data: pairProfiles } = await supabase
+      .from('mp_pairs')
+      .select('mentor_id, mentee_id')
+      .eq('program_id', programId);
+    
+    if (pairProfiles) {
+      const ids = new Set<string>();
+      pairProfiles.forEach(p => {
+        if (p.mentor_id) ids.add(p.mentor_id);
+        if (p.mentee_id) ids.add(p.mentee_id);
+      });
+      
+      if (ids.size > 0) {
+        query = query.in('id', Array.from(ids));
+      } else {
+        return { total: 0, active: 0, archived: 0, supervisors: 0, 'program-members': 0 };
+      }
+    }
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching participant stats:', error);

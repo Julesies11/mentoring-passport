@@ -16,8 +16,17 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { LoaderCircleIcon } from 'lucide-react';
 import { getSignupSchema, SignupSchemaType } from '../forms/signup-schema';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAllOrganisations } from '@/lib/api/organisations';
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -28,6 +37,12 @@ export function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Fetch organisations for the dropdown
+  const { data: organisations = [], isLoading: isLoadingOrgs } = useQuery({
+    queryKey: ['organisations', 'all'],
+    queryFn: fetchAllOrganisations,
+  });
+
   const form = useForm<SignupSchemaType>({
     resolver: zodResolver(getSignupSchema()),
     defaultValues: {
@@ -36,6 +51,7 @@ export function SignUpPage() {
       confirmPassword: '',
       firstName: '',
       lastName: '',
+      organisation_id: '',
       terms: false,
     },
   });
@@ -52,15 +68,13 @@ export function SignUpPage() {
         values.confirmPassword,
         values.firstName,
         values.lastName,
+        values.organisation_id,
       );
 
       // Set success message and metadata
       setSuccessMessage(
         'Registration successful! Please check your email to confirm your account.',
       );
-
-      // After successful registration, you might want to update the user profile
-      // with additional metadata (firstName, lastName, etc.)
 
       // Optionally redirect to login page after a delay
       setTimeout(() => {
@@ -113,29 +127,60 @@ export function SignUpPage() {
           </Alert>
         )}
 
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter your first name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>First Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="First Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Last Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
-          name="lastName"
+          name="organisation_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Last Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter your last name" {...field} />
-              </FormControl>
+              <FormLabel>Organisation</FormLabel>
+              <Select
+                disabled={isLoadingOrgs}
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingOrgs ? "Loading organisations..." : "Select an organisation"} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {organisations.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -234,7 +279,7 @@ export function SignUpPage() {
                   onCheckedChange={field.onChange}
                 />
               </FormControl>
-              <div className="space-y-1 leading-none">
+              <div className="space-y-1 leading-none ml-2">
                 <FormLabel className="text-sm text-muted-foreground">
                   I agree to the and{' '}
                   <Link

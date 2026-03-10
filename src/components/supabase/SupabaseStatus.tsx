@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/badge';
-import { KeenIcon } from '@/components/keenicons';
 
 export function SupabaseStatus() {
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');

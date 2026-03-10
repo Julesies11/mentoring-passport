@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +16,6 @@ import {
 import { Upload, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import { toAbsoluteUrl } from '@/lib/helpers';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 
 import { handleAvatarUpload } from '@/lib/api/profiles';

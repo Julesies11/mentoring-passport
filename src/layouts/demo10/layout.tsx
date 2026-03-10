@@ -5,9 +5,7 @@ import { CalendarDays, Download } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { MENU_SIDEBAR } from '@/config/menu.config';
 import { useBodyClass } from '@/hooks/use-body-class';
-import { useMenu } from '@/hooks/use-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSettings } from '@/providers/settings-provider';
 import { Button } from '@/components/ui/button';
@@ -25,9 +23,7 @@ import { Toolbar, ToolbarActions, ToolbarHeading } from './components/toolbar';
 const Demo10Layout = () => {
   const { setOption } = useSettings();
   const { pathname } = useLocation();
-  const { getCurrentItem } = useMenu(pathname);
   const isMobile = useIsMobile();
-  const item = getCurrentItem(MENU_SIDEBAR);
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(2025, 0, 20),

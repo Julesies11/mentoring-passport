@@ -43,7 +43,7 @@ const getInitialLanguage = () => {
 
 const initialProps: I18nProviderProps = {
   currenLanguage: getInitialLanguage(),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   changeLanguage: (_: Language) => {},
   isRTL: () => false,
 };

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
-import { CreateParticipantInput, UpdateParticipantInput, Participant } from '@/lib/api/participants';
+import { Participant } from '@/lib/api/participants';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,17 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { 
   Search, 
   UserPlus, 
-  MoreVertical, 
-  Edit, 
   UserCheck, 
   UserX,
   Mail,
@@ -47,9 +39,7 @@ export function ParticipantsContent() {
     createParticipantAsync, 
     updateParticipantAsync, 
     archiveParticipant, 
-    restoreParticipant,
-    isCreating,
-    isUpdating
+    restoreParticipant
   } = useParticipants();
 
   const { pairs = [] } = usePairs();
@@ -198,7 +188,7 @@ export function ParticipantsContent() {
       try {
         await archiveParticipant(id);
         toast.success('Participant archived');
-      } catch (err) {
+      } catch (_err) {
         toast.error('Failed to archive participant');
       }
     }
@@ -208,7 +198,7 @@ export function ParticipantsContent() {
     try {
       await restoreParticipant(id);
       toast.success('Participant restored');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Failed to restore participant');
     }
   };
@@ -312,7 +302,11 @@ export function ParticipantsContent() {
                 </SelectContent>
               </Select>
 
-              <Button onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} className="h-9 sm:h-10 rounded-xl font-bold gap-1 sm:gap-2 shrink-0">
+              <Button 
+                variant="outline"
+                onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} 
+                className="h-9 sm:h-10 rounded-xl font-bold gap-1 sm:gap-2 shrink-0"
+              >
                 <UserPlus size={16} className="sm:size-[18px]" />
                 <span className="hidden sm:inline">Add Member</span>
                 <span className="sm:hidden">Add</span>

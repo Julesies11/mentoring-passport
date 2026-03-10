@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { resizeImage, validateAvatar } from '@/lib/utils/image';
 import { logError } from '@/lib/logger';
+import { uploadFile, getPublicUrl } from './storage';
 
 export interface Profile {
   id: string;
@@ -12,6 +12,7 @@ export interface Profile {
   department: string | null;
   phone: string | null;
   avatar_url: string | null;
+  organisation_id: string | null;
   status: 'active' | 'archived';
   created_at: string;
   updated_at: string;
@@ -24,6 +25,7 @@ export interface UpdateProfileInput {
   department?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
+  organisation_id?: string | null;
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<Profile> {
@@ -67,25 +69,15 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 /**
  * Constructs a full public URL for a user's avatar.
- * Handles both absolute URLs and Supabase storage paths.
+ * Reuses the shared storage utility.
  */
 export function getAvatarUrl(userId: string, avatarPath?: string | null): string {
-  if (!avatarPath) return '';
-  
-  // If it's already a full URL, return as is
-  if (avatarPath.startsWith('http')) {
-    return avatarPath;
-  }
-  
-  // Construct Supabase public URL: bucket/userId/filename
-  const fullPath = `${userId}/${avatarPath}`;
-  const { data } = supabase.storage.from('mp-avatars').getPublicUrl(fullPath);
-  return data.publicUrl;
+  return getPublicUrl('mp-avatars', avatarPath, userId);
 }
 
 /**
  * Handles uploading a new avatar or preparing for deletion.
- * Returns the new avatar_url (filename) to be saved in the database.
+ * Reuses the shared storage utility.
  */
 export async function handleAvatarUpload(
   userId: string,
@@ -98,49 +90,12 @@ export async function handleAvatarUpload(
   }
 
   if (file) {
-    // 1. Pre-flight validation (Gold Standard)
-    const validation = validateAvatar(file);
-    if (validation.error) {
-      throw new Error(validation.error);
-    }
-
-    try {
-      // 2. Resize and compress image
-      const resizedBlob = await resizeImage(file, 400, 400);
-      
-      const fileExt = 'jpg';
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`;
-
-      // 3. Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('mp-avatars')
-        .upload(filePath, resizedBlob, { 
-          upsert: true,
-          contentType: 'image/jpeg'
-        });
-
-      if (uploadError) {
-        throw new Error(`Storage upload failed: ${uploadError.message}`);
-      }
-
-      return fileName;
-    } catch (err: any) {
-      // LOG THE FAILURE TO THE DATABASE (GOLD STANDARD)
-      await logError({
-        message: `Avatar upload failed for user ${userId}: ${err.message}`,
-        stack: err.stack,
-        componentName: 'avatar-uploader',
-        metadata: { 
-          originalSize: file.size, 
-          originalType: file.type,
-          fileName: file.name
-        }
-      });
-
-      // RETHROW so the UI can show the specific error
-      throw err;
-    }
+    const fileName = `${userId}-${Date.now()}.jpg`;
+    return await uploadFile(file, {
+      bucket: 'mp-avatars',
+      folder: userId,
+      fileName
+    });
   }
 
   return currentAvatarUrl;

@@ -57,6 +57,7 @@ describe('ProgramMemberDashboardPage', () => {
     const mockPairing = {
       id: 'p1',
       status: 'active',
+      program: { status: 'active', name: 'Test Program' },
       mentor_id: 'u1', // User is mentor
       mentee_id: 'u2',
       mentee: { id: 'u2', full_name: 'Mentee Name', email: 'mentee@test.com' },

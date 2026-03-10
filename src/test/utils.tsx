@@ -3,9 +3,10 @@ import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthContext } from '@/auth/context/auth-context';
 import { UserModel } from '@/auth/lib/models';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { SettingsProvider } from '@/providers/settings-provider';
 import { PairingProvider } from '@/providers/pairing-provider';
+import { OrganisationProvider } from '@/providers/organisation-provider';
 
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ export const mockUser: UserModel = {
   role: 'supervisor',
   full_name: 'Test Supervisor',
   avatar_url: '',
+  organisation_id: 'org1',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
@@ -29,13 +31,22 @@ const defaultAuthValue = {
   loading: false,
   setLoading: () => {},
   saveAuth: () => {},
-  user: mockUser,
+  user: { ...mockUser },
   setUser: () => {},
   login: async () => {},
-  register: async () => {},
-  requestPasswordReset: async () => {},
-  resetPassword: async () => {},
-  resendVerificationEmail: async () => {},
+  register: async (
+    _email: string,
+    _password: string,
+    _password_confirmation: string,
+    _firstName?: string,
+    _lastName?: string,
+  ) => {},
+  requestPasswordReset: async (_email: string) => {},
+  resetPassword: async (
+    _password: string,
+    _password_confirmation: string,
+  ) => {},
+  resendVerificationEmail: async (_email: string) => {},
   getUser: async () => mockUser,
   updateProfile: async () => mockUser,
   logout: () => {},
@@ -52,27 +63,28 @@ const defaultAuthValue = {
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   authValue?: Partial<typeof defaultAuthValue>;
-  initialEntries?: string[];
 }
 
 const customRender = (
   ui: ReactElement,
-  { authValue, initialEntries, ...options }: CustomRenderOptions = {},
+  { authValue, ...options }: CustomRenderOptions = {},
 ) => {
   const queryClient = createTestQueryClient();
   
   const AllTheProviders = ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter initialEntries={initialEntries}>
+    <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
           <AuthContext.Provider value={{ ...defaultAuthValue, ...authValue } as any}>
-            <PairingProvider>
-              {children}
-            </PairingProvider>
+            <OrganisationProvider>
+              <PairingProvider>
+                {children}
+              </PairingProvider>
+            </OrganisationProvider>
           </AuthContext.Provider>
         </SettingsProvider>
       </QueryClientProvider>
-    </MemoryRouter>
+    </BrowserRouter>
   );
 
   return render(ui, { wrapper: AllTheProviders, ...options });

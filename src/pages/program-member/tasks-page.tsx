@@ -27,6 +27,7 @@ export function ProgramMemberTasksPage() {
   const queryClient = useQueryClient();
   const { selectedPairing: selectedPair, pairings, isLoading: pairsLoading, setSelectedPairingId } = usePairing();
   
+  const isArchived = selectedPair?.program?.status === 'inactive' || selectedPair?.status === 'archived';
   const { tasks, stats, isLoading: tasksLoading, updateStatus, updateSubTask } = usePairTasks(selectedPair?.id || '');
 
   // Handle URL parameters for pair selection and task scrolling
@@ -189,7 +190,7 @@ export function ProgramMemberTasksPage() {
 
       queryClient.invalidateQueries({ queryKey: ['pair-evidence', selectedPair.id] });
       setIsTaskDialogOpen(false);
-    } catch (error) {
+    } catch (_error) {
       console.error('Error submitting evidence:', error);
       toast.error('Failed to submit evidence');
     } finally {
@@ -203,7 +204,7 @@ export function ProgramMemberTasksPage() {
       queryClient.invalidateQueries({ queryKey: ['pair-evidence', selectedPair?.id] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', selectedPair?.id] });
       toast.success('Evidence removed');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to remove evidence');
     }
   };
@@ -230,7 +231,7 @@ export function ProgramMemberTasksPage() {
       await deleteMeeting(meetingId);
       setIsMeetingDialogOpen(false);
       toast.success('Meeting deleted successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete meeting');
     }
   };
@@ -247,7 +248,7 @@ export function ProgramMemberTasksPage() {
       setIsMeetingDialogOpen(false);
       setInitialTaskId(null);
       setSelectedMeeting(null);
-    } catch (error) {
+    } catch (_error) {
       toast.error(selectedMeeting ? 'Failed to update meeting' : 'Failed to schedule meeting');
     }
   };
@@ -267,17 +268,8 @@ export function ProgramMemberTasksPage() {
     try {
       updateStatus(taskId, newStatus);
       toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'reset'}`);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to update task status');
-    }
-  };
-
-  const handleToggleSubTask = async (subtaskId: string, currentStatus: boolean) => {
-    try {
-      updateSubTask(subtaskId, { is_completed: !currentStatus });
-      toast.success(`Sub-task ${!currentStatus ? 'completed' : 'reset'}`);
-    } catch (error) {
-      toast.error('Failed to update sub-task status');
     }
   };
 
@@ -346,6 +338,20 @@ export function ProgramMemberTasksPage() {
       <Container className="sm:mt-0 mt-4">
         <PairingSelector />
         
+        {isArchived && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-3 shadow-sm">
+            <div className="size-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+              <KeenIcon icon="information-2" className="text-xl" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black text-amber-900 leading-tight">Read-Only History Mode</span>
+              <span className="text-[11px] font-bold text-amber-700 leading-tight uppercase tracking-wider mt-0.5">
+                This {selectedPair?.program?.status === 'inactive' ? 'program' : 'relationship'} has been finalised and can no longer be edited.
+              </span>
+            </div>
+          </div>
+        )}
+        
         <div className="grid gap-2 sm:gap-5 lg:gap-7.5 min-w-0">
           {/* Progress Card */}
           {stats && (
@@ -382,6 +388,7 @@ export function ProgramMemberTasksPage() {
                 onToggleSubTask={updateSubTask}
                 onCreateMeeting={handleCreateMeeting}
                 onEditMeeting={handleEditMeeting}
+                readOnly={isArchived}
               />            </div>
           </div>
         </div>

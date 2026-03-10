@@ -1,40 +1,33 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/auth/context/auth-context';
-import { useAllPairs, usePairs } from '@/hooks/use-pairs';
+import { usePairs } from '@/hooks/use-pairs';
 import { usePairTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchEvidenceTypes, type PairTask, type PairSubTask } from '@/lib/api/tasks';
+import { type PairTask, type PairSubTask } from '@/lib/api/tasks';
 import { fetchPairEvidence } from '@/lib/api/evidence';
 import { createMeeting } from '@/lib/api/meetings';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { KeenIcon } from '@/components/keenicons';
 import { PairTaskEditDialog } from '@/components/tasks/pair-task-edit-dialog';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
-import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { toast } from 'sonner';
 import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PAIR_STATUS_COLORS } from '@/config/constants';
 
 export function SupervisorChecklistPage() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: pairs = [], isLoading: pairsLoading } = useAllPairs();
-  const { updatePairAsync, archivePairAsync, restorePairAsync } = usePairs();
+  const { pairs = [], isLoading: pairsLoading } = usePairs();
   const [searchParams] = useSearchParams();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('setup');
@@ -73,26 +66,21 @@ export function SupervisorChecklistPage() {
     enabled: !!selectedPairId,
   });
 
-  const { meetings = [], isLoading: meetingsLoading } = useAllMeetings();
+  const { meetings = [] } = useAllMeetings();
   const pairMeetings = useMemo(() => 
     meetings.filter(m => m.pair_id === selectedPairId),
     [meetings, selectedPairId]
   );
 
-  const { data: evidenceTypes = [] } = useQuery({
-    queryKey: ['evidence-types'],
-    queryFn: fetchEvidenceTypes,
-  });
-
   // Memoize avatar URLs to prevent infinite loops from getAvatarPublicUrl
   const mentorAvatarUrl = useMemo(() => 
     selectedPair ? getAvatarPublicUrl(selectedPair.mentor?.avatar_url, selectedPair.mentor?.id) : undefined,
-    [selectedPair?.mentor?.avatar_url, selectedPair?.mentor?.id]
+    [selectedPair]
   );
 
   const menteeAvatarUrl = useMemo(() => 
     selectedPair ? getAvatarPublicUrl(selectedPair.mentee?.avatar_url, selectedPair.mentee?.id) : undefined,
-    [selectedPair?.mentee?.avatar_url, selectedPair?.mentee?.id]
+    [selectedPair]
   );
 
   // Track which pair was last auto-expanded to avoid loops
@@ -200,24 +188,12 @@ export function SupervisorChecklistPage() {
 
   const handleAddTask = () => {
     if (!selectedPairId) return;
-    
-    // Create a temporary task object to pass to the dialog
-    const tempTask: PairTask = {
-      id: 'new-task',
-      pair_id: selectedPairId,
-      name: '',
-      status: 'not_submitted',
-      sort_order: tasks.length + 1,
-      evidence_type_id: '',
-      master_task_id: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
+
     setSelectedTaskId('new-task');
     setIsReadOnly(false);
     setIsEditTaskOpen(true);
   };
+
 
   const handleDeleteTask = (taskId: string) => {
     if (taskId === 'new-task') {
@@ -361,34 +337,8 @@ export function SupervisorChecklistPage() {
       queryClient.invalidateQueries({ queryKey: ['all-meetings'] });
       toast.success('Meeting scheduled and linked to task');
       setIsMeetingDialogOpen(false);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to schedule meeting');
-    }
-  };
-
-  const handlePairStatusChange = async (status: 'active' | 'completed' | 'archived') => {
-    if (!selectedPairId) return;
-    
-    try {
-      if (status === 'archived') {
-        if (window.confirm('Are you sure you want to archive this pair?')) {
-          await archivePairAsync(selectedPairId);
-          toast.success('Pairing archived successfully');
-        }
-      } else if (selectedPair?.status === 'archived' && status === 'active') {
-        await restorePairAsync(selectedPairId);
-        toast.success('Pairing restored to active status');
-      } else {
-        await updatePairAsync(selectedPairId, { status });
-        toast.success(`Pairing status updated to ${status}`);
-      }
-    } catch (error: any) {
-      console.error('Error updating pair status:', error);
-      if (error.code === '23505') {
-        toast.error('Cannot set to active: these participants already have another active pairing.');
-      } else {
-        toast.error('Failed to update status. Please try again.');
-      }
     }
   };
 

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { cn } from '@/lib/utils';
 
 export function PairingSelector() {
   const { user } = useAuth();
@@ -31,7 +32,9 @@ export function PairingSelector() {
         onValueChange={(value) => setSelectedPairingId(value)}
       >
         <SelectTrigger className="h-auto py-3 px-4 bg-white border-gray-200 hover:border-primary transition-all shadow-sm rounded-xl w-full overflow-hidden">
-          <SelectValue placeholder="Choose relationship" />
+          <div className="flex-1 min-w-0 overflow-hidden text-left">
+            <SelectValue placeholder="Choose relationship" />
+          </div>
         </SelectTrigger>
         <SelectContent className="rounded-xl border-gray-200 shadow-xl p-1 max-w-[calc(100vw-2rem)]">
           {pairings.map((pair) => {
@@ -40,12 +43,17 @@ export function PairingSelector() {
             const partnerName = partner?.full_name || partner?.email || 'Unknown User';
             const partnerRole = isUserMentor ? 'Mentee' : 'Mentor';
             const isActive = pair.status === 'active';
+            const isProgramActive = pair.program?.status === 'active';
+            const isFullyActive = isActive && isProgramActive;
 
             return (
               <SelectItem 
                 key={pair.id} 
                 value={pair.id}
-                className="rounded-lg py-2 cursor-pointer focus:bg-primary/5 focus:text-primary mb-1 last:mb-0"
+                className={cn(
+                  "rounded-lg py-2.5 cursor-pointer focus:bg-primary/5 focus:text-primary mb-1 last:mb-0",
+                  !isFullyActive && "bg-gray-50/80 grayscale-[0.5] opacity-80"
+                )}
               >
                 <div className="flex items-center gap-3 w-full overflow-hidden">
                   <div className="relative shrink-0">
@@ -55,21 +63,27 @@ export function PairingSelector() {
                       userName={partnerName}
                       size="md"
                     />
-                    {isActive && (
+                    {isFullyActive && (
                       <span className="absolute bottom-0 right-0 size-2.5 bg-success rounded-full border-2 border-white"></span>
                     )}
                   </div>
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm truncate block">{partnerName}</span>
-                      {!isActive && (
-                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 uppercase font-black tracking-tighter shrink-0">
-                          Past
+                      {!isFullyActive && (
+                        <Badge variant="outline" className="text-[8px] h-3.5 px-1.5 uppercase font-black tracking-tighter shrink-0 bg-gray-100 text-gray-500 border-none">
+                          {pair.program?.status !== 'active' ? 'Inactive Program' : 'Past'}
                         </Badge>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate block">
+                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate block mb-0.5">
                       {partnerRole} • {partner?.job_title || 'Program Participant'}
+                    </span>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-widest truncate block",
+                      isProgramActive ? "text-primary/70" : "text-gray-400"
+                    )}>
+                      {pair.program?.name || 'Standard Program'}
                     </span>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 export interface Task {
   id: string;
   name: string;
+  organisation_id: string;
   evidence_type_id: string | null;
   sort_order: number;
   is_active: boolean;
@@ -65,6 +66,7 @@ export interface PairTask {
   last_feedback?: string | null;
   evidence_notes?: string | null;
   rejection_reason?: string | null;
+  submitted_at: string | null;
   completed_at: string | null;
   completed_by_id: string | null;
   completed_by?: {
@@ -111,7 +113,13 @@ export async function fetchEvidenceTypes(): Promise<EvidenceType[]> {
 /**
  * Fetch all tasks
  */
-export async function fetchTasks(includeInactive: boolean = false): Promise<Task[]> {
+export async function fetchTasks(organisationId?: string, includeInactive: boolean = false): Promise<Task[]> {
+  // Defensive check: Ensure organisationId is a string and not an object
+  if (organisationId && (typeof organisationId !== 'string' || organisationId === '[object Object]')) {
+    console.warn('fetchTasks called with invalid organisationId:', organisationId);
+    return [];
+  }
+
   const query = supabase
     .from('mp_tasks_master')
     .select(`
@@ -122,6 +130,10 @@ export async function fetchTasks(includeInactive: boolean = false): Promise<Task
         evidence_type:mp_evidence_types(id, name, requires_submission)
       )
     `);
+
+  if (organisationId) {
+    query.eq('organisation_id', organisationId);
+  }
 
   // Only filter for active tasks unless explicitly requested
   if (!includeInactive) {
@@ -155,6 +167,7 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       last_feedback,
       evidence_notes,
       rejection_reason,
+      submitted_at,
       completed_at,
       completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
@@ -253,6 +266,10 @@ export async function updatePairTaskStatus(
     updateData.evidence_notes = evidenceNotes;
   }
   
+  if (status === 'awaiting_review') {
+    updateData.submitted_at = new Date().toISOString();
+  }
+
   if (status === 'completed') {
     updateData.completed_at = new Date().toISOString();
     if (userId) {
@@ -290,6 +307,7 @@ export async function updatePairTaskStatus(
       last_feedback,
       evidence_notes,
       rejection_reason,
+      submitted_at,
       completed_at,
       completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
@@ -539,7 +557,7 @@ export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 
  * Update an existing task for a pair
  */
 export async function updatePairTask(taskId: string, updates: Partial<PairTask>): Promise<PairTask> {
-  const { id, pair_id, created_at, updated_at, task, subtasks, evidence_type, ...cleanUpdates } = updates as any;
+  const { id: _id, pair_id: _pair_id, created_at: _created_at, updated_at: _updated_at, task: _task, subtasks: _subtasks, evidence_type: _evidence_type, ...cleanUpdates } = updates as any;
 
   const { error: updateError } = await supabase
     .from('mp_pair_tasks')
@@ -608,7 +626,7 @@ export async function createPairSubTask(subtask: Omit<PairSubTask, 'id' | 'creat
  * Update a pair subtask
  */
 export async function updatePairSubTask(subtaskId: string, updates: Partial<PairSubTask>): Promise<PairSubTask> {
-  const { id, created_at, updated_at, evidence_type, ...cleanUpdates } = updates as any;
+  const { id: _id, created_at: _created_at, updated_at: _updated_at, evidence_type: _evidence_type, ...cleanUpdates } = updates as any;
 
   const { error: updateError } = await supabase
     .from('mp_pair_subtasks')
