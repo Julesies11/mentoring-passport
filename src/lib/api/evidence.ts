@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { createNotification } from '@/lib/api/notifications';
 import { updatePairTaskStatus } from './tasks';
+import { NotificationService } from './notifications-service';
 
 export interface Evidence {
   id: string;
@@ -51,43 +51,19 @@ export interface ReviewEvidenceInput {
 
 /**
  * Helper to get a secure signed URL for a storage path
- * This is needed because the bucket is private.
  */
 export async function getEvidenceUrl(path: string | null): Promise<string> {
   if (!path) return '';
-  
-  // Handle legacy data or already signed URLs
   if (path.startsWith('http')) return path;
 
-  // For private buckets, we need a signed URL
   try {
     const { data, error } = await supabase.storage
       .from('mp-evidence-photos')
-      .createSignedUrl(path, 3600); // 1 hour expiry
+      .createSignedUrl(path, 3600);
       
-    if (error) {
-      // If the error is 'Object not found' or similar, handle it gracefully
-      const isNotFound = error.message.includes('Object not found') || 
-                        error.message.includes('not_found') ||
-                        (error as any).status === 404 ||
-                        (error as any).status === 400;
-
-      if (!isNotFound) {
-        const { logError } = await import('@/lib/logger');
-        await logError({
-          message: `Failed to sign evidence URL: ${error.message}`,
-          componentName: 'evidence-api',
-          severity: 'warning',
-          metadata: { storagePath: path, error }
-        });
-      }
-      
-      return ''; 
-    }
-      
+    if (error) return '';
     return data.signedUrl;
   } catch (_err: any) {
-    console.warn('Inaccessible evidence file:', path);
     return '';
   }
 }
@@ -116,15 +92,12 @@ export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> 
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
-
   if (error) throw error;
-
   return groupEvidenceByTask(data || []);
 }
 
 /**
  * Fetch pending and rejected evidence (supervisor only)
- * Groups multiple file uploads for the same task into a single submission record.
  */
 export async function fetchPendingEvidence(programId?: string): Promise<Evidence[]> {
   let query = supabase
@@ -147,31 +120,21 @@ export async function fetchPendingEvidence(programId?: string): Promise<Evidence
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
-
   if (error) throw error;
-
   return groupEvidenceByTask(data || []);
 }
 
 /**
- * Helper to group evidence records by task/subtask and enrich with signed URLs
+ * Helper to group evidence records by task/subtask
  */
 async function groupEvidenceByTask(data: any[]): Promise<Evidence[]> {
   const groupedMap = new Map<string, any>();
   
-  // 1. Group records by context (task, subtask, or meeting)
   for (const item of data) {
     const groupId = item.pair_task_id || item.pair_subtask_id || item.meeting_id || `no-context-${item.id}`;
-    
     if (!groupedMap.has(groupId)) {
-      // Initialize the group with a clone of the first (latest) item
-      groupedMap.set(groupId, {
-        ...JSON.parse(JSON.stringify(item)),
-        all_files: []
-      });
+      groupedMap.set(groupId, { ...JSON.parse(JSON.stringify(item)), all_files: [] });
     }
-    
-    // Add file to the group if it has a URL
     if (item.file_url) {
       const group = groupedMap.get(groupId)!;
       group.all_files.push(JSON.parse(JSON.stringify(item)));
@@ -179,15 +142,8 @@ async function groupEvidenceByTask(data: any[]): Promise<Evidence[]> {
   }
 
   const finalData = Array.from(groupedMap.values());
-
-  // 2. Parallel enrichment of all URLs across all groups
   await Promise.all(finalData.map(async (group) => {
-    // Enrich the primary file_url of the representative item
-    if (group.file_url) {
-      group.file_url = await getEvidenceUrl(group.file_url);
-    }
-    
-    // Enrich all files in the collection
+    if (group.file_url) group.file_url = await getEvidenceUrl(group.file_url);
     if (group.all_files && group.all_files.length > 0) {
       await Promise.all(group.all_files.map(async (file: any) => {
         if (file.file_url && !file.file_url.startsWith('http')) {
@@ -201,7 +157,7 @@ async function groupEvidenceByTask(data: any[]): Promise<Evidence[]> {
 }
 
 /**
- * Fetch evidence for a specific pair, optionally filtered by task
+ * Fetch evidence for a specific pair
  */
 export async function fetchPairEvidence(pairId: string, taskId?: string): Promise<Evidence[]> {
   let query = supabase
@@ -227,7 +183,7 @@ export async function fetchPairEvidence(pairId: string, taskId?: string): Promis
 }
 
 /**
- * Delete evidence record and its file from storage
+ * Delete evidence record
  */
 export async function deleteEvidence(evidenceId: string): Promise<void> {
   const { data: evidence, error: fetchError } = await supabase
@@ -239,20 +195,15 @@ export async function deleteEvidence(evidenceId: string): Promise<void> {
   if (fetchError) throw fetchError;
 
   if (evidence?.file_url) {
-    const path = evidence.file_url;
-    await supabase.storage.from('mp-evidence-photos').remove([path]);
+    await supabase.storage.from('mp-evidence-photos').remove([evidence.file_url]);
   }
 
-  const { error: deleteError } = await supabase
-    .from('mp_evidence_uploads')
-    .delete()
-    .eq('id', evidenceId);
-
+  const { error: deleteError } = await supabase.from('mp_evidence_uploads').delete().eq('id', evidenceId);
   if (deleteError) throw deleteError;
 }
 
 /**
- * Create new evidence
+ * Create new evidence - Partner Pulse alert
  */
 export async function createEvidence(input: CreateEvidenceInput): Promise<Evidence> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -274,32 +225,39 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
       type: input.file_url ? (input.mime_type?.startsWith('image/') ? 'photo' : 'file') : 'text',
       status: input.status || 'pending',
     })
-    .select('*')
+    .select(`
+      *,
+      task:mp_pair_tasks!pair_task_id(id, name),
+      pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
+    `)
     .single();
 
   if (error) throw error;
 
-  const returnData = {
+  // Pulse notification to partner
+  const pair = data.pair as any;
+  if (pair) {
+    const isMentor = user.id === pair.mentor_id;
+    const recipientId = isMentor ? pair.mentee_id : pair.mentor_id;
+    const submitterName = isMentor ? pair.mentor?.full_name : pair.mentee?.full_name;
+    
+    await NotificationService.notifyEvidencePulse(
+      data.id, 
+      data.task?.name || 'an item', 
+      submitterName || 'Partner', 
+      recipientId,
+      user.id
+    );
+  }
+
+  return {
     ...data,
     file_url: await getEvidenceUrl(data.file_url)
   };
-
-  try {
-    const { data: pair } = await supabase.from('mp_pairs').select('mentor_id, mentee_id').eq('id', input.pair_id).single();
-    if (pair) {
-      const recipientId = user.id === pair.mentor_id ? pair.mentee_id : pair.mentor_id;
-      createNotification(recipientId, 'evidence_uploaded', 'New Evidence', 'New evidence was uploaded for a task.', '/program-member/tasks');
-      
-      const { data: supervisor } = await supabase.from('mp_profiles').select('id').eq('role', 'supervisor').maybeSingle();
-      if (supervisor && data.status === 'pending') createNotification(supervisor.id, 'evidence_uploaded', 'Review Required', 'New evidence is awaiting review.', '/supervisor/evidence-review');
-    }
-  } catch (_e) { /* ignore notification errors */ }
-
-  return returnData;
 }
 
 /**
- * Review evidence (supervisor only)
+ * Review evidence (supervisor only) - Consolidated Alert
  */
 export async function reviewEvidence(
   evidenceId: string,
@@ -325,12 +283,10 @@ export async function reviewEvidence(
   let updateQuery = supabase.from('mp_evidence_uploads').update(updateData);
   
   if (currentEvidence?.pair_task_id) {
-    // Grouped update: Update all pending/rejected evidence for this task
     updateQuery = updateQuery
       .eq('pair_task_id', currentEvidence.pair_task_id)
       .in('status', ['pending', 'rejected']);
   } else {
-    // Single update
     updateQuery = updateQuery.eq('id', evidenceId);
   }
 
@@ -338,16 +294,15 @@ export async function reviewEvidence(
     *,
     task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
     subtask:mp_pair_subtasks!pair_subtask_id(id, name),
-    pair:mp_pairs(id, mentor_id, mentee_id)
+    pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
   `);
 
   if (updateError) throw updateError;
-  const data = updatedRecords[0]; // Use the first updated record for the remainder of the logic
+  const data = updatedRecords[0];
 
   if (data.pair_task_id) {
     try {
       if (input.status === 'approved') {
-        // Clear rejection reason on approval
         await supabase
           .from('mp_pair_tasks')
           .update({ rejection_reason: null })
@@ -355,8 +310,7 @@ export async function reviewEvidence(
           
         await updatePairTaskStatus(data.pair_task_id, 'completed', user.id);
       } else {
-        // Revision Required flow - save reason to task
-        const { error: taskUpdateError } = await supabase
+        await supabase
           .from('mp_pair_tasks')
           .update({ 
             status: 'revision_required',
@@ -364,30 +318,30 @@ export async function reviewEvidence(
             last_feedback: input.rejection_reason || 'Changes requested by supervisor.'
           })
           .eq('id', data.pair_task_id);
-          
-        if (taskUpdateError) throw taskUpdateError;
       }
     } catch (updateError) {
       console.error(`Error updating task status:`, updateError);
     }
   }
 
-  try {
-    const submitterId = data.submitted_by;
-    if (submitterId) {
-      await createNotification(
-        submitterId,
-        data.status === 'approved' ? 'evidence_approved' : 'evidence_rejected',
-        data.status === 'approved' ? 'Evidence Approved' : 'Evidence Needs Revision',
-        data.status === 'approved' 
-          ? 'Your evidence has been approved by the supervisor'
-          : 'Your evidence needs revision. Please check the feedback.',
-        '/program-member/tasks',
-        data.id
-      );
-    }
-  } catch (notificationError) {
-    console.error('Error creating notifications:', notificationError);
+  // 3. Consolidated Notification
+  const pair = data.pair as any;
+  if (pair) {
+    const isMentorSubmitter = data.submitted_by === pair.mentor_id;
+    const partnerId = isMentorSubmitter ? pair.mentee_id : pair.mentor_id;
+    
+    await NotificationService.notifyTaskReviewed(
+      data.pair_task_id || data.id,
+      data.task?.name || 'Evidence',
+      input.status,
+      input.rejection_reason || null,
+      data.submitted_by,
+      partnerId,
+      pair.mentor?.full_name || 'Mentor',
+      pair.mentee?.full_name || 'Mentee',
+      isMentorSubmitter,
+      user.id
+    );
   }
 
   return { ...data, file_url: await getEvidenceUrl(data.file_url) };
@@ -408,14 +362,11 @@ export async function uploadEvidenceFile(file: File, pairId: string): Promise<st
  */
 export async function fetchEvidenceStats(programId?: string) {
   let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id)');
-  
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
   }
-
   const { data, error } = await query;
   if (error) throw error;
-
   return {
     total: data.length,
     pending: data.filter(e => e.status === 'pending').length,

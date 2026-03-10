@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/context/auth-context';
+import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchParticipants,
   fetchParticipantsByRole,
@@ -15,6 +17,7 @@ const EMPTY_ARRAY: any[] = [];
 
 export function useParticipants() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['participants'],
@@ -36,8 +39,20 @@ export function useParticipants() {
   const updateMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateParticipantInput }) =>
       updateParticipant(id, input),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['participants'] });
+    onSuccess: async (updatedParticipant, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      
+      // Check for profile completion notification
+      // A profile is "completed" for the first time when full_name and job_title are provided
+      const oldParticipant = participants.find(p => p.id === variables.id);
+      const isNewlyCompleted = (
+        (!oldParticipant?.full_name || !oldParticipant?.job_title) &&
+        (updatedParticipant.full_name && updatedParticipant.job_title)
+      );
+
+      if (isNewlyCompleted && user?.id) {
+        await NotificationService.notifyProfileCompleted(updatedParticipant.id, updatedParticipant.full_name, user.id);
+      }
     },
   });
 

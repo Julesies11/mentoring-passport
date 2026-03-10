@@ -11,7 +11,7 @@ interface TaskProgressGridProps {
   onToggleExpand: (taskId: string) => void;
   onViewDetails: (task: any) => void;
   onToggleTask?: (taskId: string, currentStatus: string) => void;
-  onToggleSubTask?: (subtaskId: string, currentStatus: boolean) => void;
+  onToggleSubTask?: (subtaskId: string, updates: any) => void;
   onCreateMeeting?: (taskId: string) => void;
   onEditMeeting?: (meeting: any) => void;
   readOnly?: boolean;
@@ -267,13 +267,13 @@ export function TaskProgressGrid({
                     <div 
                       key={st.id} 
                       className="flex items-start gap-3 py-3 px-4 lg:py-3.5 lg:px-5 lg:ml-10 lg:border-l-2 lg:border-l-primary/20 cursor-pointer active:bg-gray-100/50 transition-colors"
-                      onClick={() => onToggleSubTask?.(st.id, st.is_completed)}
+                      onClick={() => onToggleSubTask?.(st.id, { is_completed: !st.is_completed })}
                     >
                       <button
                         disabled={readOnly}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onToggleSubTask?.(st.id, st.is_completed);
+                          onToggleSubTask?.(st.id, { is_completed: !st.is_completed });
                         }}
                         className={cn("size-5 rounded border flex items-center justify-center transition-all shrink-0 mt-0.5",
                           st.is_completed ? "bg-success border-success text-white" : "bg-white border-gray-200"

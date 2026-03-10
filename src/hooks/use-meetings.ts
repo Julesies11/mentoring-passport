@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
+import { useAuth } from '@/auth/context/auth-context';
+import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchAllMeetings,
   fetchPairMeetings,
@@ -14,6 +16,7 @@ import {
 
 export function useAllMeetings() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
 
@@ -31,23 +34,63 @@ export function useAllMeetings() {
 
   const createMutation = useMutation({
     mutationFn: createMeeting,
-    onSuccess: () => {
+    onSuccess: async (newMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      
+      // Notify partner
+      const meetingData = newMeeting as any;
+      if (meetingData.mp_pairs && user?.id) {
+        await NotificationService.notifyMeetingChange(
+          meetingData.id,
+          meetingData.title,
+          meetingData.date_time,
+          meetingData.mp_pairs.mentor_id,
+          meetingData.mp_pairs.mentee_id,
+          user.id,
+          true
+        );
+      }
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ meetingId, input }: { meetingId: string; input: UpdateMeetingInput }) =>
       updateMeeting(meetingId, input),
-    onSuccess: () => {
+    onSuccess: async (updatedMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      
+      // Notify partner
+      const meetingData = updatedMeeting as any;
+      if (meetingData.mp_pairs && user?.id) {
+        await NotificationService.notifyMeetingChange(
+          meetingData.id,
+          meetingData.title,
+          meetingData.date_time,
+          meetingData.mp_pairs.mentor_id,
+          meetingData.mp_pairs.mentee_id,
+          user.id,
+          false
+        );
+      }
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteMeeting,
-    onSuccess: () => {
+    onSuccess: async (deletedMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+
+      // Notify partner
+      const meetingData = deletedMeeting as any;
+      if (meetingData.mp_pairs && user?.id) {
+        await NotificationService.notifyMeetingCancelled(
+          meetingData.title,
+          meetingData.date_time,
+          meetingData.mp_pairs.mentor_id,
+          meetingData.mp_pairs.mentee_id,
+          user.id
+        );
+      }
     },
   });
 
@@ -68,6 +111,7 @@ export function useAllMeetings() {
 
 export function usePairMeetings(pairId: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: meetings = [], isLoading, error } = useQuery({
     queryKey: ['meetings', 'pair', pairId],
@@ -77,18 +121,46 @@ export function usePairMeetings(pairId: string) {
 
   const createMutation = useMutation({
     mutationFn: createMeeting,
-    onSuccess: () => {
+    onSuccess: async (newMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings', 'pair', pairId] });
       queryClient.invalidateQueries({ queryKey: ['meetings', 'all'] });
+      
+      // Notify partner
+      const meetingData = newMeeting as any;
+      if (meetingData.mp_pairs && user?.id) {
+        await NotificationService.notifyMeetingChange(
+          meetingData.id,
+          meetingData.title,
+          meetingData.date_time,
+          meetingData.mp_pairs.mentor_id,
+          meetingData.mp_pairs.mentee_id,
+          user.id,
+          true
+        );
+      }
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ meetingId, input }: { meetingId: string; input: UpdateMeetingInput }) =>
       updateMeeting(meetingId, input),
-    onSuccess: () => {
+    onSuccess: async (updatedMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings', 'pair', pairId] });
       queryClient.invalidateQueries({ queryKey: ['meetings', 'all'] });
+      
+      // Notify partner
+      const meetingData = updatedMeeting as any;
+      if (meetingData.mp_pairs && user?.id) {
+        await NotificationService.notifyMeetingChange(
+          meetingData.id,
+          meetingData.title,
+          meetingData.date_time,
+          meetingData.mp_pairs.mentor_id,
+          meetingData.mp_pairs.mentee_id,
+          user.id,
+          false
+        );
+      }
     },
   });
 

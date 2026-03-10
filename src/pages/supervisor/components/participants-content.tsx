@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 import { Participant } from '@/lib/api/participants';
@@ -32,6 +33,8 @@ import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 
 export function ParticipantsContent() {
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('id');
   const { 
     participants, 
     stats, 
@@ -41,6 +44,24 @@ export function ParticipantsContent() {
     archiveParticipant, 
     restoreParticipant
   } = useParticipants();
+
+  // Effect for highlighting deep-linked participant
+  useEffect(() => {
+    if (highlightId && !isLoading) {
+      // Small delay to ensure table is rendered
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`participant-${highlightId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('bg-primary/5', 'ring-2', 'ring-primary/20');
+          setTimeout(() => {
+            element.classList.remove('bg-primary/5', 'ring-2', 'ring-primary/20');
+          }, 3000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId, isLoading, participants]);
 
   const { pairs = [] } = usePairs();
 
@@ -348,7 +369,8 @@ export function ParticipantsContent() {
                       return (
                         <TableRow 
                           key={p.id} 
-                          className="hover:bg-primary/[0.01] transition-colors group cursor-pointer"
+                          id={`participant-${p.id}`}
+                          className="hover:bg-primary/[0.01] transition-colors group cursor-pointer scroll-mt-20"
                           onClick={() => openEditDialog(p)}
                         >
                           <TableCell className="px-3 sm:px-6 py-3 sm:py-4 overflow-hidden">

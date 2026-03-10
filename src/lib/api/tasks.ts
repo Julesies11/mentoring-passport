@@ -173,6 +173,13 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
       created_at,
       updated_at,
+      pair:mp_pairs!inner(
+        id,
+        mentor_id,
+        mentee_id,
+        mentor:mentor_id(id, full_name),
+        mentee:mentee_id(id, full_name)
+      ),
       task:mp_tasks_master(
         id,
         name,
@@ -198,7 +205,8 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       )
     `)
     .eq('pair_id', pairId)
-    .order('sort_order', { ascending: true });
+    .order('sort_order', { ascending: true })
+    .order('sort_order', { foreignTable: 'mp_pair_subtasks', ascending: true });
 
   if (error) {
     console.error('Error fetching pair tasks:', error);
@@ -276,6 +284,7 @@ export async function updatePairTaskStatus(
       updateData.completed_by_user_id = userId;
     }
   } else {
+    updateData.completed_at = null;
     updateData.completed_by_user_id = null;
   }
 

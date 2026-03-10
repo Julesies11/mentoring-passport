@@ -59,7 +59,8 @@ export function UpcomingMeetingsList({ meetings, isLoading, onMeetingClick }: Up
         {upcomingMeetings.map(meeting => (
           <Card 
             key={meeting.id} 
-            className="border-none shadow-sm bg-white hover:shadow-md transition-all cursor-pointer active:scale-95 group overflow-hidden"
+            id={`meeting-${meeting.id}`}
+            className="border-none shadow-sm bg-white hover:shadow-md transition-all cursor-pointer active:scale-95 group overflow-hidden scroll-mt-20"
             onClick={() => onMeetingClick?.(meeting)}
           >
             <CardContent className="p-4">

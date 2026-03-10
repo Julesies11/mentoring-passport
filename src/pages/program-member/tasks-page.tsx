@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { usePairTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
@@ -27,34 +27,11 @@ export function ProgramMemberTasksPage() {
   const queryClient = useQueryClient();
   const { selectedPairing: selectedPair, pairings, isLoading: pairsLoading, setSelectedPairingId } = usePairing();
   
+  // Ref to track if we've already handled the initial deep-link scroll
+  const hasInitialScrolled = useRef<{taskId: string | null, evidenceId: string | null}>({ taskId: null, evidenceId: null });
+  
   const isArchived = selectedPair?.program?.status === 'inactive' || selectedPair?.status === 'archived';
   const { tasks, stats, isLoading: tasksLoading, updateStatus, updateSubTask } = usePairTasks(selectedPair?.id || '');
-
-  // Handle URL parameters for pair selection and task scrolling
-  useEffect(() => {
-    const pairIdFromUrl = searchParams.get('pair');
-    const taskIdFromUrl = searchParams.get('taskId');
-
-    // 1. Sync pair selection if needed
-    if (pairIdFromUrl && pairIdFromUrl !== selectedPair?.id) {
-      const exists = pairings.find(p => p.id === pairIdFromUrl);
-      if (exists) {
-        setSelectedPairingId(pairIdFromUrl);
-      }
-    }
-
-    // 2. Scroll to task if specified and loaded
-    if (taskIdFromUrl && tasks.length > 0 && !tasksLoading) {
-      // Small delay to ensure DOM is ready after potential re-renders
-      const timer = setTimeout(() => {
-        const element = document.getElementById(`task-${taskIdFromUrl}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, tasks, tasksLoading, pairings, selectedPair?.id, setSelectedPairingId]);
 
   const { data: pairEvidence = [] } = useQuery({
     queryKey: ['pair-evidence', selectedPair?.id],
@@ -94,6 +71,54 @@ export function ProgramMemberTasksPage() {
       };
     });
   }, [tasks, pairEvidence, pairMeetings]);
+
+  // Extract URL parameters for stable dependencies
+  const pairIdFromUrl = searchParams.get('pair');
+  const taskIdFromUrl = searchParams.get('taskId');
+  const evidenceIdFromUrl = searchParams.get('id');
+
+  // Sync pair selection from URL
+  useEffect(() => {
+    if (pairIdFromUrl && pairIdFromUrl !== selectedPair?.id) {
+      const exists = pairings.find(p => p.id === pairIdFromUrl);
+      if (exists) {
+        setSelectedPairingId(pairIdFromUrl);
+      }
+    }
+  }, [pairIdFromUrl, pairings, selectedPair?.id, setSelectedPairingId]);
+
+  // Handle task scrolling (Deep Linking)
+  useEffect(() => {
+    // If we have an evidenceId, find the associated task first
+    let scrollId = taskIdFromUrl;
+    if (evidenceIdFromUrl && pairEvidence.length > 0) {
+      const evidence = pairEvidence.find(e => e.id === evidenceIdFromUrl);
+      if (evidence?.pair_task_id) {
+        scrollId = evidence.pair_task_id;
+      }
+    }
+
+    // Only scroll if we haven't scrolled to THIS specific combination of IDs yet
+    if (scrollId && enrichedTasks.length > 0 && !tasksLoading && 
+        (hasInitialScrolled.current.taskId !== taskIdFromUrl || hasInitialScrolled.current.evidenceId !== evidenceIdFromUrl)) {
+      
+      // Update the ref IMMEDIATELY to prevent multiple triggers while timer is running
+      hasInitialScrolled.current = { taskId: taskIdFromUrl, evidenceId: evidenceIdFromUrl };
+
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`task-${scrollId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+          
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+          }, 3000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [taskIdFromUrl, evidenceIdFromUrl, enrichedTasks.length, tasksLoading, pairEvidence]);
 
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [lastAutoExpandedPairId, setLastAutoExpandedPairId] = useState<string | null>(null);
@@ -191,7 +216,7 @@ export function ProgramMemberTasksPage() {
       queryClient.invalidateQueries({ queryKey: ['pair-evidence', selectedPair.id] });
       setIsTaskDialogOpen(false);
     } catch (_error) {
-      console.error('Error submitting evidence:', error);
+      console.error('Error submitting evidence:', _error);
       toast.error('Failed to submit evidence');
     } finally {
       setIsEvidenceSubmitting(false);
@@ -232,7 +257,7 @@ export function ProgramMemberTasksPage() {
       setIsMeetingDialogOpen(false);
       toast.success('Meeting deleted successfully');
     } catch (_error) {
-      toast.error('Failed to delete meeting');
+      error('Failed to delete meeting');
     }
   };
 
@@ -253,21 +278,43 @@ export function ProgramMemberTasksPage() {
     }
   };
 
-  const handleToggleTask = async (taskId: string, currentStatus: string) => {
+  const handleToggleTask = async (taskId: string, currentStatus: string, forceToggle: boolean = false) => {
     const task = enrichedTasks.find(t => t.id === taskId);
     const requiresSubmission = task?.evidence_type?.requires_submission;
 
-    if (currentStatus !== 'completed' && requiresSubmission) {
+    // Logic: If NOT not_submitted, we are "un-checking" or resetting
+    const isUnchecking = currentStatus !== 'not_submitted';
+
+    if (!forceToggle && !isUnchecking && requiresSubmission) {
       // If task requires evidence, open the dialog instead of just marking as completed
-      setSelectedTask(task);
+      setSelectedTaskId(taskId);
       setIsTaskDialogOpen(true);
       return;
     }
 
-    const newStatus = currentStatus === 'completed' ? 'not_submitted' : 'completed';
+    // If unchecking, reset to not_submitted. If checking, set to completed.
+    const newStatus = isUnchecking ? 'not_submitted' : 'completed';
+    
     try {
-      updateStatus(taskId, newStatus);
-      toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'reset'}`);
+      await updateStatus(taskId, newStatus);
+      
+      // If we just re-opened a completed task, notify the supervisor
+      if (currentStatus === 'completed' && newStatus === 'not_submitted' && user?.id) {
+        const mentorName = task?.pair?.mentor?.full_name || 'Mentor';
+        const menteeName = task?.pair?.mentee?.full_name || 'Mentee';
+        const actorName = user.full_name || user.email || 'Participant';
+        
+        await NotificationService.notifyTaskReopened(
+          task?.name || 'Task',
+          selectedPair?.id || '',
+          mentorName,
+          menteeName,
+          user.id,
+          actorName
+        );
+      }
+
+      toast.success(`Task ${newStatus === 'completed' ? 'completed' : 're-opened'}`);
     } catch (_error) {
       toast.error('Failed to update task status');
     }
@@ -384,7 +431,7 @@ export function ProgramMemberTasksPage() {
                 expandedTasks={expandedTasks}
                 onToggleExpand={handleToggleExpand}
                 onViewDetails={handleViewDetails}
-                onToggleTask={handleToggleTask}
+                onToggleTask={(id, status) => handleToggleTask(id, status, true)}
                 onToggleSubTask={updateSubTask}
                 onCreateMeeting={handleCreateMeeting}
                 onEditMeeting={handleEditMeeting}

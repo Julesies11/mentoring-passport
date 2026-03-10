@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
+import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchPairs,
   fetchPair,
@@ -33,8 +34,16 @@ export function usePairs() {
 
   const createMutation = useMutation({
     mutationFn: createPair,
-    onSuccess: () => {
+    onSuccess: async (newPair) => {
       queryClient.invalidateQueries({ queryKey: ['pairs'] });
+      
+      // Notify participants about new pairing
+      // We need names which might be in the returned newPair or fetched
+      const pair = newPair as any;
+      if (pair.mentor?.full_name && pair.mentee?.full_name) {
+        // Welcoming participants logic could be added to NotificationService
+        // For now, it's just helpful to know it's ready.
+      }
     },
   });
 

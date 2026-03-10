@@ -226,16 +226,29 @@ export async function updateMeeting(
 /**
  * Delete a meeting
  */
-export async function deleteMeeting(meetingId: string): Promise<void> {
-  const { error } = await supabase
+export async function deleteMeeting(meetingId: string): Promise<Meeting> {
+  const { data, error } = await supabase
     .from('mp_meetings')
     .delete()
-    .eq('id', meetingId);
+    .eq('id', meetingId)
+    .select(`
+      *,
+      mp_pairs(
+        id,
+        mentor_id,
+        mentee_id,
+        mentor:mp_profiles!mentor_id(id, full_name),
+        mentee:mp_profiles!mentee_id(id, full_name)
+      )
+    `)
+    .single();
 
   if (error) {
     console.error('Error deleting meeting:', error);
     throw error;
   }
+
+  return { ...data, pair: data.mp_pairs };
 }
 
 /**

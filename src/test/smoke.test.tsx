@@ -1,38 +1,68 @@
-import { render } from '@testing-library/react';
-import { ProgramSelector } from '@/components/common/program-selector';
-import { describe, it, expect } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthContext } from '@/auth/context/auth-context';
-import { OrganisationProvider } from '@/providers/organisation-provider';
-import { mockUser } from './utils';
+import { render } from './utils';
+import { describe, it, expect, vi } from 'vitest';
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: { queries: { retry: false } }
-});
+// Import major pages to test their module resolution and initialization
+import { SupervisorDashboardPage } from '@/pages/supervisor/dashboard-page';
+import { ParticipantsPage } from '@/pages/supervisor/participants-page';
+import { PairsPage } from '@/pages/supervisor/pairs-page';
+import { EvidenceReviewPage } from '@/pages/supervisor/evidence-review-page';
+import { SupervisorChecklistPage } from '@/pages/supervisor/checklist-page';
+import { ProgramMemberTasksPage } from '@/pages/program-member/tasks-page';
+import { ProgramMemberMeetingsPage } from '@/pages/program-member/meetings-page';
 
-const defaultAuth = {
-  user: mockUser,
-  isSupervisor: true,
-  loading: false,
-};
+// Mock some complex chart components or heavy libraries that might fail in JSDOM
+vi.mock('react-apexcharts', () => ({
+  default: () => <div data-testid="mock-chart" />
+}));
 
-describe('App Smoke Test (White Screen Prevention)', () => {
-  it('renders the ProgramSelector without crashing', async () => {
-    const queryClient = createTestQueryClient();
-    
-    // If ProgramSelector has a broken import, this will throw an error during transform
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={defaultAuth as any}>
-          <OrganisationProvider>
-            <ProgramSelector />
-          </OrganisationProvider>
-        </AuthContext.Provider>
-      </QueryClientProvider>
-    );
-    
-    // As long as it renders something (even nothing if programs list is empty), 
-    // it means imports are working.
-    expect(true).toBe(true);
+// We don't need to navigate, just try to RENDER the component in a provider context
+// This will catch:
+// 1. ReferenceErrors (variable used before init)
+// 2. Module resolution errors (bad imports/exports)
+// 3. Syntax errors in the component tree
+
+describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
+  
+  describe('Supervisor Pages', () => {
+    it('Supervisor Dashboard renders without crashing', () => {
+      render(<SupervisorDashboardPage />);
+      expect(true).toBe(true);
+    });
+
+    it('Participants Page renders without crashing', () => {
+      render(<ParticipantsPage />);
+      expect(true).toBe(true);
+    });
+
+    it('Pairs Page renders without crashing', () => {
+      render(<PairsPage />);
+      expect(true).toBe(true);
+    });
+
+    it('Evidence Review Page renders without crashing', () => {
+      render(<EvidenceReviewPage />);
+      expect(true).toBe(true);
+    });
+
+    it('Supervisor Checklist renders without crashing', () => {
+      render(<SupervisorChecklistPage />);
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('Program Member Pages', () => {
+    it('Tasks Page renders without crashing', () => {
+      render(<ProgramMemberTasksPage />, {
+        authValue: { isSupervisor: false, isMentee: true, isMentor: false }
+      });
+      expect(true).toBe(true);
+    });
+
+    it('Meetings Page renders without crashing', () => {
+      render(<ProgramMemberMeetingsPage />, {
+        authValue: { isSupervisor: false, isMentee: true, isMentor: false }
+      });
+      expect(true).toBe(true);
+    });
   });
 });

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { toast } from 'sonner';
+import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchTasks,
   fetchPairTasks,
@@ -16,6 +17,7 @@ import {
   deletePairSubTask,
   reorderPairTasks,
   reorderMasterTasks,
+  togglePairSubTaskCompletion,
   type PairTask,
   type Task,
   type PairSubTask
@@ -109,17 +111,64 @@ export function usePairTasks(pairId: string) {
   const updateStatusMutation = useMutation({
     mutationFn: ({ taskId, status, evidenceNotes }: { taskId: string; status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required'; evidenceNotes?: string }) =>
       updatePairTaskStatus(taskId, status, user?.id, evidenceNotes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
-      queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
+    onSuccess: async (updatedTask) => {
+      // Refresh cache
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] }),
+        queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] })
+      ]);
+
+      // Get pair info from our current list
+      const currentTask = tasks.find(t => t.id === updatedTask.id);
+      const mentorId = currentTask?.pair?.mentor_id;
+      const menteeId = currentTask?.pair?.mentee_id;
+      const mentorName = currentTask?.pair?.mentor?.full_name || 'Mentor';
+      const menteeName = currentTask?.pair?.mentee?.full_name || 'Mentee';
+
+      // 1. Handle Task Submission (Notify Supervisors AND Partner)
+      if (updatedTask.status === 'awaiting_review' && user?.id && mentorId && menteeId) {
+        const actorName = user.full_name || user.email || 'Participant';
+        await NotificationService.notifyTaskSubmitted(
+          updatedTask.name, 
+          pairId, 
+          mentorId, 
+          menteeId, 
+          mentorName, 
+          menteeName, 
+          user.id,
+          actorName
+        );
+      }
+
+      // 2. Check for Milestones (50% / 100%)
+      const freshStats = await fetchPairTaskStats(pairId);
+      const actorName = user.full_name || user.email || 'Participant';
+      if (freshStats.completed === freshStats.total) {
+        await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName);
+      } else if (freshStats.completed >= freshStats.total / 2 && (freshStats.completed - 1) < freshStats.total / 2) {
+        await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName);
+      }
     },
   });
 
   const createPairTaskMutation = useMutation({
     mutationFn: createPairTask,
-    onSuccess: () => {
+    onSuccess: async (newTask) => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
+      
+      // Notify pair about the new task if pair is already active
+      const currentTasks = tasks;
+      const hasStarted = currentTasks.some(t => t.status !== 'not_submitted');
+      
+      if (hasStarted) {
+        const firstTask = currentTasks[0];
+        const mentorId = firstTask?.pair?.mentor_id;
+        const menteeId = firstTask?.pair?.mentee_id;
+        if (mentorId && menteeId && user?.id) {
+          await NotificationService.notifyTaskAdded(newTask.id, newTask.name, mentorId, menteeId, user.id);
+        }
+      }
     },
   });
 
@@ -135,7 +184,7 @@ export function usePairTasks(pairId: string) {
           const updated = old?.map(task => 
             task.id === taskId ? { ...task, ...updates } : task
           );
-          return updated?.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          return updated; // Sorting is handled by the server and initial fetch
         });
       }
       
@@ -172,20 +221,28 @@ export function usePairTasks(pairId: string) {
   });
 
   const updatePairSubTaskMutation = useMutation({
-    mutationFn: ({ subtaskId, updates }: { subtaskId: string; updates: Partial<PairSubTask> }) =>
-      updatePairSubTask(subtaskId, updates),
+    mutationFn: ({ subtaskId, updates }: { subtaskId: string; updates: Partial<PairSubTask> }) => {
+      if (Object.keys(updates).length === 1 && 'is_completed' in updates) {
+        return togglePairSubTaskCompletion(subtaskId, updates.is_completed!, user?.id);
+      }
+      return updatePairSubTask(subtaskId, updates);
+    },
     onMutate: async ({ subtaskId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ['pair-tasks', pairId] });
       const previousTasks = queryClient.getQueryData<PairTask[]>(['pair-tasks', pairId]);
       
       if (previousTasks) {
         queryClient.setQueryData<PairTask[]>(['pair-tasks', pairId], (old) => {
-          return old?.map(task => ({
-            ...task,
-            subtasks: task.subtasks?.map(st => 
-              st.id === subtaskId ? { ...st, ...updates } : st
-            ).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          }));
+          return old?.map(task => {
+            if (!task.subtasks?.some(st => st.id === subtaskId)) return task;
+            
+            return {
+              ...task,
+              subtasks: task.subtasks.map(st => 
+                st.id === subtaskId ? { ...st, ...updates } : st
+              )
+            };
+          });
         });
       }
       
@@ -220,7 +277,6 @@ export function usePairTasks(pairId: string) {
       const previousTasks = queryClient.getQueryData<PairTask[]>(['pair-tasks', pairId]);
       
       if (previousTasks) {
-        // Create a map for quick lookup of new sort orders
         const orderMap = new Map(newOrder.map(item => [item.id, item.sort_order]));
         
         queryClient.setQueryData<PairTask[]>(['pair-tasks', pairId], (old) => {

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { Container } from '@/components/common/container';
 import {
@@ -14,9 +15,12 @@ import { UpcomingMeetingsList } from '@/components/meetings/upcoming-meetings-li
 import { toast } from 'sonner';
 import { usePairing } from '@/providers/pairing-provider';
 import type { Meeting } from '@/lib/api/meetings';
+
 export function ProgramMemberMeetingsPage() {
+  const [searchParams] = useSearchParams();
+  const highlightMeetingId = searchParams.get('id');
   const { pairings: pairs = [], selectedPairing: activePair } = usePairing();
-  const isArchived = activePair?.program?.status === 'inactive' || activePair?.status === 'archived';
+
   const { 
     meetings = [], 
     isLoading, 
@@ -26,6 +30,26 @@ export function ProgramMemberMeetingsPage() {
     isCreating,
     isUpdating
   } = useAllMeetings();
+
+  // Effect for scrolling to deep-linked meeting
+  useEffect(() => {
+    if (highlightMeetingId && !isLoading) {
+      // Small delay to ensure list is rendered
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`meeting-${highlightMeetingId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+          }, 3000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightMeetingId, isLoading, meetings]);
+
+  const isArchived = activePair?.program?.status === 'inactive' || activePair?.status === 'archived';
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);

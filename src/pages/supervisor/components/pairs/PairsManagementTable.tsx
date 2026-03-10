@@ -30,7 +30,7 @@ interface PairsTableProps {
   onShowMatchmaker: () => void;
 }
 
-export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTableProps) {
+export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: PairsTableProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
@@ -221,7 +221,8 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
                   return (
                     <TableRow 
                       key={pair.id} 
-                      className="cursor-pointer hover:bg-muted/40 transition-colors"
+                      id={`pair-${pair.id}`}
+                      className="cursor-pointer hover:bg-muted/40 transition-colors scroll-mt-20"
                       onClick={() => navigate(`/supervisor/checklist?pair=${pair.id}`)}
                     >
                       <TableCell className="overflow-hidden">
@@ -304,6 +305,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
         )}
       </CardContent>
 
+      <div className="border-t border-gray-100">
         <DataTablePagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -315,6 +317,7 @@ export function PairsTable({ pairs, isLoading, onShowMatchmaker }: PairsTablePro
           onPrevPage={goToPrevPage}
           onNextPage={goToNextPage}
         />
-      </Card>
+      </div>
+    </Card>
   );
 }

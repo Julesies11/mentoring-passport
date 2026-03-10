@@ -352,3 +352,39 @@ create table public.mp_programs (
 create trigger mp_update_programs_updated_at BEFORE
 update on mp_programs for EACH row
 execute FUNCTION mp_update_updated_at_column ();
+
+create table public.mp_notifications (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  recipient_id uuid not null,
+  type text not null,
+  title text not null,
+  description text null,
+  action_url text null,
+  related_id uuid null,
+  is_read boolean not null default false,
+  created_at timestamp with time zone not null default now(),
+  constraint mp_notifications_pkey primary key (id),
+  constraint mp_notifications_recipient_id_fkey foreign KEY (recipient_id) references mp_profiles (id) on delete CASCADE,
+  constraint mp_notifications_type_check check (
+    (
+      type = any (
+        array[
+          'evidence_uploaded'::text,
+          'evidence_approved'::text,
+          'evidence_rejected'::text,
+          'note_added'::text,
+          'meeting_created'::text,
+          'meeting_updated'::text,
+          'pair_created'::text,
+          'pair_archived'::text,
+          'guidance_added'::text,
+          'task_completed'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_notifications_recipient on public.mp_notifications using btree (recipient_id) TABLESPACE pg_default;
+
+create index IF not exists idx_mp_notifications_unread on public.mp_notifications using btree (recipient_id, is_read) TABLESPACE pg_default;

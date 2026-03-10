@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllEvidence, usePendingEvidence } from '@/hooks/use-evidence';
 import { Container } from '@/components/common/container';
 import {
@@ -33,15 +33,31 @@ import { FilePreviewCard } from '@/components/common/file-preview-card';
 
 export function EvidenceReviewPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightPairId = searchParams.get('pairId');
   const { data: allEvidence = [], isLoading } = useAllEvidence();
   const { stats, reviewEvidence, isReviewing } = usePendingEvidence();
   const [statusFilter, setStatusFilter] = useState<'to_review' | 'reviewed' | 'all'>('to_review');
   
   const filteredEvidence = useMemo(() => {
-    if (statusFilter === 'all') return allEvidence;
-    if (statusFilter === 'to_review') return allEvidence.filter(e => e.status === 'pending' || e.status === 'rejected');
-    return allEvidence.filter(e => e.status === 'approved');
-  }, [allEvidence, statusFilter]);
+    let items = allEvidence;
+    if (statusFilter === 'to_review') {
+      items = allEvidence.filter(e => e.status === 'pending' || e.status === 'rejected');
+    } else if (statusFilter === 'reviewed') {
+      items = allEvidence.filter(e => e.status === 'approved');
+    }
+
+    if (highlightPairId) {
+      items = items.filter(e => e.pair_id === highlightPairId);
+    }
+    return items;
+  }, [allEvidence, statusFilter, highlightPairId]);
+
+  const clearPairFilter = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('pairId');
+    setSearchParams(newParams);
+  };
 
   // Use centralized pagination hook
   const {
@@ -97,10 +113,21 @@ export function EvidenceReviewPage() {
         <Toolbar>
           <ToolbarHeading
             title="Evidence Review"
-            description="Manage and validate program item submissions"
+            description={highlightPairId ? "Reviewing evidence for selected pair" : "Manage and validate program item submissions"}
           />
           <ToolbarActions>
             <div className="flex items-center gap-3">
+              {highlightPairId && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearPairFilter}
+                  className="h-10 rounded-xl font-bold border-primary text-primary hover:bg-primary/5"
+                >
+                  <KeenIcon icon="cross" className="mr-2" />
+                  Clear Filter
+                </Button>
+              )}
               <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
                 <SelectTrigger className="w-[160px] h-10 rounded-xl font-bold bg-white border-gray-200">
                   <div className="flex items-center gap-2">

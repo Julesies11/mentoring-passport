@@ -57,11 +57,14 @@ export function Header() {
                 variant="ghost"
                 mode="icon"
                 shape="circle"
-                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary relative"
+                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary relative transition-all duration-200"
               >
-                <Bell className="size-4.5!" />
+                <Bell className={cn(
+                  "size-4.5 transition-colors",
+                  unreadCount > 0 ? "text-primary" : "text-gray-500"
+                )} />
                 {unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white border-2 border-background shadow-sm">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}

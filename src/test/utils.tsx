@@ -17,12 +17,12 @@ const createTestQueryClient = () => new QueryClient({
 });
 
 export const mockUser: UserModel = {
-  id: 'u1',
+  id: '00000000-0000-0000-0000-000000000001',
   email: 'test@example.com',
   role: 'supervisor',
   full_name: 'Test Supervisor',
   avatar_url: '',
-  organisation_id: 'org1',
+  organisation_id: '00000000-0000-0000-0000-000000000002',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
@@ -53,7 +53,7 @@ const defaultAuthValue = {
   verify: async () => {},
   isAdmin: false,
   role: 'supervisor' as any,
-  profileId: 'u1',
+  profileId: '00000000-0000-0000-0000-000000000001',
   isSupervisor: true,
   isMentor: false,
   isMentee: false,

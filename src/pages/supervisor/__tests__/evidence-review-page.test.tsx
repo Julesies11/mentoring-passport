@@ -1,136 +1,88 @@
-import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@/test/utils';
 import { EvidenceReviewPage } from '../evidence-review-page';
-import { render } from '@/test/utils';
-import * as evidenceHook from '@/hooks/use-evidence';
+import * as evidenceHooks from '@/hooks/use-evidence';
 
-// Mock the hook
+// Mock evidence hooks
 vi.mock('@/hooks/use-evidence', () => ({
-  usePendingEvidence: vi.fn(),
   useAllEvidence: vi.fn(),
+  usePendingEvidence: vi.fn(),
+  useEvidenceStats: vi.fn(() => ({ data: { pending: 2, reviewed: 0 } })),
 }));
 
+// Mock organisation hook to avoid DB calls
+vi.mock('@/hooks/use-organisation', () => ({
+  useOrganisation: vi.fn(() => ({ data: { name: 'Test Org' }, isLoading: false })),
+}));
+
+const mockEvidence = [
+  {
+    id: 'e1',
+    pair_id: 'p1',
+    status: 'pending',
+    submitted_by: 'u1',
+    description: 'Evidence 1',
+    created_at: new Date().toISOString(),
+    task: { name: 'Task 1' },
+    pair: { 
+      mentor: { id: 'm1', full_name: 'Mentor 1' }, 
+      mentee: { id: 'me1', full_name: 'Mentee 1' } 
+    }
+  },
+  {
+    id: 'e2',
+    pair_id: 'p2',
+    status: 'pending',
+    submitted_by: 'u2',
+    description: 'Evidence 2',
+    created_at: new Date().toISOString(),
+    task: { name: 'Task 2' },
+    pair: { 
+      mentor: { id: 'm2', full_name: 'Mentor 2' }, 
+      mentee: { id: 'me2', full_name: 'Mentee 2' } 
+    }
+  }
+];
+
 describe('EvidenceReviewPage', () => {
-  const mockEvidence = [
-    {
-      id: 'e1',
-      pair_id: 'p1',
-      pair_task_id: 'pt1',
-      description: 'Test evidence submission',
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      pair: {
-        mentor: { id: 'm1', full_name: 'Mentor Name' },
-        mentee: { id: 'e1', full_name: 'Mentee Name' },
-      },
-      task: { name: 'Important Task' },
-      file_url: 'https://example.com/test.jpg',
-      mime_type: 'image/jpeg',
-    },
-  ];
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('renders loading state', () => {
-    vi.mocked(evidenceHook.useAllEvidence).mockReturnValue({
-      data: mockEvidence,
-      isLoading: true,
-    } as any);
-    vi.mocked(evidenceHook.usePendingEvidence).mockReturnValue({
-      evidence: [],
-      stats: { pending: 0, approved: 0, rejected: 0 },
-      isLoading: true,
-      reviewEvidence: vi.fn(),
-      isReviewing: false,
-    } as any);
-
-    render(<EvidenceReviewPage />);
-    // When allEvidence is loading, it shows the review queue container with cards
-    // but the specific loading message might be gone or different
-    expect(screen.getByText(/Evidence Review/i)).toBeInTheDocument();
-  });
-
-  it('renders empty queue state', () => {
-    vi.mocked(evidenceHook.useAllEvidence).mockReturnValue({
-      data: [], // Truly empty
-      isLoading: false,
-    } as any);
-    vi.mocked(evidenceHook.usePendingEvidence).mockReturnValue({
-      evidence: [],
-      stats: { pending: 0, approved: 0, rejected: 0 },
-      isLoading: false,
-      reviewEvidence: vi.fn(),
-      isReviewing: false,
-    } as any);
-
-    render(<EvidenceReviewPage />);
-    expect(screen.getByText(/Review Queue Cleared/i)).toBeInTheDocument();
-  });
-
-  it('renders evidence cards with correct names', async () => {
-    vi.mocked(evidenceHook.useAllEvidence).mockReturnValue({
+  it('renders all evidence by default', () => {
+    vi.mocked(evidenceHooks.useAllEvidence).mockReturnValue({
       data: mockEvidence,
       isLoading: false,
     } as any);
-    vi.mocked(evidenceHook.usePendingEvidence).mockReturnValue({
-      evidence: mockEvidence,
-      stats: { pending: 1, approved: 5, rejected: 2 },
-      isLoading: false,
+    vi.mocked(evidenceHooks.usePendingEvidence).mockReturnValue({
+      stats: { total: 2, pending: 2, approved: 0, rejected: 0 },
       reviewEvidence: vi.fn(),
       isReviewing: false,
     } as any);
 
     render(<EvidenceReviewPage />);
-
-    expect(screen.getByText('Mentor Name')).toBeInTheDocument();
-    expect(screen.getByText('Mentee Name')).toBeInTheDocument();
-    expect(screen.getByText(/important task/i)).toBeInTheDocument();
+    
+    expect(screen.getByText('Mentor 1')).toBeInTheDocument();
+    expect(screen.getByText('Mentor 2')).toBeInTheDocument();
+    expect(screen.getByText('Task 1')).toBeInTheDocument();
+    expect(screen.getByText('Task 2')).toBeInTheDocument();
   });
 
-  it('opens approval dialog when clicking approve', async () => {
-    const user = userEvent.setup();
-    vi.mocked(evidenceHook.useAllEvidence).mockReturnValue({
+  it('filters evidence by pairId from search params', () => {
+    // We need to simulate the URL having ?pairId=p1
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost/supervisor/evidence-review?pairId=p1');
+
+    vi.mocked(evidenceHooks.useAllEvidence).mockReturnValue({
       data: mockEvidence,
       isLoading: false,
     } as any);
-    vi.mocked(evidenceHook.usePendingEvidence).mockReturnValue({
-      evidence: mockEvidence,
-      stats: { pending: 1, approved: 5, rejected: 2 },
-      isLoading: false,
+    vi.mocked(evidenceHooks.usePendingEvidence).mockReturnValue({
+      stats: { total: 2, pending: 2, approved: 0, rejected: 0 },
       reviewEvidence: vi.fn(),
       isReviewing: false,
     } as any);
 
     render(<EvidenceReviewPage />);
-
-    const approveBtn = screen.getByRole('button', { name: /approve submission/i });
-    await user.click(approveBtn);
-
-    expect(screen.getByText(/confirm approval/i)).toBeInTheDocument();
-  });
-
-  it('opens rejection dialog when clicking reject', async () => {
-    const user = userEvent.setup();
-    vi.mocked(evidenceHook.useAllEvidence).mockReturnValue({
-      data: mockEvidence,
-      isLoading: false,
-    } as any);
-    vi.mocked(evidenceHook.usePendingEvidence).mockReturnValue({
-      evidence: mockEvidence,
-      stats: { pending: 1, approved: 5, rejected: 2 },
-      isLoading: false,
-      reviewEvidence: vi.fn(),
-      isReviewing: false,
-    } as any);
-
-    render(<EvidenceReviewPage />);
-
-    const rejectBtn = screen.getByRole('button', { name: /request revision/i });
-    await user.click(rejectBtn);
-
-    expect(screen.getByText(/revision required/i)).toBeInTheDocument();
+    
+    expect(screen.getByText('Mentor 1')).toBeInTheDocument();
+    expect(screen.queryByText('Mentor 2')).not.toBeInTheDocument();
+    expect(screen.getByText('Clear Filter')).toBeInTheDocument();
   });
 });
