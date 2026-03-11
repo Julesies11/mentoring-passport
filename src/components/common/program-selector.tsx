@@ -16,7 +16,7 @@ export function ProgramSelector() {
   
   // Show skeleton during initial load
   if (isLoading) {
-    return <div className="h-8 w-40 animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
+    return <div className="h-8 w-[300px] animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
   }
   
   if (programs.length === 0) return null;
@@ -28,9 +28,9 @@ export function ProgramSelector() {
         onValueChange={(id) => setActiveProgram(id)}
       >
         <SelectTrigger 
-          className="h-8 w-[220px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
+          className="h-8 w-[300px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
         >
-          <div className="flex items-center gap-2 text-left min-w-0 flex-1">
+          <div className="flex items-center justify-center text-center min-w-0 flex-1">
             <div className="flex-1 min-w-0 overflow-hidden leading-tight">
               <span className="text-[10px] font-black text-primary uppercase tracking-tighter truncate block">
                 {activeProgram?.name || 'Select Program'}
