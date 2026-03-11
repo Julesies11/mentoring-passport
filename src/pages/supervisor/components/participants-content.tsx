@@ -107,14 +107,19 @@ export function ParticipantsContent() {
     paginatedItems: paginatedParticipants,
     goToNextPage,
     goToPrevPage,
+    goToPage,
     totalItems,
     startIndex,
     endIndex
   } = usePagination({
     items: filteredParticipants,
-    initialItemsPerPage: 10,
-    resetDeps: [searchTerm, roleFilter, statusFilter]
+    initialItemsPerPage: 10
   });
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    goToPage(1);
+  }, [searchTerm, roleFilter, statusFilter, goToPage]);
 
   const handleCreate = async (data: any) => {
     setIsSubmitting(true);

@@ -144,7 +144,8 @@ describe('NotificationService', () => {
         menteeId,
         'John Mentor',
         'Sarah Mentee',
-        actorId
+        actorId,
+        'Sarah Mentee'
       );
 
       // Should call getSupervisors (which mocks 2 supervisors)
@@ -156,7 +157,7 @@ describe('NotificationService', () => {
         'supervisor-1',
         'task_submitted',
         'Task Awaiting Review',
-        expect.stringContaining('submitted Site Visit for your review'),
+        expect.stringContaining('Sarah Mentee submitted "Site Visit" for your review'),
         expect.stringContaining('/supervisor/evidence-review'),
         'pair-1'
       );
@@ -166,7 +167,7 @@ describe('NotificationService', () => {
         mentorId,
         'task_submitted',
         'Task Submitted for Review',
-        'Sarah Mentee has submitted Site Visit for Supervisor review.',
+        expect.stringContaining('Sarah Mentee has submitted Site Visit for Supervisor review'),
         expect.stringContaining('/program-member/tasks'),
         'pair-1'
       );

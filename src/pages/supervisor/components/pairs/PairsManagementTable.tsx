@@ -120,14 +120,19 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: Pai
     paginatedItems: paginatedPairs,
     goToNextPage,
     goToPrevPage,
+    goToPage,
     totalItems,
     startIndex,
     endIndex
   } = usePagination({
     items: sortedPairs,
-    initialItemsPerPage: 10,
-    resetDeps: [searchQuery, filterStatus]
+    initialItemsPerPage: 10
   });
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    goToPage(1);
+  }, [searchQuery, filterStatus, goToPage]);
 
   return (
     <Card className="border-0 sm:border">

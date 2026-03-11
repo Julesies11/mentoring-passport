@@ -1,6 +1,6 @@
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PairsTable } from '../PairsTable';
+import { PairsManagementTable } from '../PairsManagementTable';
 import { render } from '@/test/utils';
 
 // Mock hooks
@@ -12,7 +12,7 @@ vi.mock('@/hooks/use-mobile', () => ({
   useIsMobile: vi.fn(() => false),
 }));
 
-describe('PairsTable', () => {
+describe('PairsManagementTable', () => {
   const mockPairs = [
     {
       id: 'p1',
@@ -28,36 +28,43 @@ describe('PairsTable', () => {
   });
 
   it('renders loading state', () => {
-    render(<PairsTable pairs={[]} isLoading={true} onShowMatchmaker={vi.fn()} />);
+    render(<PairsManagementTable pairs={[]} isLoading={true} onShowMatchmaker={vi.fn()} />);
     expect(screen.getByText(/loading pairs/i)).toBeInTheDocument();
   });
 
   it('renders empty state', () => {
-    render(<PairsTable pairs={[]} isLoading={false} onShowMatchmaker={vi.fn()} />);
+    render(<PairsManagementTable pairs={[]} isLoading={false} onShowMatchmaker={vi.fn()} />);
     expect(screen.getByText(/no pairings found/i)).toBeInTheDocument();
   });
 
   it('renders pairs data', () => {
-    render(<PairsTable pairs={mockPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+    render(<PairsManagementTable pairs={mockPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
     expect(screen.getByText('Mentor One')).toBeInTheDocument();
     expect(screen.getByText('Mentee One')).toBeInTheDocument();
   });
 
-  it('filters by search query', () => {
-    render(<PairsTable pairs={mockPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+  it('filters by search query', async () => {
+    render(<PairsManagementTable pairs={mockPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
     
     const searchInput = screen.getByPlaceholderText(/search/i);
     fireEvent.change(searchInput, { target: { value: 'Mentor One' } });
     
-    expect(screen.getByText('Mentor One')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Mentor One')).toBeInTheDocument();
+    });
     
     fireEvent.change(searchInput, { target: { value: 'NonExistent' } });
-    expect(screen.queryByText('Mentor One')).not.toBeInTheDocument();
-    expect(screen.getByText(/no pairings found/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Mentor One')).not.toBeInTheDocument();
+      expect(screen.getByText(/no pairings found/i)).toBeInTheDocument();
+    });
   });
 
   describe('Pagination', () => {
-    const manyPairs = Array.from({ length: 12 }, (_, i) => ({
+    // Generate 30 pairs to ensure we have multiple pages even if itemsPerPage is 25
+    // But since PairsManagementTable hardcodes initialItemsPerPage: 10, 
+    // we should see 10 items on page 1.
+    const manyPairs = Array.from({ length: 30 }, (_, i) => ({
       id: `p${i}`,
       status: 'active',
       mentor: { id: `m${i}`, full_name: `Mentor ${i + 1}`, email: `m${i}@test.com` },
@@ -66,38 +73,44 @@ describe('PairsTable', () => {
     }));
 
     it('shows only first 10 pairs on page 1', () => {
-      render(<PairsTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+      render(<PairsManagementTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
       expect(screen.getByText('Mentor 1')).toBeInTheDocument();
       expect(screen.getByText('Mentor 10')).toBeInTheDocument();
       expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
     });
 
-    it('navigates to page 2 when next arrow is clicked', () => {
-      render(<PairsTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+    it('navigates to page 2 when next arrow is clicked', async () => {
+      render(<PairsManagementTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
       
       const nextButton = screen.getByTestId('keen-icon-black-right').closest('button');
       fireEvent.click(nextButton!);
       
-      expect(screen.queryByText('Mentor 1')).not.toBeInTheDocument();
-      expect(screen.getByText('Mentor 11')).toBeInTheDocument();
-      expect(screen.getByText('Mentor 12')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText('Mentor 1')).not.toBeInTheDocument();
+        expect(screen.getByText('Mentor 11')).toBeInTheDocument();
+        expect(screen.getByText('Mentor 20')).toBeInTheDocument();
+      });
     });
 
-    it('resets to page 1 when search query changes', () => {
-      render(<PairsTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
+    it('resets to page 1 when search query changes', async () => {
+      render(<PairsManagementTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
       
       // 1. Go to page 2
       const nextButton = screen.getByTestId('keen-icon-black-right').closest('button');
       fireEvent.click(nextButton!);
-      expect(screen.getByText('Mentor 11')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Mentor 11')).toBeInTheDocument();
+      });
 
       // 2. Change search term
       const searchInput = screen.getByPlaceholderText(/search/i);
       fireEvent.change(searchInput, { target: { value: 'Mentor' } });
 
       // 3. Should be back on page 1
-      expect(screen.getByText('Mentor 1')).toBeInTheDocument();
-      expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Mentor 1')).toBeInTheDocument();
+        expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
+      });
     });
   });
 });

@@ -1,15 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 
 interface UsePaginationProps<T> {
   items: T[];
   initialItemsPerPage?: number;
-  resetDeps?: any[]; // Dependencies that trigger reset to Page 1 (e.g. search/filters)
 }
 
 export function usePagination<T>({ 
   items, 
-  initialItemsPerPage = 25,
-  resetDeps = [] 
+  initialItemsPerPage = 25
 }: UsePaginationProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage);
@@ -19,27 +17,30 @@ export function usePagination<T>({
     return Math.ceil(items.length / itemsPerPage) || 1;
   }, [items.length, itemsPerPage]);
 
-  // Reset to page 1 when filters, items length, or items per page change
-  // We exclude items directly from deps to avoid potential infinite loops if items reference changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [resetDeps, items.length, itemsPerPage]);
-
   // Get current slice of items
   const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
+    // Safety check: if current page is beyond total pages (e.g. after filtering)
+    // we return the last page's worth of items, but we don't trigger a state update
+    // here to avoid render loops. Components should call goToPage(1) when filtering.
+    const effectivePage = Math.min(currentPage, totalPages);
+    const start = (effectivePage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     return items.slice(start, end);
-  }, [items, currentPage, itemsPerPage]);
+  }, [items, currentPage, itemsPerPage, totalPages]);
 
-  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const goToPrevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-  const goToPage = (page: number) => setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  const goToNextPage = useCallback(() => setCurrentPage(prev => Math.min(prev + 1, totalPages)), [totalPages]);
+  const goToPrevPage = useCallback(() => setCurrentPage(prev => Math.max(prev - 1, 1)), []);
+  const goToPage = useCallback((page: number) => setCurrentPage(Math.min(Math.max(1, page), totalPages)), [totalPages]);
+
+  const setPageSize = useCallback((size: number) => {
+    setItemsPerPage(size);
+    setCurrentPage(1);
+  }, []);
 
   return {
     currentPage,
     itemsPerPage,
-    setItemsPerPage,
+    setItemsPerPage: setPageSize,
     totalPages,
     paginatedItems,
     goToNextPage,
