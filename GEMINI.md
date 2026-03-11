@@ -1,4 +1,17 @@
 # ===============================
+# 0. PROJECT INDEX & SCHEMA (Source of Truth)
+# ===============================
+- **Database Schema:** See `docs/DATABASE_SCHEMA.md` for tables, fields, and relationships.
+- **Architecture Map:** See `docs/ARCHITECTURE.md` for data flow and directory structure.
+- **Key Tables:** 
+    - `mp_profiles` (Users/Roles)
+    - `mp_pairs` (Mentor/Mentee links)
+    - `mp_tasks_master` / `mp_pair_tasks` (The Task System)
+    - `mp_meetings` / `mp_evidence_uploads` (Engagement & Proof)
+- **API Entry Point:** `src/lib/api/` (Handles all business logic and Supabase calls).
+- **Hooks Entry Point:** `src/hooks/` (TanStack Query wrappers for API).
+
+# ===============================
 # 1. TERMINAL OUTPUT RULES
 # ===============================
 - Keep output minimal and concise.
