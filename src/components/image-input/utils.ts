@@ -1,5 +1,6 @@
 import { MutableRefObject } from 'react';
 import { ImageInputFiles } from './image-input';
+import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/image';
 
 export const openFileDialog = (
   inputRef: MutableRefObject<HTMLInputElement | null>,
@@ -20,7 +21,7 @@ export const getAcceptTypeString = (
   return 'image/*';
 };
 
-export const getBase64 = async (file: File): Promise<string> => {
+export const getBase64 = async (file: File | Blob): Promise<string> => {
   const reader = new FileReader();
   return await new Promise((resolve) => {
     reader.addEventListener('load', () => {
@@ -40,19 +41,31 @@ export const getImage = async (file: File): Promise<HTMLImageElement> => {
   });
 };
 
+/**
+ * Standardized function to process uploaded images for ImageInput.
+ * Uses centralized compression engine and presets.
+ */
 export const getListFiles = async (
   files: FileList,
   dataURLKey: string,
+  compress: boolean = true,
+  compressionOptions: any = COMPRESSION_PRESETS.AVATAR,
 ): Promise<ImageInputFiles> => {
-  const promiseFiles: Array<Promise<string>> = [];
+  const processedFiles: ImageInputFiles = [];
+
   for (let i = 0; i < files.length; i += 1) {
-    promiseFiles.push(getBase64(files[i]));
+    let file = files[i];
+
+    if (compress && file.type.startsWith('image/')) {
+      file = await compressImage(file, compressionOptions);
+    }
+
+    const dataURL = await getBase64(file);
+    processedFiles.push({
+      [dataURLKey]: dataURL,
+      file: file,
+    });
   }
-  return await Promise.all(promiseFiles).then((fileListBase64: string[]) => {
-    const fileList: ImageInputFiles = fileListBase64.map((base64, index) => ({
-      [dataURLKey]: base64,
-      file: files[index],
-    }));
-    return fileList;
-  });
+
+  return processedFiles;
 };

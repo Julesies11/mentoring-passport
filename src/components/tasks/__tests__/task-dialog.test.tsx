@@ -1,7 +1,30 @@
 import { render, screen, waitFor } from '@/test/utils';
 import userEvent from '@testing-library/user-event';
 import { TaskDialog } from '../task-dialog';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock useFileUpload hook
+const mockFiles: any[] = [];
+const mockAddFiles = vi.fn();
+const mockRemoveFile = vi.fn();
+const mockClearFiles = vi.fn();
+const mockGetInputProps = vi.fn(() => ({
+  onChange: (e: any) => mockAddFiles(e.target.files),
+  multiple: true,
+  type: 'file',
+}));
+
+vi.mock('@/hooks/use-file-upload', () => ({
+  useFileUpload: vi.fn(() => [
+    { files: mockFiles, isDragging: false, errors: [] },
+    {
+      addFiles: mockAddFiles,
+      removeFile: mockRemoveFile,
+      clearFiles: mockClearFiles,
+      getInputProps: mockGetInputProps,
+    },
+  ]),
+}));
 
 const mockTask = {
   id: 'pt1',
@@ -28,6 +51,11 @@ describe('TaskDialog', () => {
     onUpdateStatus: vi.fn(),
   };
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFiles.length = 0; // Clear the array
+  });
+
   it('renders task name and evidence requirement badge', () => {
     render(<TaskDialog {...defaultProps} />);
     
@@ -46,17 +74,17 @@ describe('TaskDialog', () => {
   it('calls onSubmitEvidence when "Submit for Review" is clicked', async () => {
     const user = userEvent.setup();
     const onSubmitEvidence = vi.fn().mockResolvedValue(undefined);
+    
+    // Mock files being present
+    const testFile = new File(['hello'], 'test.png', { type: 'image/png' });
+    mockFiles.push({ file: testFile, id: '1', preview: '' });
+
     render(<TaskDialog {...defaultProps} onSubmitEvidence={onSubmitEvidence} />);
     
     // 1. Update notes
     const notesArea = screen.getByPlaceholderText(/What progress have you made/);
     await user.clear(notesArea);
     await user.type(notesArea, 'Updated progress note');
-    
-    // 2. Upload a mock file (Required because requires_submission: true)
-    const file = new File(['hello'], 'test.png', { type: 'image/png' });
-    const input = document.getElementById('file-upload') as HTMLInputElement;
-    await user.upload(input, file);
     
     // 3. Click submit
     const submitButton = screen.getByText('Submit for Review');
@@ -73,7 +101,7 @@ describe('TaskDialog', () => {
       'pt1', 
       expect.objectContaining({ 
         description: 'Updated progress note',
-        files: expect.arrayContaining([expect.any(File)])
+        files: [testFile]
       }),
       true
     );
@@ -107,6 +135,8 @@ describe('TaskDialog', () => {
     
     // 2. Click Save Draft
     const saveButton = screen.getByText('Save Draft');
+    // The component uses hasChanges logic which now depends on onFilesChange from useFileUpload
+    // We'll just wait for it to be enabled in this test
     await waitFor(() => expect(saveButton).not.toBeDisabled());
     await user.click(saveButton);
     

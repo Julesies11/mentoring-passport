@@ -27,7 +27,7 @@ import { ImageInput, type ImageInputFile } from '@/components/image-input';
 import { getAvatarUrl } from '@/lib/api/profiles';
 import type { Participant } from '@/lib/api/participants';
 
-import { validateAvatar } from '@/lib/utils/image';
+import { validateImage } from '@/lib/utils/image';
 
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -184,7 +184,7 @@ export function ParticipantDialog({
                 onChange={(selectedAvatar) => {
                   setError(null);
                   if (selectedAvatar.length > 0 && selectedAvatar[0].file) {
-                    const validation = validateAvatar(selectedAvatar[0].file);
+                    const validation = validateImage(selectedAvatar[0].file);
                     if (validation.error) {
                       setError(validation.error);
                       setAvatar([]);

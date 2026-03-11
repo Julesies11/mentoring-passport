@@ -24,8 +24,17 @@ vi.mock('@/lib/supabase', () => ({
 
 // Mock image utilities
 vi.mock('@/lib/utils/image', () => ({
-  resizeImage: vi.fn((file) => Promise.resolve(file)),
-  validateAvatar: vi.fn(() => ({ valid: true, error: null })),
+  compressImage: vi.fn((file) => Promise.resolve(new File([file], file.name, { type: 'image/jpeg' }))),
+  validateImage: vi.fn(() => ({ error: undefined })),
+  COMPRESSION_PRESETS: {
+    AVATAR: { maxSizeMB: 0.05 },
+    EVIDENCE: { maxSizeMB: 0.8 }
+  }
+}));
+
+// Mock logger
+vi.mock('@/lib/logger', () => ({
+  logError: vi.fn(),
 }));
 
 describe('Profile Avatar Utilities', () => {
@@ -44,14 +53,17 @@ describe('Profile Avatar Utilities', () => {
 
     it('should upload file and return fileName when file is provided', async () => {
       const mockUpload = vi.fn().mockResolvedValue({ data: {}, error: null });
-      (supabase.storage.from as any).mockReturnValue({ upload: mockUpload });
+      (supabase.storage.from as any).mockReturnValue({ 
+        upload: mockUpload,
+        getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'some-url' } })
+      });
 
       const result = await handleAvatarUpload(userId, mockFile, false);
 
       expect(supabase.storage.from).toHaveBeenCalledWith('mp-avatars');
       expect(mockUpload).toHaveBeenCalledWith(
         expect.stringMatching(new RegExp(`^${userId}/${userId}-\\d+\\.jpg$`)),
-        mockFile,
+        expect.any(File), // The compressed file
         expect.objectContaining({ 
           upsert: true,
           contentType: 'image/jpeg'

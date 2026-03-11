@@ -26,6 +26,12 @@ interface ImageInputProps {
   acceptType?: string[];
   dataURLKey?: string;
   inputProps?: React.HTMLProps<HTMLInputElement>;
+  compress?: boolean;
+  compressionOptions?: {
+    maxSizeMB?: number;
+    maxWidthOrHeight?: number;
+    useWebWorker?: boolean;
+  };
 }
 
 interface ImageInputExport {
@@ -54,6 +60,12 @@ const ImageInput: FC<ImageInputProps> = ({
   multiple,
   children,
   onChange,
+  compress = true,
+  compressionOptions = {
+    maxSizeMB: 0.05,
+    maxWidthOrHeight: 256,
+    useWebWorker: true,
+  },
 }) => {
   const inValue = value || [];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +93,13 @@ const ImageInput: FC<ImageInputProps> = ({
 
   const handleChange = async (files: FileList | null) => {
     if (!files) return;
-    const fileList = await getListFiles(files, DEFAULT_DATA_URL_KEY);
+
+    const fileList = await getListFiles(
+      files,
+      DEFAULT_DATA_URL_KEY,
+      compress ? compressionOptions : undefined,
+    );
+
     if (!fileList.length) return;
     let updatedFileList: ImageInputFiles;
     const updatedIndexes: number[] = [];

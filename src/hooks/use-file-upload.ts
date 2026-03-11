@@ -2,6 +2,7 @@
 
 import type React from 'react';
 import { useCallback, useRef, useState, useEffect, type ChangeEvent, type DragEvent, type InputHTMLAttributes } from 'react';
+import { compressImage } from '@/lib/utils/image';
 
 export type FileMetadata = {
   name: string;
@@ -25,6 +26,12 @@ export type FileUploadOptions = {
   initialFiles?: FileMetadata[];
   onFilesChange?: (files: FileWithPreview[]) => void; // Callback when files change
   onFilesAdded?: (addedFiles: FileWithPreview[]) => void; // Callback when new files are added
+  compress?: boolean;
+  compressionOptions?: {
+    maxSizeMB?: number;
+    maxWidthOrHeight?: number;
+    useWebWorker?: boolean;
+  };
 };
 
 export type FileUploadState = {
@@ -58,6 +65,12 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
     initialFiles = [],
     onFilesChange,
     onFilesAdded,
+    compress = false,
+    compressionOptions = {
+      maxSizeMB: 0.05,
+      maxWidthOrHeight: 256,
+      useWebWorker: true,
+    },
   } = options;
 
   const [state, setState] = useState<FileUploadState>({
@@ -152,7 +165,7 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
   }, []);
 
   const addFiles = useCallback(
-    (newFiles: FileList | File[]) => {
+    async (newFiles: FileList | File[]) => {
       if (!newFiles || newFiles.length === 0) return;
 
       const newFilesArray = Array.from(newFiles);
@@ -175,7 +188,7 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
 
       const validFiles: FileWithPreview[] = [];
 
-      newFilesArray.forEach((file) => {
+      for (const file of newFilesArray) {
         // Only check for duplicates if multiple files are allowed
         if (multiple) {
           const isDuplicate = state.files.some(
@@ -184,7 +197,7 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
 
           // Skip duplicate files silently
           if (isDuplicate) {
-            return;
+            continue;
           }
         }
 
@@ -195,20 +208,25 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
               ? `Some files exceed the maximum size of ${formatBytes(maxSize)}.`
               : `File exceeds the maximum size of ${formatBytes(maxSize)}.`,
           );
-          return;
+          continue;
         }
 
         const error = validateFile(file);
         if (error) {
           errors.push(error);
         } else {
+          let processedFile = file;
+          if (compress && file.type.startsWith('image/')) {
+            processedFile = await compressImage(file, compressionOptions);
+          }
+
           validFiles.push({
-            file,
-            id: generateUniqueId(file),
-            preview: createPreview(file),
+            file: processedFile,
+            id: generateUniqueId(processedFile),
+            preview: createPreview(processedFile),
           });
         }
-      });
+      }
 
       // Only update state if we have valid files to add
       if (validFiles.length > 0) {
@@ -245,6 +263,8 @@ export const useFileUpload = (options: FileUploadOptions = {}): [FileUploadState
       generateUniqueId,
       clearFiles,
       onFilesAdded,
+      compress,
+      compressionOptions,
     ],
   );
 

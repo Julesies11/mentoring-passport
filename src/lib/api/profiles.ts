@@ -94,7 +94,8 @@ export async function handleAvatarUpload(
     return await uploadFile(file, {
       bucket: 'mp-avatars',
       folder: userId,
-      fileName
+      fileName,
+      compressionPreset: 'AVATAR'
     });
   }
 

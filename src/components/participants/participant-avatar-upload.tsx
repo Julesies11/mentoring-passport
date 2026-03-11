@@ -16,6 +16,8 @@ import {
 import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { compressImage } from '@/lib/utils/image';
+import { handleAvatarUpload } from '@/lib/api/profiles';
 
 interface ParticipantAvatarUploadProps {
   open: boolean;
@@ -63,11 +65,23 @@ export function ParticipantAvatarUpload({
     return null;
   };
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      try {
+        const compressed = await compressImage(file, {
+          maxSizeMB: 0.05,
+          maxWidthOrHeight: 256,
+          useWebWorker: true,
+        });
+        setSelectedFile(compressed);
+        const url = URL.createObjectURL(compressed);
+        setPreviewUrl(url);
+      } catch (error) {
+        console.error('Image compression failed:', error);
+        setSelectedFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
     }
   };
 
@@ -86,32 +100,23 @@ export function ParticipantAvatarUpload({
 
     setIsUploading(true);
     try {
-      // Generate unique file name with user ID folder structure
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${participantId}/${participantId}-${Date.now()}.${fileExt}`;
-      
-      // Upload to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('mp-avatars')
-        .upload(fileName, selectedFile, {
-          upsert: true,
-          contentType: selectedFile.type,
-        });
+      // Use the Gold Standard handler instead of raw upload
+      const fileName = await handleAvatarUpload(participantId, selectedFile);
 
-      if (uploadError) throw uploadError;
+      if (fileName) {
+        // Update database to link the new filename
+        const { error: updateError } = await supabase
+          .from('mp_profiles')
+          .update({ avatar_url: fileName })
+          .eq('id', participantId);
 
-      // Update database to store only the filename
-      const { error: updateError } = await supabase
-        .from('mp_profiles')
-        .update({ avatar_url: fileName.split('/').pop() })
-        .eq('id', participantId);
+        if (updateError) throw updateError;
 
-      if (updateError) throw updateError;
-
-      onAvatarChange(fileName.split('/').pop() || null);
-      onOpenChange(false);
-      setSelectedFile(null);
-      setPreviewUrl('');
+        onAvatarChange(fileName);
+        onOpenChange(false);
+        setSelectedFile(null);
+        setPreviewUrl('');
+      }
     } catch (error) {
       console.error('Error uploading avatar:', error);
     } finally {

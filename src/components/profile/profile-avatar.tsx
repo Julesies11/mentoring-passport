@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 
 import { handleAvatarUpload } from '@/lib/api/profiles';
+import { compressImage } from '@/lib/utils/image';
 
 interface ProfileAvatarProps {
   userId: string;
@@ -53,11 +54,23 @@ export function ProfileAvatar({
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      try {
+        const compressed = await compressImage(file, {
+          maxSizeMB: 0.05,
+          maxWidthOrHeight: 256,
+          useWebWorker: true,
+        });
+        setSelectedFile(compressed);
+        const url = URL.createObjectURL(compressed);
+        setPreviewUrl(url);
+      } catch (error) {
+        console.error('Image compression failed:', error);
+        setSelectedFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
     }
   };
 

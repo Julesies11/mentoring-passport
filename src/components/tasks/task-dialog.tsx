@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
+import { useFileUpload } from '@/hooks/use-file-upload';
 
 interface TaskDialogProps {
   open: boolean;
@@ -58,35 +59,38 @@ export function TaskDialog({
   isSubmitting = false,
 }: TaskDialogProps) {
   const [evidenceNotes, setEvidenceNotes] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submittingAction, setSubmittingAction] = useState<'draft' | 'review' | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  const [{ files, isDragging }, { addFiles, removeFile, clearFiles, getInputProps }] = useFileUpload({
+    multiple: true,
+    compress: true,
+    compressionOptions: {
+      maxSizeMB: 0.8,
+      maxWidthOrHeight: 1600,
+      useWebWorker: true,
+    },
+    onFilesChange: useCallback((newFiles: any[]) => {
+      setHasChanges(newFiles.length > 0 || evidenceNotes !== (task.evidence_notes || ''));
+    }, [evidenceNotes, task.evidence_notes]),
+  });
 
   useEffect(() => {
     if (open) {
       setEvidenceNotes(task.evidence_notes || '');
-      setSelectedFiles([]);
+      clearFiles();
       setSubmittingAction(null);
       setHasChanges(false);
     }
-  }, [open, task.status, task.evidence_notes]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
-      setHasChanges(true);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-    setHasChanges(true);
-  };
+  }, [open, task.status, task.evidence_notes, clearFiles]);
 
   const handleSubmit = async (submitForReview: boolean) => {
     setSubmittingAction(submitForReview ? 'review' : 'draft');
     try {
-      await onSubmitEvidence(task.id, { description: evidenceNotes, files: selectedFiles }, submitForReview);
+      const actualFiles = files
+        .map((f) => f.file)
+        .filter((f) => f instanceof File) as File[];
+      await onSubmitEvidence(task.id, { description: evidenceNotes, files: actualFiles }, submitForReview);
       setHasChanges(false);
     } finally {
       setSubmittingAction(null);
@@ -181,7 +185,7 @@ export function TaskDialog({
                   value={evidenceNotes}
                   onChange={(e) => {
                     setEvidenceNotes(e.target.value);
-                    setHasChanges(e.target.value !== (task.evidence_notes || '') || selectedFiles.length > 0);
+                    setHasChanges(e.target.value !== (task.evidence_notes || '') || files.length > 0);
                   }}
                   className="rounded-xl border-gray-200 resize-none p-4 text-sm focus:border-primary transition-all min-h-[140px] bg-white shadow-xs"
                 />
@@ -205,30 +209,39 @@ export function TaskDialog({
                 </div>
 
                 <div className="space-y-4">
-                  <div className="relative group">
+                  <div 
+                    className={cn(
+                      "relative group border-2 border-dashed rounded-xl p-8 text-center transition-all flex flex-col items-center",
+                      isDragging ? "border-primary bg-primary/[0.05]" : "border-gray-200 bg-gray-50/50 hover:border-primary/50 hover:bg-primary/[0.02]"
+                    )}
+                  >
                     <input
-                      type="file"
+                      {...getInputProps()}
                       id="file-upload"
-                      multiple
-                      onChange={handleFileChange}
                       className="absolute inset-0 opacity-0 cursor-pointer z-20"
                     />
-                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center group-hover:border-primary/50 group-hover:bg-primary/[0.02] transition-all bg-gray-50/50 flex flex-col items-center">
-                      <Upload size={24} className="text-primary mb-2" />
-                      <p className="text-sm font-bold text-gray-900">Click or drag to upload files</p>
-                      <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">PDF, IMAGES, DOCX</p>
-                    </div>
+                    <Upload size={24} className="text-primary mb-2" />
+                    <p className="text-sm font-bold text-gray-900">Click or drag to upload files</p>
+                    <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">PDF, IMAGES, DOCX</p>
                   </div>
 
-                  {selectedFiles.length > 0 && (
+                  {files.length > 0 && (
                     <div className="grid gap-2">
-                      {selectedFiles.map((file, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
+                      {files.map((file) => (
+                        <div key={file.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
                           <div className="flex items-center gap-3 min-w-0">
                             <FileText size={16} className="text-primary/60 shrink-0" />
-                            <span className="text-xs font-bold text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs font-bold text-gray-700 truncate">
+                              {'name' in file.file ? file.file.name : 'Unknown file'}
+                            </span>
                           </div>
-                          <Button variant="ghost" size="sm" mode="icon" className="size-8 rounded-lg text-gray-400 hover:text-danger" onClick={() => removeFile(idx)}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            mode="icon" 
+                            className="size-8 rounded-lg text-gray-400 hover:text-danger" 
+                            onClick={() => removeFile(file.id)}
+                          >
                             <X size={14} />
                           </Button>
                         </div>
@@ -304,10 +317,10 @@ export function TaskDialog({
                   </Button>
                   <Button 
                     onClick={() => handleSubmit(true)}
-                    disabled={isSubmitting || (requiresSubmission && selectedFiles.length === 0 && (!task.evidence || task.evidence.length === 0))}
+                    disabled={isSubmitting || (requiresSubmission && files.length === 0 && (!task.evidence || task.evidence.length === 0))}
                     className={cn(
                       "rounded-xl h-10 sm:h-11 px-8 font-bold border-none w-full sm:w-auto shadow-lg",
-                      requiresSubmission && selectedFiles.length === 0 && (!task.evidence || task.evidence.length === 0)
+                      requiresSubmission && files.length === 0 && (!task.evidence || task.evidence.length === 0)
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                         : "bg-primary hover:bg-primary-dark text-white shadow-primary/20"
                     )}

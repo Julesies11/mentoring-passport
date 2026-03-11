@@ -35,6 +35,12 @@ export interface FileUploadProps {
   onFilesChange?: (files: File[]) => void;
   initialFiles?: any[];
   showFileList?: boolean;
+  compress?: boolean;
+  compressionOptions?: {
+    maxSizeMB?: number;
+    maxWidthOrHeight?: number;
+    useWebWorker?: boolean;
+  };
 }
 
 export function FileUpload({
@@ -45,6 +51,8 @@ export function FileUpload({
   className,
   onFilesChange,
   showFileList = true,
+  compress = false,
+  compressionOptions,
 }: FileUploadProps) {
   const [
     { isDragging, errors, files },
@@ -63,6 +71,8 @@ export function FileUpload({
     maxSize,
     accept,
     multiple,
+    compress,
+    compressionOptions,
     onFilesChange: (newFiles) => {
       // Extract the actual File objects
       const actualFiles = newFiles

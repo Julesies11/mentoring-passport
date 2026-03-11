@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { updatePairTaskStatus } from './tasks';
 import { NotificationService } from './notifications-service';
+import { uploadFile } from './storage';
+import { getPublicUrl } from './storage';
 
 export interface Evidence {
   id: string;
@@ -351,10 +353,16 @@ export async function reviewEvidence(
  * Upload evidence file to storage
  */
 export async function uploadEvidenceFile(file: File, pairId: string): Promise<string> {
-  const path = `${pairId}/${Date.now()}/${file.name}`;
-  const { error } = await supabase.storage.from('mp-evidence-photos').upload(path, file);
-  if (error) throw error;
-  return path;
+  const name = `${Date.now()}-${file.name}`;
+  const path = await uploadFile(file, {
+    bucket: 'mp-evidence-photos',
+    folder: pairId,
+    fileName: name,
+    compressionPreset: 'EVIDENCE'
+  });
+  
+  // uploadFile returns just the name, but our evidence system expects the path
+  return `${pairId}/${path}`;
 }
 
 /**

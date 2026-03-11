@@ -1,15 +1,39 @@
+import imageCompression from 'browser-image-compression';
+
+/**
+ * Standardized compression presets for the application.
+ * - AVATAR: Optimized for fast-loading lists (256px / 50KB)
+ * - EVIDENCE: Optimized for legibility/audit (1600px / 800KB)
+ */
+export const COMPRESSION_PRESETS = {
+  AVATAR: {
+    maxSizeMB: 0.05,
+    maxWidthOrHeight: 256,
+    useWebWorker: true,
+    fileType: 'image/jpeg' as const,
+    preserveExif: false,
+  },
+  EVIDENCE: {
+    maxSizeMB: 0.8,
+    maxWidthOrHeight: 1600,
+    useWebWorker: true,
+    fileType: 'image/jpeg' as const,
+    preserveExif: false,
+  },
+};
+
 /**
  * Validates an image file before processing.
  * @returns { error?: string }
  */
-export function validateAvatar(file: File): { error?: string } {
-  // 1. Check file size (Gold Standard: 10MB limit)
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+export function validateImage(file: File): { error?: string } {
+  // Check file size (10MB hard limit for the browser to handle)
+  const MAX_SIZE = 10 * 1024 * 1024; 
   if (file.size > MAX_SIZE) {
-    return { error: `Image is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please select an image under 10MB.` };
+    return { error: `Image is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max 10MB allowed.` };
   }
 
-  // 2. Check file type
+  // Check file type
   const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
   if (!validTypes.includes(file.type)) {
     return { error: 'Invalid file type. Please upload a JPG, PNG, or WebP image.' };
@@ -19,97 +43,31 @@ export function validateAvatar(file: File): { error?: string } {
 }
 
 /**
- * Resizes an image to a specific dimension using a "step-down" approach for better quality 
- * and memory safety. Optimized for mobile.
+ * Standardized image compression utility.
+ * Replaces all legacy/buggy canvas-based resizing.
  */
-export async function resizeImage(
+export async function compressImage(
   file: File,
-  targetWidth: number = 400,
-  targetHeight: number = 400
-): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const imageUri = URL.createObjectURL(file);
-    const img = new Image();
+  preset: keyof typeof COMPRESSION_PRESETS | typeof COMPRESSION_PRESETS.AVATAR = 'AVATAR'
+): Promise<File> {
+  // If not an image, return as-is
+  if (!file.type.startsWith('image/')) {
+    return file;
+  }
+
+  const options = typeof preset === 'string' ? COMPRESSION_PRESETS[preset] : preset;
+
+  try {
+    // browser-image-compression handles aspect ratio and quality iterations automatically
+    const compressedFile = await imageCompression(file, options);
     
-    img.onload = () => {
-      URL.revokeObjectURL(imageUri);
-      
-      try {
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-        
-        // Calculate final dimensions while maintaining aspect ratio
-        let finalWidth = originalWidth;
-        let finalHeight = originalHeight;
-        const ratio = originalWidth / originalHeight;
-
-        if (originalWidth > targetWidth || originalHeight > targetHeight) {
-          if (originalWidth > originalHeight) {
-            finalWidth = targetWidth;
-            finalHeight = targetWidth / ratio;
-          } else {
-            finalHeight = targetHeight;
-            finalWidth = targetHeight * ratio;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
-        
-        if (!ctx) throw new Error('Could not get canvas context');
-
-        canvas.width = finalWidth;
-        canvas.height = finalHeight;
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
-        // --- STEP DOWN SCALING ---
-        // Only step down if the image is at least 2x the target size
-        if (originalWidth > finalWidth * 2) {
-          const tmpCanvas = document.createElement('canvas');
-          const tmpCtx = tmpCanvas.getContext('2d', { alpha: false });
-          if (!tmpCtx) throw new Error('Could not get temp canvas context');
-
-          let cw = originalWidth;
-          let ch = originalHeight;
-
-          // Start from original image
-          let source: CanvasImageSource = img;
-
-          while (cw * 0.5 > finalWidth) {
-            cw = Math.floor(cw * 0.5);
-            ch = Math.floor(ch * 0.5);
-            
-            tmpCanvas.width = cw;
-            tmpCanvas.height = ch;
-            tmpCtx.drawImage(source, 0, 0, cw, ch);
-            source = tmpCanvas; // Next iteration uses the scaled-down version
-          }
-          
-          ctx.drawImage(tmpCanvas, 0, 0, finalWidth, finalHeight);
-        } else {
-          // Direct draw for smaller images or those not needing step-down
-          ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
-        }
-        
-        canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error('Canvas toBlob returned null'));
-          },
-          'image/jpeg',
-          0.85
-        );
-      } catch (err) {
-        reject(err);
-      }
-    };
-    
-    img.onerror = () => {
-      URL.revokeObjectURL(imageUri);
-      reject(new Error('Failed to load image into memory. The file might be corrupted.'));
-    };
-
-    img.src = imageUri;
-  });
+    // Return a new File object with the same name as original
+    return new File([compressedFile], file.name, {
+      type: compressedFile.type,
+      lastModified: Date.now(),
+    });
+  } catch (error) {
+    console.error('Image compression failed, returning original file:', error);
+    return file;
+  }
 }

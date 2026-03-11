@@ -27,6 +27,13 @@
 - Do NOT run unit tests (e.g., 'npm test', 'vitest', 'npx vitest') automatically.
 - Only execute build or test steps if I explicitly ask for them.
 
+# ===============================
+# 3. TESTING STANDARDS
+# ===============================
+- **ALWAYS** search for and update related tests after making a code change. You must add a new test case to the existing test file (if one exists) or create a new test file to verify your changes.
+- **Smoke Tests (White Screen Prevention):** Every time Gemini adds a new page to the app routing file (`app-routing-setup.tsx`), you MUST add the new page to the exhaustive smoke test in `src/test/smoke.test.tsx` using the `waitFor` pattern to catch asynchronous crashes.
+- **Playwright E2E:** For critical flows, a Playwright E2E test is the only 100% guarantee against white screens.
+
 # Gemini Project Instructions — Metronic React (Vite) + TanStack Query + Supabase
 This project uses:
 - React 19 (Vite)
@@ -129,7 +136,29 @@ This ensures:
   - Hide redundant or low-priority filters (like Role filters) on mobile to declutter the toolbar.
   - Make entire table rows clickable on mobile to open details/edit dialogs.
 
-- **Pagination:**
+- Pagination:
   - Force pagination footers to stay on a **single row** (`flex-row` always).
   - Use compact components (`h-7`, `text-[10px]`) and condensed indicators (e.g., "1 / 10" instead of "1 of 10").
   - Use responsive labeling: hide "Show" and "per page" text on small mobile screens.
+
+# ===============================
+# 4. IMAGE HANDLING & COMPRESSION STANDARDS
+# ===============================
+- **Unified Processing Engine:**
+  - ALL image processing must use the centralized engine in `src/lib/utils/image.ts` powered by `browser-image-compression`.
+  - **NEVER** use manual canvas operations or legacy resizing logic.
+  - **Privacy First:** All uploads MUST strip EXIF metadata (GPS, camera info) by setting `preserveExif: false`.
+  - **No Upscaling:** The engine must never "blow up" images smaller than the target dimensions.
+
+- **Standardized Presets:**
+  - **AVATAR Preset:** Optimized for performance in lists of 50+ members.
+    - `maxWidthOrHeight: 256` (2x retina for 128px display)
+    - `maxSizeMB: 0.05` (50KB)
+  - **EVIDENCE Preset:** Optimized for legibility and audit requirements.
+    - `maxWidthOrHeight: 1600` (High-fidelity document view)
+    - `maxSizeMB: 0.8` (800KB)
+
+- **Storage API Integration:**
+  - The "Gold Standard" `uploadFile` API in `src/lib/api/storage.ts` is the single entry point for uploads.
+  - It automatically handles compression based on the `compressionPreset` parameter.
+  - UI components should pass raw `File` objects to the API and let the centralized engine handle optimization.
