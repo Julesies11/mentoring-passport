@@ -36,7 +36,12 @@ export function usePairs() {
   });
 
   const createMutation = useMutation({
-    mutationFn: createPair,
+    mutationFn: (input: CreatePairInput) => {
+      if (!input.program_id) {
+        throw new Error('Please select a program before creating a pairing.');
+      }
+      return createPair(input);
+    },
     onSuccess: async (newPair) => {
       queryClient.invalidateQueries({ queryKey: ['pairs'] });
       

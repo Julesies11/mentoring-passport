@@ -88,15 +88,21 @@ describe('SignInPage', () => {
 
   it('handles quick test login buttons', async () => {
     render(<SignInPage />, { authValue: { login: mockLogin } });
-    
-    const supervisorButton = screen.getByRole('button', { name: /supervisor/i });
-    fireEvent.click(supervisorButton);
+
+    const orgAdminButton = screen.getByRole('button', { name: /org admin/i });
+    fireEvent.click(orgAdminButton);
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('admin@test.com', 'Admin123!');
     });
-  });
 
+    const supervisorButton = screen.getByRole('button', { name: /supervisor \(nick\)/i });
+    fireEvent.click(supervisorButton);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('nick@test.com', 'Demo123!!');
+    });
+  });
   it('navigates to change-password if must_change_password is true', async () => {
     // Override the supabase mock for this test
     vi.mocked(supabase.from('mp_profiles').select('must_change_password').eq('id', 'u1').single).mockResolvedValue({

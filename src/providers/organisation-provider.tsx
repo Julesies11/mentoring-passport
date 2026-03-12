@@ -35,7 +35,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
   // Determine effective organisation ID
   const effectiveOrgId = useMemo(() => {
     // 1. Masquerade has highest priority (for System Owners)
-    if (user?.role === 'administrator' && masqueradedOrgId) {
+    if (user?.is_admin && masqueradedOrgId) {
       return masqueradedOrgId;
     }
     // 2. Then the active membership from switchOrganisation
@@ -46,7 +46,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     return user?.organisation_id;
   }, [user, masqueradedOrgId, activeMembership]);
 
-  const isMasquerading = !!(user?.role === 'administrator' && masqueradedOrgId);
+  const isMasquerading = !!(user?.is_admin && masqueradedOrgId);
   const baseMembershipRole = isMasquerading ? 'org-admin' : (activeMembership?.role || null);
 
   // Fetch organisation
@@ -114,7 +114,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
   }, [selectedProgramId, sortedPrograms]);
 
   const enterMasquerade = (orgId: string) => {
-    if (user?.role !== 'administrator') return;
+    if (!user?.is_admin) return;
     setMasqueradedOrgId(orgId);
     setData(MASQUERADE_KEY, orgId);
   };

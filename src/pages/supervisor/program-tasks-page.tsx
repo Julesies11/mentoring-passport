@@ -43,7 +43,7 @@ import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 import { ProgramSelector } from '@/components/common/program-selector';
 
 export function SupervisorProgramTasksPage() {
-  const { user, isOrgAdmin } = useAuth();
+  const { user, isOrgAdmin, role } = useAuth();
   const { activeOrganisation, activeProgram } = useOrganisation();
   const queryClient = useQueryClient();
   const organisationId = activeOrganisation?.id;
@@ -390,7 +390,7 @@ export function SupervisorProgramTasksPage() {
     setIsEditDialogOpen(true);
   };
 
-  if (!user || (user.role !== 'supervisor' && user.role !== 'administrator' && user.role !== 'org-admin')) {
+  if (!user || (role !== 'supervisor' && role !== 'administrator' && role !== 'org-admin')) {
     return (
       <Container>
         <Card>

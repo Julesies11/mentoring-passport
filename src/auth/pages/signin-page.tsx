@@ -190,14 +190,30 @@ export function SignInPage() {
             type="button"
             onClick={() => handleTestLogin('admin@test.com', 'Admin123!')}
             disabled={isProcessing}
-            className="w-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700"
+            className="w-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700 font-bold"
           >
             {isProcessing ? (
               <span className="flex items-center gap-2">
                 <LoaderCircleIcon className="size-4! animate-spin" /> Signing in...
               </span>
             ) : (
-              'Supervisor (Leesa)'
+              'Org Admin (Leesa)'
+            )}
+          </Button>
+
+          <Button
+            variant="primary"
+            type="button"
+            onClick={() => handleTestLogin('nick@test.com', 'Demo123!!')}
+            disabled={isProcessing}
+            className="w-full bg-primary border-primary text-white hover:bg-primary-dark font-bold"
+          >
+            {isProcessing ? (
+              <span className="flex items-center gap-2">
+                <LoaderCircleIcon className="size-4! animate-spin" /> Signing in...
+              </span>
+            ) : (
+              'Supervisor (Nick)'
             )}
           </Button>
 

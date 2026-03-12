@@ -273,10 +273,10 @@ export const SupabaseAdapter = {
       roles: metadata.roles || [],
       pic: profile.avatar_url || metadata.pic || '',
       language: metadata.language || 'en',
-      is_admin: profile.role === 'administrator',
+      is_admin: metadata.role === 'administrator',
       
       // Mentoring Passport specific fields from mp_profiles
-      role: profile.role as any,
+      role: metadata.role as any, // System-wide role
       job_title: profile.job_title || metadata.job_title || '',
       avatar_url: profile.avatar_url,
       department: profile.department,

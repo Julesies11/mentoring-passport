@@ -66,8 +66,7 @@ describe('usePairs', () => {
     await result.current.createPairAsync(newPair);
 
     expect(pairsApi.createPair).toHaveBeenCalledWith(
-      expect.objectContaining({ ...newPair, program_id: 'prog1' }),
-      expect.anything()
+      expect.objectContaining({ ...newPair, program_id: 'prog1' })
     );
   });
 });

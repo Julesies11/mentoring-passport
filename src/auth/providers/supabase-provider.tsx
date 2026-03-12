@@ -25,7 +25,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // Check roles and pairings based on active context
   useEffect(() => {
     // 1. System Owner (Global Admin)
-    const systemOwner = currentUser?.role === 'administrator';
+    const systemOwner = !!currentUser?.is_admin;
     setIsSystemOwner(systemOwner);
     setIsAdmin(systemOwner);
 
@@ -34,9 +34,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setIsOrgAdmin(activeMembership.role === 'org-admin');
       setIsSupervisor(activeMembership.role === 'supervisor' || activeMembership.role === 'org-admin');
     } else {
-      // Fallback for legacy data or global admins without explicit memberships
       setIsOrgAdmin(false);
-      setIsSupervisor(currentUser?.role === 'supervisor');
+      setIsSupervisor(false);
     }
 
     const checkPairings = async () => {

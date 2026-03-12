@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { Participant } from '@/lib/api/participants';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,11 +34,18 @@ import { handleAvatarUpload } from '@/lib/api/profiles';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 
-export function ParticipantsContent() {
+interface ParticipantsContentProps {
+  mode?: 'manage' | 'view';
+}
+
+export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProps) {
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id');
   const { role } = useAuth();
+  const { activeOrganisation } = useOrganisation();
+  const organisationId = activeOrganisation?.id;
   const isOrgAdmin = role === 'org-admin';
+  const isManageMode = mode === 'manage' && isOrgAdmin;
 
   const { 
     participants, 
@@ -71,7 +79,9 @@ export function ParticipantsContent() {
 
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'supervisor' | 'program-member'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'supervisor' | 'program-member'>(
+    mode === 'view' ? 'program-member' : 'all'
+  );
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
   
   // Dialog States
@@ -126,6 +136,7 @@ export function ParticipantsContent() {
   }, [searchTerm, roleFilter, statusFilter, goToPage]);
 
   const handleCreate = async (data: any) => {
+    if (!isManageMode) return;
     setIsSubmitting(true);
     let newParticipantId = null;
     try {
@@ -176,7 +187,7 @@ export function ParticipantsContent() {
   };
 
   const handleUpdate = async (data: any) => {
-    if (!editingParticipant) return;
+    if (!editingParticipant || !isManageMode) return;
     setIsSubmitting(true);
     try {
       const { avatar_file, delete_avatar, full_name, role, job_title, department, phone, bio, status } = data;
@@ -190,13 +201,14 @@ export function ParticipantsContent() {
 
       await updateParticipantAsync(editingParticipant.id, {
         full_name,
-        role,
         job_title,
         department,
         phone,
         bio,
         status,
+        role, // The API now handles syncing this to mp_memberships
         avatar_url: finalAvatarUrl,
+        organisation_id: organisationId,
       });
 
       setIsDialogOpen(false);
@@ -220,6 +232,7 @@ export function ParticipantsContent() {
   };
 
   const handleArchive = async (id: string) => {
+    if (!isManageMode) return;
     if (window.confirm('Are you sure you want to archive this participant? They will no longer be able to log in.')) {
       try {
         await archiveParticipant(id);
@@ -231,6 +244,7 @@ export function ParticipantsContent() {
   };
 
   const handleRestore = async (id: string) => {
+    if (!isManageMode) return;
     try {
       await restoreParticipant(id);
       toast.success('Participant restored');
@@ -240,7 +254,6 @@ export function ParticipantsContent() {
   };
 
   const openEditDialog = (participant: Participant) => {
-    if (!isOrgAdmin) return;
     setEditingParticipant(participant);
     setIsDialogOpen(true);
   };
@@ -303,7 +316,7 @@ export function ParticipantsContent() {
       <Card className="border-0 sm:border">
         <CardHeader className="flex-wrap gap-3 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
           <CardTitle className="text-sm sm:text-lg font-bold">
-            {isOrgAdmin ? 'Manage Participants' : 'View Participants'}
+            {isManageMode ? 'Manage Members' : 'Member Directory'}
           </CardTitle>
           <CardToolbar className="gap-2 sm:gap-2.5 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
@@ -341,7 +354,7 @@ export function ParticipantsContent() {
                 </SelectContent>
               </Select>
 
-              {isOrgAdmin && (
+              {isManageMode && (
                 <Button 
                   variant="outline"
                   onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} 
@@ -370,7 +383,9 @@ export function ParticipantsContent() {
                     <TableHead className="w-[30%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Pairings</TableHead>
                     <TableHead className="w-[25%] md:w-auto px-3 sm:px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
                     <TableHead className="hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
-                    <TableHead className="hidden md:table-cell w-[80px] px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</TableHead>
+                    <TableHead className={cn("hidden md:table-cell px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-right", isManageMode ? "w-[80px]" : "w-[60px]")}>
+                      {isManageMode ? 'Actions' : 'Profile'}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -390,11 +405,8 @@ export function ParticipantsContent() {
                         <TableRow 
                           key={p.id} 
                           id={`participant-${p.id}`}
-                          className={cn(
-                            "transition-colors group scroll-mt-20",
-                            isOrgAdmin ? "hover:bg-primary/[0.01] cursor-pointer" : ""
-                          )}
-                          onClick={() => isOrgAdmin && openEditDialog(p)}
+                          className="transition-colors group scroll-mt-20 cursor-pointer hover:bg-primary/[0.01]"
+                          onClick={() => openEditDialog(p)}
                         >
                           <TableCell className="px-3 sm:px-6 py-3 sm:py-4 overflow-hidden">
                             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
@@ -468,7 +480,7 @@ export function ParticipantsContent() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            {isOrgAdmin && (
+                            {isManageMode ? (
                               <>
                                 <Button 
                                   variant="ghost" 
@@ -514,6 +526,20 @@ export function ParticipantsContent() {
                                   </Button>
                                 )}
                               </>
+                            ) : (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                mode="icon" 
+                                className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all text-gray-400" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditDialog(p);
+                                }}
+                                title="View Profile"
+                              >
+                                <KeenIcon icon="eye" className="text-lg" />
+                              </Button>
                             )}
                           </div>
                         </TableCell>
@@ -547,6 +573,7 @@ export function ParticipantsContent() {
         onSubmit={editingParticipant ? handleUpdate : handleCreate}
         participant={editingParticipant || undefined}
         isLoading={isSubmitting}
+        readOnly={!isManageMode && !!editingParticipant}
       />
 
       <CredentialsDialog

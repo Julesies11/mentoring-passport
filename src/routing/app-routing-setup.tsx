@@ -202,13 +202,17 @@ export function AppRoutingSetup() {
               path="/org-admin/participants"
               element={
                 <RequireRole allowedRoles={['org-admin']}>
-                  <ParticipantsPage />
+                  <ParticipantsPage mode="manage" />
                 </RequireRole>
               }
             />
             <Route
               path="/supervisor/participants"
-              element={<Navigate to="/org-admin/participants" replace />}
+              element={
+                <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <ParticipantsPage mode="view" />
+                </RequireRole>
+              }
             />
             <Route
               path="/org-admin/task-templates"

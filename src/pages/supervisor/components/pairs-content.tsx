@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { usePairs } from '@/hooks/use-pairs';
 import { useParticipantsByRole } from '@/hooks/use-participants';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { toast } from 'sonner';
 import { PairsStats } from './pairs/PairsStats';
 import { PairsManagementTable } from './pairs/PairsManagementTable';
-import { UnpairedDialog } from './pairs/UnpairedDialog';
+import { UnpairedParticipantsTable } from './pairs/UnpairedParticipantsTable';
 import { MatchmakerDialog } from './pairs/MatchmakerDialog';
 
 const EMPTY_ARRAY: any[] = [];
@@ -14,6 +15,7 @@ export function PairsContent() {
   const [searchParams] = useSearchParams();
   const highlightPairId = searchParams.get('pairId');
   const { pairs = EMPTY_ARRAY, stats, isLoading, createPairAsync, isCreating } = usePairs();
+  const { activeProgram } = useOrganisation();
 
   // Effect for highlighting deep-linked pair
   useEffect(() => {
@@ -36,7 +38,6 @@ export function PairsContent() {
   const { data: participants = EMPTY_ARRAY } = useParticipantsByRole('program-member');
   
   const [matchmakerOpen, setMatchmakerOpen] = useState(false);
-  const [unpairedOpen, setUnpairedOpen] = useState(false);
   const [selectedInitialMentorId, setSelectedInitialMentorId] = useState('');
 
   // Calculate unpaired count for the stats card
@@ -69,7 +70,6 @@ export function PairsContent() {
 
   const handlePairNow = (participantId: string) => {
     setSelectedInitialMentorId(participantId);
-    setUnpairedOpen(false);
     setMatchmakerOpen(true);
   };
 
@@ -78,7 +78,12 @@ export function PairsContent() {
       <PairsStats 
         stats={stats}
         unpairedCount={unpairedCount}
-        onShowUnpaired={() => setUnpairedOpen(true)}
+        onShowUnpaired={() => {
+          const element = document.getElementById('unpaired-table');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
       />
 
       <PairsManagementTable 
@@ -90,13 +95,14 @@ export function PairsContent() {
         }}
       />
 
-      <UnpairedDialog 
-        open={unpairedOpen}
-        onOpenChange={setUnpairedOpen}
-        participants={participants}
-        pairs={pairs}
-        onPairNow={handlePairNow}
-      />
+      <div id="unpaired-table">
+        <UnpairedParticipantsTable 
+          participants={participants}
+          pairs={pairs}
+          onPairNow={handlePairNow}
+          programTitle={activeProgram?.title}
+        />
+      </div>
 
       <MatchmakerDialog 
         open={matchmakerOpen}

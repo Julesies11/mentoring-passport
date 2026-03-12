@@ -1,11 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { logError } from '@/lib/logger';
 import { uploadFile, getPublicUrl } from './storage';
+import { ROLES, STATUS, STORAGE_BUCKETS, UserRole, EntityStatus } from '@/config/constants';
 
 export interface Profile {
   id: string;
   email: string;
-  role: 'supervisor' | 'program-member' | 'administrator';
+  role: UserRole; // Inferred from memberships or global role
   full_name: string | null;
   job_title: string | null;
   bio: string | null;
@@ -13,7 +14,7 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   organisation_id: string | null;
-  status: 'active' | 'archived';
+  status: EntityStatus;
   created_at: string;
   updated_at: string;
 }
@@ -56,7 +57,10 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data: profile, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select(`
+      *,
+      memberships:mp_memberships(role, organisation_id)
+    `)
     .eq('id', userId)
     .single();
 
@@ -64,7 +68,15 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     throw new Error(`Failed to get profile: ${error.message}`);
   }
 
-  return profile;
+  if (!profile) return null;
+
+  // Derive role
+  const role = (profile.memberships as any[])?.[0]?.role || ROLES.PROGRAM_MEMBER;
+
+  return {
+    ...profile,
+    role
+  } as any;
 }
 
 /**
@@ -72,7 +84,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
  * Reuses the shared storage utility.
  */
 export function getAvatarUrl(userId: string, avatarPath?: string | null): string {
-  return getPublicUrl('mp-avatars', avatarPath, userId);
+  return getPublicUrl(STORAGE_BUCKETS.AVATARS, avatarPath, userId);
 }
 
 /**
@@ -92,7 +104,7 @@ export async function handleAvatarUpload(
   if (file) {
     const fileName = `${userId}-${Date.now()}.jpg`;
     return await uploadFile(file, {
-      bucket: 'mp-avatars',
+      bucket: STORAGE_BUCKETS.AVATARS,
       folder: userId,
       fileName,
       compressionPreset: 'AVATAR'

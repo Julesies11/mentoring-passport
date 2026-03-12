@@ -7,9 +7,15 @@ const mockEvidenceTypes = [
 ];
 
 const mockProfiles = [
-  { id: 'm1', full_name: 'Mentor One', role: 'mentor', organisation_id: 'org1' },
-  { id: 'me1', full_name: 'Mentee One', role: 'mentee', organisation_id: 'org1' },
-  { id: 'u1', full_name: 'Supervisor User', role: 'supervisor', organisation_id: 'org1' },
+  { id: 'm1', full_name: 'Mentor One', email: 'm1@test.com', organisation_id: 'org1', status: 'active' },
+  { id: 'me1', full_name: 'Mentee One', email: 'me1@test.com', organisation_id: 'org1', status: 'active' },
+  { id: 'u1', full_name: 'Supervisor User', email: 'u1@test.com', organisation_id: 'org1', status: 'active' },
+];
+
+const mockMemberships = [
+  { user_id: 'm1', organisation_id: 'org1', role: 'program-member', status: 'active' },
+  { user_id: 'me1', organisation_id: 'org1', role: 'program-member', status: 'active' },
+  { user_id: 'u1', organisation_id: 'org1', role: 'supervisor', status: 'active' },
 ];
 
 const mockOrganisations = [
@@ -58,7 +64,24 @@ export const handlers = [
 
   // Fetch Profiles
   http.get('*/rest/v1/mp_profiles*', () => {
-    return HttpResponse.json(mockProfiles);
+    // Add joined memberships to the profiles
+    const profilesWithMemberships = mockProfiles.map(p => ({
+      ...p,
+      memberships: mockMemberships.filter(m => m.user_id === p.id)
+    }));
+    return HttpResponse.json(profilesWithMemberships);
+  }),
+
+  // Fetch Memberships
+  http.get('*/rest/v1/mp_memberships*', ({ request }) => {
+    const url = new URL(request.url);
+    const userIdParam = url.searchParams.get('user_id');
+    if (userIdParam) {
+      const userId = userIdParam.includes('.') ? userIdParam.split('.')[1] : userIdParam;
+      const filtered = mockMemberships.filter(m => m.user_id === userId);
+      return HttpResponse.json(filtered);
+    }
+    return HttpResponse.json(mockMemberships);
   }),
 
   // Fetch Pair Tasks

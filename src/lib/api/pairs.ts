@@ -108,6 +108,12 @@ export async function fetchPair(id: string): Promise<Pair | null> {
  * Also creates pair_tasks for all existing tasks (moved from database trigger to application layer)
  */
 export async function createPair(input: CreatePairInput): Promise<Pair> {
+  // Defensive check for program_id
+  if (!input.program_id || input.program_id === 'undefined' || typeof input.program_id !== 'string') {
+    console.error('createPair called with invalid program_id:', input.program_id);
+    throw new Error('Invalid program selection. Please ensure a program is selected.');
+  }
+
   // Step 1: Fetch program to get organisation_id
   const { data: program, error: programError } = await supabase
     .from('mp_programs')

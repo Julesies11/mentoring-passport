@@ -26,6 +26,11 @@ import { KeenIcon } from '@/components/keenicons';
 import { ImageInput, type ImageInputFile } from '@/components/image-input';
 import { getAvatarUrl } from '@/lib/api/profiles';
 import type { Participant } from '@/lib/api/participants';
+import { cn } from '@/lib/utils';
+import { useUserPairs } from '@/hooks/use-pairs';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials, getAvatarPublicUrl } from '@/lib/utils/avatar';
 
 import { validateImage } from '@/lib/utils/image';
 
@@ -55,6 +60,7 @@ interface ParticipantDialogProps {
   participant?: Participant | null;
   onSubmit: (data: any) => Promise<void>;
   isLoading?: boolean;
+  readOnly?: boolean;
 }
 
 export function ParticipantDialog({
@@ -63,6 +69,7 @@ export function ParticipantDialog({
   participant,
   onSubmit,
   isLoading,
+  readOnly = false,
 }: ParticipantDialogProps) {
   const isEdit = !!participant;
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +110,7 @@ export function ParticipantDialog({
         bio: participant.bio || '',
         status: participant.status,
       });
-      
+
       // Initialize avatar if exists
       if (participant.avatar_url) {
         setAvatar([{ dataURL: getAvatarUrl(participant.id, participant.avatar_url) }]);
@@ -129,6 +136,7 @@ export function ParticipantDialog({
   }, [participant, isEdit, reset, open]);
 
   const handleFormSubmit = async (data: any) => {
+    if (readOnly) return;
     try {
       setError(null);
       const avatarFile = avatar.length > 0 && avatar[0].file ? avatar[0].file : undefined;
@@ -156,11 +164,15 @@ export function ParticipantDialog({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-4 sm:p-6 pb-2 shrink-0 border-b border-gray-100">
-          <DialogTitle className="text-lg sm:text-xl font-bold">{isEdit ? 'Edit Participant' : 'Add New Participant'}</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl font-bold">
+            {readOnly ? 'Participant Profile' : isEdit ? 'Edit Participant' : 'Add New Participant'}
+          </DialogTitle>
           <DialogDescription className="text-[10px] sm:text-xs uppercase font-bold text-gray-400 tracking-wider">
-            {isEdit
-              ? 'Update participant information'
-              : 'Create a new participant account'}
+            {readOnly 
+              ? 'Viewing participant details'
+              : isEdit
+                ? 'Update participant information'
+                : 'Create a new participant account'}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,6 +194,7 @@ export function ParticipantDialog({
               <ImageInput
                 value={avatar}
                 onChange={(selectedAvatar) => {
+                  if (readOnly) return;
                   setError(null);
                   if (selectedAvatar.length > 0 && selectedAvatar[0].file) {
                     const validation = validateImage(selectedAvatar[0].file);
@@ -194,11 +207,15 @@ export function ParticipantDialog({
                   setAvatar(selectedAvatar);
                   setDeleteAvatar(selectedAvatar.length === 0);
                 }}
+                disabled={readOnly}
               >
                 {({ onImageUpload }) => (
                   <div
-                    className="size-20 sm:size-24 relative cursor-pointer group rounded-full border-2 border-gray-200 group-hover:border-primary transition-all overflow-hidden bg-gray-50 flex items-center justify-center shadow-sm p-0"
-                    onClick={onImageUpload}
+                    className={cn(
+                      "size-20 sm:size-24 relative group rounded-full border-2 border-gray-200 transition-all overflow-hidden bg-gray-50 flex items-center justify-center shadow-sm p-0",
+                      !readOnly && "cursor-pointer group-hover:border-primary"
+                    )}
+                    onClick={!readOnly ? onImageUpload : undefined}
                   >
                     {avatar.length > 0 ? (
                       <img src={avatar[0].dataURL} alt="avatar" className="size-full object-cover" />
@@ -207,14 +224,18 @@ export function ParticipantDialog({
                         <KeenIcon icon="user" className="text-3xl" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
-                    <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[9px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      Upload
-                    </div>
+                    {!readOnly && (
+                      <>
+                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
+                        <div className="absolute bottom-0 inset-x-0 bg-black/40 py-1 text-[9px] text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          Upload
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </ImageInput>
-              {avatar.length > 0 && (
+              {avatar.length > 0 && !readOnly && (
                 <Button
                   variant="outline"
                   mode="icon"
@@ -229,7 +250,7 @@ export function ParticipantDialog({
                 </Button>
               )}
             </div>
-            <p className="text-[10px] text-muted-foreground italic text-center">Square image recommended, max 2MB</p>
+            {!readOnly && <p className="text-[10px] text-muted-foreground italic text-center">Square image recommended, max 2MB</p>}
           </div>
 
           <div className="grid gap-4">
@@ -243,6 +264,7 @@ export function ParticipantDialog({
                     {...register('email')}
                     placeholder="user@example.com"
                     className="h-9 sm:h-10 border-gray-200 text-sm"
+                    disabled={readOnly}
                   />
                   {errors.email && (
                     <p className="text-[10px] text-red-600 font-medium">{(errors.email.message as string)}</p>
@@ -258,20 +280,23 @@ export function ParticipantDialog({
                       {...register('password')}
                       placeholder="Minimum 8 characters"
                       className="h-9 sm:h-10 pr-10 border-gray-200 text-sm"
+                      disabled={readOnly}
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
+                    {!readOnly && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                   {errors.password && (
                     <p className="text-[10px] text-red-600 font-medium">{(errors.password.message as string)}</p>
@@ -286,6 +311,7 @@ export function ParticipantDialog({
                 <Select
                   value={watch('role')}
                   onValueChange={(value) => setValue('role', value)}
+                  disabled={readOnly}
                 >
                   <SelectTrigger className="h-9 sm:h-10 border-gray-200 text-sm">
                     <SelectValue placeholder="Select role" />
@@ -306,6 +332,7 @@ export function ParticipantDialog({
                   {...register('full_name')}
                   placeholder="John Doe"
                   className="h-9 sm:h-10 border-gray-200 text-sm"
+                  disabled={readOnly}
                 />
                 {errors.full_name && (
                   <p className="text-[10px] text-red-600 font-medium">{(errors.full_name.message as string)}</p>
@@ -320,6 +347,7 @@ export function ParticipantDialog({
                 {...register('job_title')}
                 placeholder="Senior Registrar"
                 className="h-9 sm:h-10 border-gray-200 text-sm"
+                disabled={readOnly}
               />
             </div>
 
@@ -331,6 +359,7 @@ export function ParticipantDialog({
                   {...register('department')}
                   placeholder="Medicine"
                   className="h-9 sm:h-10 border-gray-200 text-sm"
+                  disabled={readOnly}
                 />
               </div>
 
@@ -342,6 +371,7 @@ export function ParticipantDialog({
                   {...register('phone')}
                   placeholder="+1234567890"
                   className="h-9 sm:h-10 border-gray-200 text-sm"
+                  disabled={readOnly}
                 />
               </div>
             </div>
@@ -352,19 +382,28 @@ export function ParticipantDialog({
                 <Textarea
                   id="bio"
                   {...register('bio')}
-                  placeholder="Brief description..."
-                  rows={2}
-                  className="border-gray-200 text-sm"
+                  placeholder={readOnly ? "No bio provided." : "Brief description..."}
+                  rows={readOnly ? 5 : 2}
+                  className={cn(
+                    "border-gray-200 text-sm",
+                    readOnly && "bg-gray-50/50 resize-none"
+                  )}
+                  disabled={readOnly}
                 />
               </div>
             )}
 
-            {isEdit && (
+            {readOnly && participant && (
+              <PairingHistory userId={participant.id} />
+            )}
+
+            {isEdit && !readOnly && (
               <div className="space-y-1.5">
                 <Label htmlFor="status" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</Label>
                 <Select
                   value={watch('status')}
                   onValueChange={(value) => setValue('status', value)}
+                  disabled={readOnly}
                 >
                   <SelectTrigger className="h-9 sm:h-10 border-gray-200 text-sm">
                     <SelectValue placeholder="Select status" />
@@ -380,19 +419,104 @@ export function ParticipantDialog({
         </form>
 
         <DialogFooter className="p-4 sm:p-6 sm:py-4 border-t border-gray-100 shrink-0 bg-gray-50/50 flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <Button type="button" variant="outline" onClick={handleClose} className="h-10 sm:h-11 px-6 font-bold rounded-xl w-full sm:w-auto order-2 sm:order-1 text-xs">
-            Cancel
-          </Button>
           <Button 
-            type="submit" 
-            form="participant-form"
-            disabled={isLoading} 
-            className="h-10 sm:h-11 px-8 font-bold shadow-lg shadow-primary/20 rounded-xl w-full sm:w-auto order-1 sm:order-2 text-xs"
+            type="button" 
+            variant={readOnly ? "default" : "outline"} 
+            onClick={handleClose} 
+            className={cn(
+              "h-10 sm:h-11 px-6 font-bold rounded-xl w-full sm:w-auto order-2 sm:order-1 text-xs",
+              readOnly && "sm:order-2 bg-gray-900 text-white hover:bg-gray-800"
+            )}
           >
-            {isLoading ? 'Saving...' : isEdit ? 'Update Participant' : 'Create Participant'}
+            {readOnly ? 'Close Profile' : 'Cancel'}
           </Button>
+          {!readOnly && (
+            <Button 
+              type="submit" 
+              form="participant-form"
+              disabled={isLoading} 
+              className="h-10 sm:h-11 px-8 font-bold shadow-lg shadow-primary/20 rounded-xl w-full sm:w-auto order-1 sm:order-2 text-xs"
+            >
+              {isLoading ? 'Saving...' : isEdit ? 'Update Participant' : 'Create Participant'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PairingHistory({ userId }: { userId: string }) {
+  const { data: pairings = [], isLoading } = useUserPairs(userId);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-4">
+        <KeenIcon icon="loading" className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (pairings.length === 0) {
+    return (
+      <div className="space-y-2">
+        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Relationship History</Label>
+        <p className="text-xs text-muted-foreground italic bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 text-center">
+          No relationship history found across the organisation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 mt-4">
+      <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Relationship History</Label>
+      <div className="space-y-2">
+        {pairings.map((pair) => {
+          const isMentor = pair.mentor_id === userId;
+          const partner = isMentor ? pair.mentee : pair.mentor;
+          const partnerName = partner?.full_name || partner?.email || 'Unknown';
+          const isActive = pair.status === 'active' && pair.program?.status === 'active';
+
+          return (
+            <div 
+              key={pair.id} 
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-xl border border-gray-100 transition-all",
+                isActive ? "bg-primary/[0.02] border-primary/10 shadow-sm" : "bg-gray-50/50 grayscale-[0.5] opacity-80"
+              )}
+            >
+              <Avatar className="size-8 shrink-0 border border-white shadow-sm">
+                <AvatarImage src={getAvatarPublicUrl(partner?.avatar_url, partner?.id)} />
+                <AvatarFallback className="text-[10px] font-bold">
+                  {getInitials(partnerName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <span className="text-xs font-bold text-gray-900 truncate">
+                    {partnerName}
+                  </span>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "rounded-full font-black uppercase text-[8px] px-2 h-4 border-none shrink-0",
+                      isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+                    )}
+                  >
+                    {isActive ? 'Active' : pair.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium">
+                  <span className="truncate">{pair.program?.title || 'Unknown Program'}</span>
+                  <span className="shrink-0 size-1 bg-gray-300 rounded-full" />
+                  <span className="shrink-0">{isMentor ? 'Mentor' : 'Mentee'}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

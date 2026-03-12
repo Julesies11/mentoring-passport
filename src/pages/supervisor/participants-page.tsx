@@ -6,15 +6,19 @@ import {
 } from '@/layouts/demo1/components/toolbar';
 import { ParticipantsContent } from './components/participants-content';
 
-export function ParticipantsPage() {
+interface ParticipantsPageProps {
+  mode?: 'manage' | 'view';
+}
+
+export function ParticipantsPage({ mode = 'manage' }: ParticipantsPageProps) {
   return (
     <>
       <div className="hidden sm:block">
         <Container>
           <Toolbar>
             <ToolbarHeading
-              title="Participants"
-              description="Manage mentors, mentees, and supervisors"
+              title={mode === 'manage' ? "Manage Members" : "View Participants"}
+              description={mode === 'manage' ? "Manage mentors, mentees, and supervisors" : "Find and view program members for pairing"}
             />
             <ToolbarActions>
               {/* Action buttons are handled inside ParticipantsContent or can be moved here */}
@@ -23,7 +27,7 @@ export function ParticipantsPage() {
         </Container>
       </div>
       <Container className="sm:mt-0">
-        <ParticipantsContent />
+        <ParticipantsContent mode={mode} />
       </Container>
     </>
   );

@@ -51,11 +51,10 @@ import { KeenIcon } from '@/components/keenicons';
 import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 
 export function SupervisorMasterTasksPage() {
-  const { user } = useAuth();
-  const { activeOrganisation, membershipRole } = useOrganisation();
+  const { user, isOrgAdmin, isSupervisor } = useAuth();
+  const { activeOrganisation } = useOrganisation();
   const queryClient = useQueryClient();
   const organisationId = activeOrganisation?.id;
-  const isOrgAdmin = membershipRole === 'org-admin' || user?.role === 'administrator';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -420,7 +419,7 @@ export function SupervisorMasterTasksPage() {
     setIsEditDialogOpen(true);
   };
 
-  if (!user || (user.role !== 'supervisor' && user.role !== 'administrator')) {
+  if (!user || (!isSupervisor && !isOrgAdmin)) {
     return (
       <Container>
         <Card>

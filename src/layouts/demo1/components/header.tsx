@@ -35,14 +35,8 @@ export function Header() {
       <Container className="flex justify-between items-stretch lg:gap-4">
         {/* Mobile: Logo on left, Desktop: Breadcrumbs */}
         {mobileMode ? (
-          <div className="flex items-center gap-2.5">
-            <Link to="/" className="shrink-0">
-              <img
-                src={toAbsoluteUrl('/media/app/mini-logo.svg')}
-                className="h-[25px] w-full"
-                alt="mini-logo"
-              />
-            </Link>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {/* Breadcrumb or title could go here if needed, but keeping it clean for now */}
           </div>
         ) : (
           <div className="flex items-center gap-4 flex-1">

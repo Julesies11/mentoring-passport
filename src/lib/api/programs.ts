@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { STATUS, EntityStatus } from '@/config/constants';
 
 export interface Program {
   id: string;
@@ -7,7 +8,7 @@ export interface Program {
   name: string;
   start_date: string | null;
   end_date: string | null;
-  status: 'active' | 'inactive' | 'archived';
+  status: EntityStatus;
   created_at: string;
   updated_at: string;
 }
@@ -50,19 +51,25 @@ export async function fetchPrograms(organisationId: string): Promise<Program[]> 
  * Fetch programs assigned to a supervisor
  */
 export async function fetchAssignedPrograms(organisationId: string): Promise<Program[]> {
-  // Check user role first
-  const { data: profile } = await supabase.from('mp_profiles').select('role').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
-  
-  // If System Owner or Org Admin, they see all programs in the org
-  const isGlobalOrOrgAdmin = profile?.role === 'administrator' || 
-    (await supabase.from('mp_memberships')
-      .select('role')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-      .eq('organisation_id', organisationId)
-      .eq('role', 'org-admin')
-      .single()).data !== null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
 
-  if (isGlobalOrOrgAdmin) {
+  // Check if user is a global administrator (from metadata)
+  const isGlobalAdmin = user.user_metadata?.role === 'administrator';
+
+  // Check if user is an org-admin for this specific organisation
+  const { data: membership } = await supabase
+    .from('mp_memberships')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('organisation_id', organisationId)
+    .eq('role', 'org-admin')
+    .maybeSingle();
+
+  const isOrgAdmin = !!membership;
+
+  // If System Owner or Org Admin, they see all programs in the org
+  if (isGlobalAdmin || isOrgAdmin) {
     return fetchPrograms(organisationId);
   }
 
@@ -71,7 +78,7 @@ export async function fetchAssignedPrograms(organisationId: string): Promise<Pro
     .from('mp_programs')
     .select('*, mp_supervisor_programs!inner(user_id)')
     .eq('organisation_id', organisationId)
-    .eq('mp_supervisor_programs.user_id', (await supabase.auth.getUser()).data.user?.id)
+    .eq('mp_supervisor_programs.user_id', user.id)
     .order('name', { ascending: true });
 
   if (error) {
@@ -81,7 +88,6 @@ export async function fetchAssignedPrograms(organisationId: string): Promise<Pro
 
   return data || [];
 }
-
 /**
  * Fetch a single program by ID
  */
@@ -317,12 +323,14 @@ async function syncProgramTasks(programId: string, organisationId: string, taskL
  * Archive a program
  */
 export async function archiveProgram(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('mp_programs')
-    .update({ status: 'archived' })
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('mp_programs')
+      .update({ status: STATUS.ARCHIVED })
+      .eq('id', id);
 
-  if (error) {
+    if (error) throw error;
+  } catch (error) {
     console.error('Error archiving program:', error);
     throw error;
   }
@@ -345,6 +353,6 @@ export async function duplicateProgram(sourceId: string, newName: string): Promi
   return createProgram({
     ...sourceData,
     name: newName,
-    status: 'inactive' // Start as inactive
+    status: STATUS.INACTIVE // Start as inactive
   });
 }

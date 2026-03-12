@@ -22,9 +22,17 @@ import {
 } from '@/components/ui/avatar';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { Building2, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
-  const { logout, user, isSupervisor, memberships, activeMembership, switchOrganisation } = useAuth();
+  const { 
+    logout, 
+    user, 
+    isOrgAdmin, 
+    memberships, 
+    activeMembership, 
+    switchOrganisation 
+  } = useAuth();
   const { isMasquerading } = useOrganisation();
   const navigate = useNavigate();
 
@@ -84,10 +92,10 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           </Link>
         </DropdownMenuItem>
 
-        {(isSupervisor || isMasquerading) && (
+        {(isOrgAdmin || isMasquerading) && (
           <DropdownMenuItem asChild>
             <Link
-              to="/supervisor/programs"
+              to="/org-admin/programs"
               className="flex items-center gap-2"
             >
               <Layers className="size-4" />

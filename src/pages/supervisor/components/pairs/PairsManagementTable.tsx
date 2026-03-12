@@ -16,6 +16,8 @@ import { PAIR_STATUS_COLORS } from '@/config/constants';
 import { calculatePairProgress } from '@/lib/utils/progress';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
+import { ParticipantDialog } from '@/components/participants/participant-dialog';
+import { Participant } from '@/lib/api/participants';
 
 const SortIcon = ({ field, currentField, currentOrder }: { field: string, currentField: string, currentOrder: 'asc' | 'desc' }) => {
   if (field !== currentField) return <KeenIcon icon="arrow-up-down" className="text-[10px] opacity-20 ml-1" />;
@@ -38,6 +40,10 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: Pai
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Profile Dialog State
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const { data: allStatuses = [] } = useAllPairTaskStatuses();
 
   // If we are on mobile and status is 'all', force it to 'active'
@@ -54,6 +60,13 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: Pai
       setSortField(field);
       setSortOrder('asc');
     }
+  };
+
+  const handleOpenProfile = (e: React.MouseEvent, participant: any) => {
+    e.stopPropagation();
+    if (!participant) return;
+    setSelectedParticipant(participant as Participant);
+    setIsProfileOpen(true);
   };
 
   const sortedPairs = useMemo(() => {
@@ -231,30 +244,36 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: Pai
                       onClick={() => navigate(`/supervisor/checklist?pair=${pair.id}`)}
                     >
                       <TableCell className="overflow-hidden">
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <Avatar className="size-7 md:size-8 shrink-0">
+                        <div 
+                          className="flex items-center gap-2 md:gap-3 group/member cursor-pointer"
+                          onClick={(e) => handleOpenProfile(e, pair.mentor)}
+                        >
+                          <Avatar className="size-7 md:size-8 shrink-0 group-hover/member:ring-2 group-hover/member:ring-primary/20 transition-all">
                             <AvatarImage src={getAvatarPublicUrl(pair.mentor?.avatar_url, pair.mentor?.id)} alt={pair.mentor?.full_name || ''} />
                             <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                               {getInitials(pair.mentor?.full_name || pair.mentor?.email)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentor?.full_name || 'No name'}</span>
+                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block group-hover/member:text-primary transition-colors">{pair.mentor?.full_name || 'No name'}</span>
                             <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentor?.job_title || 'N/A'}</span>
                           </div>
                         </div>
                       </TableCell>
 
                       <TableCell className="overflow-hidden">
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <Avatar className="size-7 md:size-8 shrink-0">
+                        <div 
+                          className="flex items-center gap-2 md:gap-3 group/member cursor-pointer"
+                          onClick={(e) => handleOpenProfile(e, pair.mentee)}
+                        >
+                          <Avatar className="size-7 md:size-8 shrink-0 group-hover/member:ring-2 group-hover/member:ring-primary/20 transition-all">
                             <AvatarImage src={getAvatarPublicUrl(pair.mentee?.avatar_url, pair.mentee?.id)} alt={pair.mentee?.full_name || ''} />
                             <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                               {getInitials(pair.mentee?.full_name || pair.mentee?.email)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentee?.full_name || 'No name'}</span>
+                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block group-hover/member:text-primary transition-colors">{pair.mentee?.full_name || 'No name'}</span>
                             <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentee?.job_title || 'N/A'}</span>
                           </div>
                         </div>
@@ -323,6 +342,14 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: Pai
           onNextPage={goToNextPage}
         />
       </div>
+
+      <ParticipantDialog
+        open={isProfileOpen}
+        onOpenChange={setIsProfileOpen}
+        participant={selectedParticipant}
+        onSubmit={async () => {}} // Read-only
+        readOnly={true}
+      />
     </Card>
   );
 }

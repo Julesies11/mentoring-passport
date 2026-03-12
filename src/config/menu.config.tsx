@@ -28,11 +28,6 @@ export const MENU_SUPERVISOR: MenuConfig = [
     path: '/supervisor/hub',
   },
   {
-    title: 'Participants',
-    icon: () => <KeenIcon icon="users" />,
-    path: '/org-admin/participants',
-  },
-  {
     title: 'Pairs',
     icon: () => <KeenIcon icon="disconnect" />,
     path: '/supervisor/pairs',
@@ -73,7 +68,7 @@ export const MENU_ORG_ADMIN: MenuConfig = [
     path: '/org-admin/programs',
   },
   {
-    title: 'Participants',
+    title: 'Manage Members',
     icon: () => <KeenIcon icon="users" />,
     path: '/org-admin/participants',
   },

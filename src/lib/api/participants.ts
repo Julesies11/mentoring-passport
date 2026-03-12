@@ -1,16 +1,16 @@
 import { supabase } from '@/lib/supabase';
+import { ROLES, STATUS, UserRole, EntityStatus } from '@/config/constants';
 
 export interface Participant {
   id: string;
   email: string;
-  role: 'supervisor' | 'program-member' | 'administrator';
   full_name: string | null;
   job_title: string | null;
   department: string | null;
   bio: string | null;
   avatar_url: string | null;
   phone: string | null;
-  status: 'active' | 'archived';
+  status: EntityStatus;
   organisation_id: string | null;
   created_at: string;
   updated_at: string;
@@ -18,12 +18,13 @@ export interface Participant {
   active_mentee_count: number;
   inactive_mentor_count: number;
   inactive_mentee_count: number;
+  role: UserRole; // Inferred from memberships or global role
 }
 
 export interface CreateParticipantInput {
   email: string;
   password: string;
-  role: 'supervisor' | 'program-member' | 'administrator';
+  role: UserRole;
   organisation_id?: string;
   full_name?: string;
   job_title?: string;
@@ -32,15 +33,15 @@ export interface CreateParticipantInput {
 }
 
 export interface UpdateParticipantInput {
-  role?: 'supervisor' | 'program-member' | 'administrator';
-  organisation_id?: string | null;
   full_name?: string;
   job_title?: string;
   department?: string;
   bio?: string;
   phone?: string;
   avatar_url?: string | null;
-  status?: 'active' | 'archived';
+  status?: EntityStatus;
+  role?: UserRole; // Used for membership sync
+  organisation_id?: string; // Used for membership sync, not stored in mp_profiles
 }
 
 /**
@@ -56,7 +57,6 @@ export async function fetchParticipants(organisationId?: string, programId?: str
     .select(`
       id, 
       email, 
-      role, 
       full_name, 
       job_title, 
       department, 
@@ -109,7 +109,7 @@ export async function fetchParticipants(organisationId?: string, programId?: str
     const membership = (p.memberships as any[])?.find(m => m.organisation_id === validOrgId);
     return {
       ...p,
-      role: membership?.role || p.role // Fallback to profile role
+      role: membership?.role || ROLES.PROGRAM_MEMBER
     };
   }) as Participant[];
 }
@@ -117,13 +117,12 @@ export async function fetchParticipants(organisationId?: string, programId?: str
 /**
  * Fetch participants by role
  */
-export async function fetchParticipantsByRole(role: 'supervisor' | 'program-member', organisationId?: string, programId?: string): Promise<Participant[]> {
+export async function fetchParticipantsByRole(role: UserRole, organisationId?: string, programId?: string): Promise<Participant[]> {
   let query = supabase
     .from('mp_profiles')
     .select(`
       id, 
       email, 
-      role, 
       full_name, 
       job_title, 
       department, 
@@ -133,7 +132,7 @@ export async function fetchParticipantsByRole(role: 'supervisor' | 'program-memb
       organisation_id,
       memberships:mp_memberships(role, organisation_id)
     `)
-    .eq('status', 'active')
+    .eq('status', STATUS.ACTIVE)
     .order('full_name', { ascending: true })
     .limit(1000);
 
@@ -141,7 +140,7 @@ export async function fetchParticipantsByRole(role: 'supervisor' | 'program-memb
     query = query.eq('organisation_id', organisationId);
   }
 
-  if (programId && typeof programId === 'string' && programId !== '[object Object]' && role === 'program-member') {
+  if (programId && typeof programId === 'string' && programId !== '[object Object]' && role === ROLES.PROGRAM_MEMBER) {
     const { data: pairProfiles } = await supabase
       .from('mp_pairs')
       .select('mentor_id, mentee_id')
@@ -175,7 +174,7 @@ export async function fetchParticipantsByRole(role: 'supervisor' | 'program-memb
       const membership = (p.memberships as any[])?.find(m => m.organisation_id === organisationId);
       return {
         ...p,
-        role: membership?.role || p.role
+        role: membership?.role || role
       };
     })
     .filter(p => p.role === role) as Participant[];
@@ -187,7 +186,10 @@ export async function fetchParticipantsByRole(role: 'supervisor' | 'program-memb
 export async function fetchParticipant(id: string): Promise<Participant | null> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select(`
+      *,
+      memberships:mp_memberships(role, organisation_id)
+    `)
     .eq('id', id)
     .single();
 
@@ -196,7 +198,12 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
     throw error;
   }
 
-  return data;
+  const role = (data.memberships as any[])?.[0]?.role || ROLES.PROGRAM_MEMBER;
+
+  return {
+    ...data,
+    role
+  } as any;
 }
 
 /**
@@ -401,16 +408,33 @@ export async function createParticipant(input: CreateParticipantInput & { avatar
  * Update a participant (supervisor only)
  */
 export async function updateParticipant(id: string, input: UpdateParticipantInput): Promise<Participant> {
+  const { role, organisation_id, ...profileData } = input;
+
+  // 1. Update profile (DO NOT send role here as it violates mp_profiles_role_check)
   const { data, error } = await supabase
     .from('mp_profiles')
-    .update(input)
+    .update(profileData)
     .eq('id', id)
     .select()
     .single();
 
   if (error) {
-    console.error('Error updating participant:', error);
+    console.error('Error updating participant profile:', error);
     throw error;
+  }
+
+  // 2. If role and organisation_id are provided, sync membership
+  if (role && organisation_id) {
+    const { error: memberError } = await supabase
+      .from('mp_memberships')
+      .update({ role: role as any })
+      .eq('user_id', id)
+      .eq('organisation_id', organisation_id);
+
+    if (memberError) {
+      console.error('Error updating participant membership role:', memberError);
+      // We don't throw here to avoid failing the whole update if membership sync fails
+    }
   }
 
   return data;
@@ -452,7 +476,6 @@ export async function restoreParticipant(id: string): Promise<void> {
 export async function fetchParticipantStats(organisationId?: string, programId?: string) {
   let query = supabase.from('mp_profiles').select(`
     id, 
-    role, 
     status, 
     organisation_id,
     memberships:mp_memberships(role, organisation_id)
@@ -495,16 +518,16 @@ export async function fetchParticipantStats(organisationId?: string, programId?:
     const membership = (p.memberships as any[])?.find(m => m.organisation_id === organisationId);
     return {
       ...p,
-      role: membership?.role || p.role
+      role: membership?.role || ROLES.PROGRAM_MEMBER
     };
   });
 
   const stats = {
     total: mappedData.length,
-    active: mappedData.filter(p => p.status === 'active').length,
-    archived: mappedData.filter(p => p.status === 'archived').length,
-    supervisors: mappedData.filter(p => p.role === 'supervisor' && p.status === 'active').length,
-    'program-members': mappedData.filter(p => p.role === 'program-member' && p.status === 'active').length,
+    active: mappedData.filter(p => p.status === STATUS.ACTIVE).length,
+    archived: mappedData.filter(p => p.status === STATUS.ARCHIVED).length,
+    supervisors: mappedData.filter(p => p.role === ROLES.SUPERVISOR && p.status === STATUS.ACTIVE).length,
+    'program-members': mappedData.filter(p => p.role === ROLES.PROGRAM_MEMBER && p.status === STATUS.ACTIVE).length,
   };
 
   return stats;

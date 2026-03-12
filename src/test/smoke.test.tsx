@@ -110,8 +110,8 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
       });
     });
 
-    it('Participants Page renders without crashing', async () => {
-      const { container } = render(<ParticipantsPage />);
+    it('Manage Members Page renders without crashing', async () => {
+      const { container } = render(<ParticipantsPage mode="manage" />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
@@ -121,6 +121,13 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
     describe('Supervisor Pages', () => {
     it('Supervisor Hub renders without crashing', async () => {
       const { container } = render(<SupervisorDashboardPage />);
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('View Participants Page renders without crashing', async () => {
+      const { container } = render(<ParticipantsPage mode="view" />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
