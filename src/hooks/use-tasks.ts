@@ -18,21 +18,35 @@ import {
   reorderPairTasks,
   reorderMasterTasks,
   togglePairSubTaskCompletion,
+  fetchTaskLists,
+  fetchTaskListTasks,
+  fetchProgramTasks,
+  createTaskList,
+  createProgramTask,
+  updateProgramTask,
+  deleteProgramTask,
+  createProgramSubTask,
+  updateProgramSubTask,
+  deleteProgramSubTask,
   type PairTask,
   type Task,
-  type PairSubTask
+  type PairSubTask,
+  type TaskListMaster,
+  type ProgramTask,
+  type ProgramSubTask
 } from '@/lib/api/tasks';
 
 export function useTasks() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { activeOrganisation } = useOrganisation();
-  const organisationId = activeOrganisation?.id;
+  
+  const orgId = activeOrganisation?.id;
 
   const { data: tasks = [], isLoading, error } = useQuery<Task[]>({
-    queryKey: ['tasks', organisationId],
-    queryFn: () => typeof organisationId === 'string' ? fetchTasks(organisationId) : Promise.resolve([]),
-    enabled: typeof organisationId === 'string',
+    queryKey: ['tasks', orgId],
+    queryFn: () => fetchTasks(orgId),
+    enabled: !!(orgId || user?.role === 'administrator'),
   });
 
   const reorderTasksMutation = useMutation({
@@ -67,14 +81,9 @@ export function useTasks() {
     },
   });
 
-  const pairTasks: PairTask[] = [];
-  const isLoadingPairTasks = false;
-
   return {
     tasks,
-    pairTasks,
     isLoading,
-    isLoadingPairTasks,
     error,
     fetchPairTasks,
     fetchPairTaskStats,
@@ -82,6 +91,92 @@ export function useTasks() {
       updatePairTaskStatus(taskId, status, user?.id),
     reorderTasks: (newOrder: { id: string; sort_order: number }[]) =>
       reorderTasksMutation.mutate(newOrder),
+  };
+}
+
+export function useTaskLists(organisationId?: string) {
+  const { user } = useAuth();
+  const { activeOrganisation } = useOrganisation();
+  const orgId = organisationId || activeOrganisation?.id;
+
+  return useQuery({
+    queryKey: ['task-lists', orgId],
+    queryFn: () => fetchTaskLists(orgId!),
+    enabled: !!orgId,
+  });
+}
+
+export function useTaskListTasks(taskListId?: string) {
+  return useQuery({
+    queryKey: ['task-list-tasks', taskListId],
+    queryFn: () => fetchTaskListTasks(taskListId!),
+    enabled: !!taskListId,
+  });
+}
+
+export function useProgramTasks(programId?: string) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['program-tasks', programId],
+    queryFn: () => fetchProgramTasks(programId!),
+    enabled: !!programId,
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: createProgramTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['program-tasks', programId] });
+      toast.success('Program task created');
+    },
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ taskId, updates }: { taskId: string; updates: Partial<ProgramTask> }) =>
+      updateProgramTask(taskId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['program-tasks', programId] });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: deleteProgramTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['program-tasks', programId] });
+      toast.success('Program task deleted');
+    },
+  });
+
+  const createSubTaskMutation = useMutation({
+    mutationFn: createProgramSubTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['program-tasks', programId] });
+    },
+  });
+
+  const updateSubTaskMutation = useMutation({
+    mutationFn: ({ subtaskId, updates }: { subtaskId: string; updates: Partial<ProgramSubTask> }) =>
+      updateProgramSubTask(subtaskId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['program-tasks', programId] });
+    },
+  });
+
+  const deleteSubTaskMutation = useMutation({
+    mutationFn: deleteProgramSubTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['program-tasks', programId] });
+    },
+  });
+
+  return {
+    ...query,
+    createTask: createTaskMutation.mutate,
+    updateTask: updateTaskMutation.mutate,
+    deleteTask: deleteTaskMutation.mutate,
+    createSubTask: createSubTaskMutation.mutate,
+    updateSubTask: updateSubTaskMutation.mutate,
+    deleteSubTask: deleteSubTaskMutation.mutate,
   };
 }
 

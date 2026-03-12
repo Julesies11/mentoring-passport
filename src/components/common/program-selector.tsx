@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAuth } from '@/auth/context/auth-context';
 import {
@@ -8,11 +9,21 @@ import {
 } from '@/components/ui/select';
 
 export function ProgramSelector() {
-  const { programs, activeProgram, isLoading, setActiveProgram } = useOrganisation();
-  const { isSupervisor } = useAuth();
+  const { pathname } = useLocation();
+  const { programs, activeProgram, isLoading, setActiveProgram, isMasquerading } = useOrganisation();
+  const { isSupervisor, isOrgAdmin } = useAuth();
 
-  // Only show for supervisors
-  if (!isSupervisor) return null;
+  // Show for supervisors, org admins, or masquerading administrators
+  if (!isSupervisor && !isMasquerading && !isOrgAdmin) return null;
+
+  // For Org Admins, only show if NOT on an administration page
+  const isAdministrationPage = pathname.startsWith('/org-admin/hub') || 
+                               pathname.startsWith('/org-admin/programs') || 
+                               pathname.startsWith('/org-admin/participants') ||
+                               pathname.startsWith('/org-admin/task-templates') ||
+                               pathname.startsWith('/org-admin/supervisors');
+
+  if (isOrgAdmin && isAdministrationPage) return null;
   
   // Show skeleton during initial load
   if (isLoading) {
@@ -28,11 +39,11 @@ export function ProgramSelector() {
         onValueChange={(id) => setActiveProgram(id)}
       >
         <SelectTrigger 
-          className="h-8 w-[300px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
+          className="h-9 w-[300px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
         >
           <div className="flex items-center justify-center text-center min-w-0 flex-1">
             <div className="flex-1 min-w-0 overflow-hidden leading-tight">
-              <span className="text-[10px] font-black text-primary uppercase tracking-tighter truncate block">
+              <span className="text-xs font-black text-primary uppercase tracking-tight truncate block">
                 {activeProgram?.name || 'Select Program'}
               </span>
             </div>

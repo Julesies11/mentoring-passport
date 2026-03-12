@@ -242,8 +242,19 @@ export const SupabaseAdapter = {
       throw new Error(profileError?.message || 'Profile not found');
     }
 
-    // Get user metadata for backward compatibility
+    // Fetch memberships for multi-tenancy
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('mp_memberships')
+      .select('*, organisation:mp_organisations(name, logo_url)')
+      .eq('user_id', user.id);
+
+    if (membershipsError) {
+      console.error('Error fetching memberships:', membershipsError);
+    }
+
+    // Get user metadata for active context
     const metadata = user.user_metadata || {};
+    const selectedOrgId = metadata.selected_organisation_id;
 
     // Format data combining auth.users and mp_profiles
     return {
@@ -262,10 +273,10 @@ export const SupabaseAdapter = {
       roles: metadata.roles || [],
       pic: profile.avatar_url || metadata.pic || '',
       language: metadata.language || 'en',
-      is_admin: profile.role === 'supervisor',
+      is_admin: profile.role === 'administrator',
       
       // Mentoring Passport specific fields from mp_profiles
-      role: profile.role as any, // Cast due to type transition
+      role: profile.role as any,
       job_title: profile.job_title || metadata.job_title || '',
       avatar_url: profile.avatar_url,
       department: profile.department,
@@ -273,7 +284,24 @@ export const SupabaseAdapter = {
       status: profile.status,
       organisation_id: profile.organisation_id,
       must_change_password: profile.must_change_password,
+
+      // Multi-tenant memberships
+      memberships: (memberships || []) as any,
+      selected_organisation_id: selectedOrgId,
     };
+  },
+
+  /**
+   * Switch the active organisation context
+   */
+  async switchOrganisation(orgId: string): Promise<UserModel> {
+    const { error } = await supabase.auth.updateUser({
+      data: { selected_organisation_id: orgId }
+    });
+
+    if (error) throw new Error(error.message);
+    
+    return (await this.getCurrentUser()) as UserModel;
   },
 
   /**

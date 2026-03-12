@@ -8,6 +8,7 @@ import { AuthContext } from '@/auth/context/auth-context';
 
 vi.mock('@/lib/api/programs', () => ({
   fetchPrograms: vi.fn(),
+  fetchAssignedPrograms: vi.fn(),
 }));
 
 vi.mock('@/lib/api/organisations', () => ({
@@ -46,6 +47,7 @@ describe('OrganisationProvider', () => {
     ];
 
     vi.mocked(programsApi.fetchPrograms).mockResolvedValue(mockPrograms as any);
+    vi.mocked(programsApi.fetchAssignedPrograms).mockResolvedValue(mockPrograms as any);
     vi.mocked(orgsApi.fetchOrganisation).mockResolvedValue({ id: 'org1', name: 'Test Org' } as any);
 
     const { result } = renderHook(() => useOrganisation(), { wrapper: createWrapper() });
@@ -70,6 +72,7 @@ describe('OrganisationProvider', () => {
     ];
 
     vi.mocked(programsApi.fetchPrograms).mockResolvedValue(mockPrograms as any);
+    vi.mocked(programsApi.fetchAssignedPrograms).mockResolvedValue(mockPrograms as any);
 
     const { result } = renderHook(() => useOrganisation(), { wrapper: createWrapper() });
 

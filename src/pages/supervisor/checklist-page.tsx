@@ -4,6 +4,7 @@ import { usePairTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/context/auth-context';
 import { type PairTask, type PairSubTask } from '@/lib/api/tasks';
 import { fetchPairEvidence } from '@/lib/api/evidence';
 import { createMeeting } from '@/lib/api/meetings';
@@ -11,6 +12,7 @@ import { Container } from '@/components/common/container';
 import {
   Toolbar,
   ToolbarHeading,
+  ToolbarActions,
 } from '@/layouts/demo1/components/toolbar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -24,9 +26,11 @@ import { toast } from 'sonner';
 import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function SupervisorChecklistPage() {
   const queryClient = useQueryClient();
+  const { isOrgAdmin } = useAuth();
   const { pairs = [], isLoading: pairsLoading } = usePairs();
   const [searchParams] = useSearchParams();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
@@ -371,6 +375,9 @@ export function SupervisorChecklistPage() {
             title="Pair Management"
             description={selectedPair ? `Managing progress and setup for ${selectedPair.mentor?.full_name} ↔ ${selectedPair.mentee?.full_name}` : "View and manage checklist progress for mentoring pairs"}
           />
+          <ToolbarActions>
+            {isOrgAdmin && <ProgramSelector />}
+          </ToolbarActions>
         </Toolbar>
       </Container>
 

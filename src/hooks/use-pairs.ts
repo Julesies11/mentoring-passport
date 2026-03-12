@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
+import { useAuth } from '@/auth/context/auth-context';
 import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchPairs,
@@ -17,19 +18,21 @@ const EMPTY_ARRAY: any[] = [];
 
 export function usePairs() {
   const queryClient = useQueryClient();
-  const { activeProgram } = useOrganisation();
+  const { user } = useAuth();
+  const { activeProgram, activeOrganisation } = useOrganisation();
   const programId = activeProgram?.id;
+  const orgId = activeOrganisation?.id;
 
   const { data: pairs = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['pairs', programId],
-    queryFn: () => typeof programId === 'string' ? fetchPairs(programId) : Promise.resolve([]),
-    enabled: typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['pairs', programId, orgId],
+    queryFn: () => fetchPairs(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['pairs', 'stats', programId],
-    queryFn: () => typeof programId === 'string' ? fetchPairStats(programId) : Promise.resolve(null),
-    enabled: typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['pairs', 'stats', programId, orgId],
+    queryFn: () => fetchPairStats(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 
   const createMutation = useMutation({
@@ -138,7 +141,7 @@ export function useActiveUserPairs(userId: string) {
 export function useAllPairs() {
   return useQuery({
     queryKey: ['pairs'],
-    queryFn: fetchPairs,
+    queryFn: () => fetchPairs(),
   });
 }
 

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { AuthModel, UserModel, UserRole } from '@/auth/lib/models';
+import { AuthModel, UserModel, UserRole, Membership } from '@/auth/lib/models';
 
 // Create AuthContext with types
 export const AuthContext = createContext<{
@@ -32,11 +32,17 @@ export const AuthContext = createContext<{
   // Mentoring Passport role helpers
   role?: UserRole;
   profileId?: string;
+  isSystemOwner: boolean;
+  isOrgAdmin: boolean;
   isSupervisor: boolean;
   isMentor: boolean;
   isMentee: boolean;
   setIsMentor: React.Dispatch<React.SetStateAction<boolean>>;
   setIsMentee: React.Dispatch<React.SetStateAction<boolean>>;
+  // Multi-tenant
+  memberships: Membership[];
+  activeMembership?: Membership;
+  switchOrganisation: (orgId: string) => Promise<void>;
 }>({
   loading: false,
   setLoading: () => {},
@@ -54,11 +60,16 @@ export const AuthContext = createContext<{
   isAdmin: false,
   role: undefined,
   profileId: undefined,
+  isSystemOwner: false,
+  isOrgAdmin: false,
   isSupervisor: false,
   isMentor: false,
   isMentee: false,
   setIsMentor: () => {},
   setIsMentee: () => {},
+  memberships: [],
+  activeMembership: undefined,
+  switchOrganisation: async () => {},
 });
 
 // Hook definition

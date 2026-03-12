@@ -11,47 +11,89 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [auth, setAuth] = useState<AuthModel | undefined>(authHelper.getAuth());
   const [currentUser, setCurrentUser] = useState<UserModel | undefined>();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSystemOwner, setIsSystemOwner] = useState(false);
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const [isSupervisor, setIsSupervisor] = useState(false);
   const [isMentor, setIsMentor] = useState(false);
   const [isMentee, setIsMentee] = useState(false);
 
-  // Check if user is admin and their active pairings
+  // Derived active context
+  const activeMembership = currentUser?.memberships?.find(
+    m => m.organisation_id === (currentUser.selected_organisation_id || currentUser.organisation_id)
+  ) || currentUser?.memberships?.[0];
+
+  // Check roles and pairings based on active context
   useEffect(() => {
-    setIsAdmin(currentUser?.is_admin === true);
+    // 1. System Owner (Global Admin)
+    const systemOwner = currentUser?.role === 'administrator';
+    setIsSystemOwner(systemOwner);
+    setIsAdmin(systemOwner);
+
+    // 2. Org Roles based on Membership
+    if (activeMembership) {
+      setIsOrgAdmin(activeMembership.role === 'org-admin');
+      setIsSupervisor(activeMembership.role === 'supervisor' || activeMembership.role === 'org-admin');
+    } else {
+      // Fallback for legacy data or global admins without explicit memberships
+      setIsOrgAdmin(false);
+      setIsSupervisor(currentUser?.role === 'supervisor');
+    }
 
     const checkPairings = async () => {
       if (currentUser?.id) {
         try {
-          // Check if user is a mentor in any pair
-          const { count: mentorCount } = await supabase
+          const orgId = activeMembership?.organisation_id || currentUser.organisation_id;
+          
+          // Check active pairings in this specific organisation
+          let query = supabase
             .from('mp_pairs')
-            .select('*', { count: 'exact', head: true })
-            .eq('mentor_id', currentUser.id)
+            .select('mentor_id, mentee_id', { count: 'exact', head: true })
+            .eq('status', 'active');
+
+          if (orgId) {
+            query = query.eq('organisation_id', orgId);
+          }
+
+          const { count: mentorCount } = await query.eq('mentor_id', currentUser.id);
+          
+          // Reset query for mentee check
+          let menteeQuery = supabase
+            .from('mp_pairs')
+            .select('mentor_id, mentee_id', { count: 'exact', head: true })
             .eq('status', 'active');
           
-          // Check if user is a mentee in any pair
-          const { count: menteeCount } = await supabase
-            .from('mp_pairs')
-            .select('*', { count: 'exact', head: true })
-            .eq('mentee_id', currentUser.id)
-            .eq('status', 'active');
+          if (orgId) {
+            menteeQuery = menteeQuery.eq('organisation_id', orgId);
+          }
+          
+          const { count: menteeCount } = await menteeQuery.eq('mentee_id', currentUser.id);
 
-          const mentorExists = (mentorCount || 0) > 0;
-          const menteeExists = (menteeCount || 0) > 0;
-
-          // Only update if values changed
-          setIsMentor(prev => prev !== mentorExists ? mentorExists : prev);
-          setIsMentee(prev => prev !== menteeExists ? menteeExists : prev);
+          setIsMentor((mentorCount || 0) > 0);
+          setIsMentee((menteeCount || 0) > 0);
         } catch (error) {
           console.error('Error checking pairings:', error);
         }
-      } else {
-        setIsMentor(false);
-        setIsMentee(false);
       }
     };
 
     checkPairings();
-  }, [currentUser]);
+  }, [currentUser, activeMembership]);
+
+  const switchOrganisation = async (orgId: string) => {
+    setLoading(true);
+    try {
+      const updatedUser = await SupabaseAdapter.switchOrganisation(orgId);
+      setCurrentUser(updatedUser);
+      // Reset mentor/mentee states until checkPairings runs
+      setIsMentor(false);
+      setIsMentee(false);
+    } catch (error) {
+      console.error('Failed to switch organisation:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const verify = async () => {
     if (auth) {
@@ -161,13 +203,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         verify,
         isAdmin,
         // Mentoring Passport role helpers
-        role: currentUser?.role,
+        role: activeMembership?.role || currentUser?.role,
         profileId: currentUser?.profile_id,
-        isSupervisor: currentUser?.role === 'supervisor',
+        isSystemOwner,
+        isOrgAdmin,
+        isSupervisor,
         isMentor,
         isMentee,
         setIsMentor,
         setIsMentee,
+        // Multi-tenant
+        memberships: currentUser?.memberships || [],
+        activeMembership,
+        switchOrganisation,
       }}
     >
       {children}

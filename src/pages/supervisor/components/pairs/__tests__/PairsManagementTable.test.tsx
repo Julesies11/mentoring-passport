@@ -69,7 +69,8 @@ describe('PairsManagementTable', () => {
       status: 'active',
       mentor: { id: `m${i}`, full_name: `Mentor ${i + 1}`, email: `m${i}@test.com` },
       mentee: { id: `e${i}`, full_name: `Mentee ${i + 1}`, email: `e${i}@test.com` },
-      created_at: new Date().toISOString(),
+      // Ensure deterministic sort order (descending by default in component, so newest first)
+      created_at: new Date(2025, 1, 30 - i).toISOString(),
     }));
 
     it('shows only first 10 pairs on page 1', () => {

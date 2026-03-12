@@ -1,6 +1,6 @@
 import { useAuth } from '@/auth/context/auth-context';
 import { UserRole } from '@/auth/lib/models';
-import { Navigate } from 'react-router';
+import { Navigate } from 'react-router-dom';
 
 interface RequireRoleProps {
   allowedRoles: UserRole[];
@@ -29,8 +29,8 @@ export function RequireRole({
     return <Navigate to="/auth/signin" replace />;
   }
 
-  // Check if user has one of the allowed roles
-  if (!allowedRoles.includes(role)) {
+  // Check if user has one of the allowed roles OR is an administrator (God-mode)
+  if (!allowedRoles.includes(role) && role !== 'administrator') {
     return <Navigate to={redirectTo} replace />;
   }
 

@@ -14,12 +14,15 @@ import { KeenIcon } from '@/components/keenicons';
 import { useSearchParams } from 'react-router-dom';
 import { TaskProgressGrid } from '@/components/tasks/task-progress-grid';
 import { TaskDialog } from '@/components/tasks/task-dialog';
+import { PairTaskEditDialog } from '@/components/tasks/pair-task-edit-dialog';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 import { PairingSelector } from '@/components/common/pairing-selector';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchPairEvidence, uploadEvidenceFile, createEvidence, deleteEvidence } from '@/lib/api/evidence';
+import { fetchEvidenceTypes, type PairTask } from '@/lib/api/tasks';
 import { toast } from 'sonner';
 import { usePairing } from '@/providers/pairing-provider';
+import { Button } from '@/components/ui/button';
 
 export function ProgramMemberTasksPage() {
   const { user } = useAuth();
@@ -31,7 +34,45 @@ export function ProgramMemberTasksPage() {
   const hasInitialScrolled = useRef<{taskId: string | null, evidenceId: string | null}>({ taskId: null, evidenceId: null });
   
   const isArchived = selectedPair?.program?.status === 'inactive' || selectedPair?.status === 'archived';
-  const { tasks, stats, isLoading: tasksLoading, updateStatus, updateSubTask } = usePairTasks(selectedPair?.id || '');
+  const { 
+    tasks, 
+    stats, 
+    isLoading: tasksLoading, 
+    updateStatus, 
+    createTask, 
+    updateTask,
+    createSubTask,
+    updateSubTask,
+    deleteSubTask,
+    isCreating,
+    isUpdating
+  } = usePairTasks(selectedPair?.id || '');
+
+  const { data: evidenceTypes = [] } = useQuery({
+    queryKey: ['evidence-types'],
+    queryFn: fetchEvidenceTypes,
+  });
+
+  const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+
+  const currentTask = useMemo(() => {
+    if (!editingTaskId) return null;
+    if (editingTaskId === 'new-task') {
+      const fallback = evidenceTypes.find((t: any) => t.name.toLowerCase().includes('not applicable')) || evidenceTypes[0];
+      return {
+        id: 'new-task',
+        pair_id: selectedPair?.id || '',
+        name: '',
+        status: 'not_submitted',
+        sort_order: tasks.length + 1,
+        evidence_type_id: fallback?.id || '',
+        is_custom: true,
+        subtasks: []
+      } as any;
+    }
+    return tasks.find(t => t.id === editingTaskId) || null;
+  }, [editingTaskId, tasks, selectedPair?.id, evidenceTypes]);
 
   const { data: pairEvidence = [] } = useQuery({
     queryKey: ['pair-evidence', selectedPair?.id],
@@ -39,7 +80,7 @@ export function ProgramMemberTasksPage() {
     enabled: !!selectedPair?.id,
   });
 
-  const { meetings = [], createMeeting, updateMeeting, deleteMeeting, isCreating, isUpdating } = useAllMeetings();
+  const { meetings = [], createMeeting, updateMeeting, deleteMeeting, isCreating: isCreatingMeeting, isUpdating: isUpdatingMeeting } = useAllMeetings();
   const pairMeetings = useMemo(() => 
     meetings.filter(m => m.pair_id === selectedPair?.id),
     [meetings, selectedPair?.id]
@@ -320,6 +361,83 @@ export function ProgramMemberTasksPage() {
     }
   };
 
+  const handleAddTask = () => {
+    if (!selectedPair?.id) return;
+    setEditingTaskId('new-task');
+    setIsEditTaskOpen(true);
+  };
+
+  const handleUpdateTask = (taskId: string, updates: Partial<PairTask> & { localSubTasks?: any[] }) => {
+    if (!selectedPair?.id) return;
+
+    if (taskId === 'new-task') {
+      if (!updates.name?.trim() || !updates.evidence_type_id) {
+        toast.error('Task name and evidence type are required.');
+        return;
+      }
+      createTask({
+        pair_id: selectedPair.id,
+        name: updates.name,
+        status: 'not_submitted',
+        sort_order: tasks.length + 1,
+        evidence_type_id: updates.evidence_type_id,
+        is_custom: true
+      } as any, {
+        onSuccess: (newTask) => {
+          if (updates.localSubTasks && updates.localSubTasks.length > 0) {
+            Promise.all(updates.localSubTasks.map(st => 
+              createSubTask({
+                pair_task_id: newTask.id,
+                name: st.name,
+                evidence_type_id: st.evidence_type_id,
+                sort_order: st.sort_order,
+                is_completed: false,
+                is_custom: true
+              } as any)
+            )).finally(() => {
+              setIsEditTaskOpen(false);
+              setEditingTaskId(null);
+              toast.success('Custom task created successfully');
+            });
+          } else {
+            setIsEditTaskOpen(false);
+            setEditingTaskId(null);
+            toast.success('Custom task created successfully');
+          }
+        }
+      });
+    } else {
+      updateTask({ taskId, updates }, {
+        onSuccess: () => {
+          setIsEditTaskOpen(false);
+          setEditingTaskId(null);
+          toast.success('Task updated successfully');
+        }
+      });
+    }
+  };
+
+  const handleCreateSubTask = (taskId: string, name: string, evidenceTypeId: string) => {
+    if (taskId === 'new-task') {
+      toast.error('Please save the task before adding subtasks.');
+      return;
+    }
+    
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const maxSortOrder = task.subtasks?.reduce((max: number, st: any) => Math.max(max, st.sort_order), 0) || 0;
+
+    createSubTask({
+      pair_task_id: taskId,
+      name,
+      sort_order: maxSortOrder + 1,
+      is_completed: false,
+      evidence_type_id: evidenceTypeId,
+      is_custom: true
+    } as any);
+  };
+
   if (pairsLoading || tasksLoading) {
     return (
       <>
@@ -377,7 +495,14 @@ export function ProgramMemberTasksPage() {
               title="Mentoring Tasks"
               description="Track progress and complete requirements for this mentoring relationship"
             />
-            <ToolbarActions />
+            <div className="flex items-center gap-2">
+              {!isArchived && (
+                <Button size="sm" onClick={handleAddTask}>
+                  <KeenIcon icon="plus" />
+                  Add Custom Task
+                </Button>
+              )}
+            </div>
           </Toolbar>
         </Container>
       </div>
@@ -475,8 +600,50 @@ export function ProgramMemberTasksPage() {
         initialTaskId={initialTaskId}
         onSubmit={handleMeetingSubmit}
         onDelete={handleDeleteMeeting}
-        isSubmitting={selectedMeeting ? isUpdating : isCreating}
+        isSubmitting={selectedMeeting ? isUpdatingMeeting : isCreatingMeeting}
       />
+
+      {/* Task Edit Dialog for Custom Tasks */}
+      <PairTaskEditDialog
+        open={isEditTaskOpen}
+        onOpenChange={setIsEditTaskOpen}
+        task={currentTask}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={(id) => {
+          if (id === 'new-task') {
+            setIsEditTaskOpen(false);
+            setEditingTaskId(null);
+          } else if (currentTask?.is_custom) {
+            if (window.confirm('Are you sure you want to delete this custom task?')) {
+              deletePairTask(id).then(() => {
+                queryClient.invalidateQueries({ queryKey: ['pair-tasks', selectedPair?.id] });
+                setIsEditTaskOpen(false);
+                setEditingTaskId(null);
+                toast.success('Custom task deleted');
+              });
+            }
+          } else {
+            toast.error('You cannot delete program tasks. Only tasks you added yourself.');
+          }
+        }}
+        onCreateSubTask={handleCreateSubTask}
+        onUpdateSubTask={updateSubTask}
+        onDeleteSubTask={deleteSubTask}
+        isUpdating={isUpdating || isCreating}
+        readOnly={isArchived || (!currentTask?.is_custom && currentTask?.id !== 'new-task')}
+      />
+
+      {!isArchived && (
+        <div className="sm:hidden fixed bottom-20 right-4 z-50">
+          <Button
+            size="lg"
+            className="rounded-full shadow-lg h-14 w-14 p-0 flex items-center justify-center bg-primary text-white"
+            onClick={handleAddTask}
+          >
+            <KeenIcon icon="plus" className="text-2xl" />
+          </Button>
+        </div>
+      )}
     </>
   );
 }

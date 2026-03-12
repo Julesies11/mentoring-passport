@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllEvidence, usePendingEvidence } from '@/hooks/use-evidence';
+import { useAuth } from '@/auth/context/auth-context';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -30,9 +31,11 @@ import { CheckCircle, XCircle, Clock, History, ListFilter } from 'lucide-react';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function EvidenceReviewPage() {
   const navigate = useNavigate();
+  const { isOrgAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightPairId = searchParams.get('pairId');
   const { data: allEvidence = [], isLoading } = useAllEvidence();
@@ -117,6 +120,7 @@ export function EvidenceReviewPage() {
           />
           <ToolbarActions>
             <div className="flex items-center gap-3">
+              {isOrgAdmin && <ProgramSelector />}
               {highlightPairId && (
                 <Button 
                   variant="outline" 

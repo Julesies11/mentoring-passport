@@ -289,7 +289,7 @@ export const NotificationService = {
           'profile_completed',
           'New Participant Onboarded',
           `${fullName} has completed their initial profile setup.`,
-          `/supervisor/participants?id=${profileId}`,
+          `/org-admin/participants?id=${profileId}`,
           profileId
         )
       );

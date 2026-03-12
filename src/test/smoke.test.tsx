@@ -8,10 +8,16 @@ import { ParticipantsPage } from '@/pages/supervisor/participants-page';
 import { PairsPage } from '@/pages/supervisor/pairs-page';
 import { EvidenceReviewPage } from '@/pages/supervisor/evidence-review-page';
 import { SupervisorChecklistPage } from '@/pages/supervisor/checklist-page';
-import { SupervisorMasterTasksPage } from '@/pages/supervisor/master-tasks-page';
+import { SupervisorProgramTasksPage } from '@/pages/supervisor/program-tasks-page';
 import { SupervisorCalendarPage } from '@/pages/supervisor/calendar-page';
 import { SupervisorErrorLogsPage } from '@/pages/supervisor/error-logs-page';
-import { OrganisationSettingsPage } from '@/pages/supervisor/organisation-settings-page';
+
+// Org Admin Pages
+import { OrgAdminDashboardPage } from '@/pages/org-admin/dashboard';
+import { OrgAdminProgramsPage } from '@/pages/org-admin/programs';
+import { OrgAdminTaskTemplatesPage } from '@/pages/org-admin/task-templates';
+import { ManageSupervisorsPage } from '@/pages/org-admin/supervisors';
+import { OrgSettingsPage } from '@/pages/org-admin/settings';
 
 // Program Member Pages
 import { ProgramMemberDashboardPage } from '@/pages/dashboards/program-member-dashboard';
@@ -19,8 +25,17 @@ import { ProgramMemberTasksPage } from '@/pages/program-member/tasks-page';
 import { ProgramMemberMeetingsPage } from '@/pages/program-member/meetings-page';
 import { ProgramMemberRelationshipPage } from '@/pages/program-member/relationship-page';
 
-// Profile Pages
+// Shared Pages
 import { EditProfilePage } from '@/pages/profile/edit-profile';
+
+// Auth Pages
+import { SignUpPage } from '@/auth/pages/signup-page';
+
+// Admin Pages
+
+import { AdminDashboardPage } from '@/pages/admin/dashboard';
+import { AdminOrganisationsPage } from '@/pages/admin/organisations';
+import { AdminUsersPage } from '@/pages/admin/users';
 
 // Auth & Error (Need separate tests or mocked differently as they don't use Demo1Layout typically)
 // For simplicity in this smoke test, we'll focus on the core authenticated pages that share complex layout/hooks.
@@ -32,9 +47,64 @@ vi.mock('react-apexcharts', () => ({
 
 describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
   
-  describe('Supervisor Pages', () => {
-    it('Supervisor Dashboard renders without crashing', async () => {
-      const { container } = render(<SupervisorDashboardPage />);
+  describe('Administrator Pages', () => {
+    const adminAuth = { role: 'administrator' as any, isSupervisor: true, isOrgAdmin: true, isSystemOwner: true, isMentor: false, isMentee: false };
+
+    it('Admin Dashboard renders without crashing', async () => {
+      const { container } = render(<AdminDashboardPage />, { authValue: adminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Admin Organisations Page renders without crashing', async () => {
+      const { container } = render(<AdminOrganisationsPage />, { authValue: adminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Admin Users Page renders without crashing', async () => {
+      const { container } = render(<AdminUsersPage />, { authValue: adminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+  });
+
+  describe('Organisation Admin Pages', () => {
+    const orgAdminAuth = { role: 'org-admin' as any, isSupervisor: true, isOrgAdmin: true, isSystemOwner: false, isMentor: false, isMentee: false };
+
+    it('Org Admin Dashboard renders without crashing', async () => {
+      const { container } = render(<OrgAdminDashboardPage />, { authValue: orgAdminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Org Admin Programs renders without crashing', async () => {
+      const { container } = render(<OrgAdminProgramsPage />, { authValue: orgAdminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Org Admin Task Templates renders without crashing', async () => {
+      const { container } = render(<OrgAdminTaskTemplatesPage />, { authValue: orgAdminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Manage Supervisors Page renders without crashing', async () => {
+      const { container } = render(<ManageSupervisorsPage />, { authValue: orgAdminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Org Admin Dashboard renders without crashing', async () => {
+      const { container } = render(<OrgAdminDashboardPage />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
@@ -42,6 +112,15 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
 
     it('Participants Page renders without crashing', async () => {
       const { container } = render(<ParticipantsPage />);
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+    });
+
+    describe('Supervisor Pages', () => {
+    it('Supervisor Hub renders without crashing', async () => {
+      const { container } = render(<SupervisorDashboardPage />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
@@ -54,8 +133,8 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
       });
     });
 
-    it('Master Tasks Page renders without crashing', async () => {
-      const { container } = render(<SupervisorMasterTasksPage />);
+    it('Program Tasks Page renders without crashing', async () => {
+      const { container } = render(<SupervisorProgramTasksPage />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
@@ -84,13 +163,6 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
 
     it('Error Logs Page renders without crashing', async () => {
       const { container } = render(<SupervisorErrorLogsPage />);
-      await waitFor(() => {
-        expect(container).not.toBeEmptyDOMElement();
-      });
-    });
-
-    it('Organisation Settings renders without crashing', async () => {
-      const { container } = render(<OrganisationSettingsPage />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
@@ -132,6 +204,15 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
   describe('Shared Pages', () => {
     it('Edit Profile Page renders without crashing', async () => {
       const { container } = render(<EditProfilePage />);
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+  });
+
+  describe('Auth Pages', () => {
+    it('Signup Page renders without crashing', async () => {
+      const { container } = render(<SignUpPage />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });

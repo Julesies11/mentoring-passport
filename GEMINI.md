@@ -3,6 +3,7 @@
 # ===============================
 - **Database Schema:** See `docs/DATABASE_SCHEMA.md` for tables, fields, and relationships.
 - **Architecture Map:** See `docs/ARCHITECTURE.md` for data flow and directory structure.
+- **Multi-Tenant System:** See `docs/MULTI_TENANT_SYSTEM.md` for 4-tier hierarchy and security model. **MANDATORY REVIEW AT START OF EVERY SESSION.**
 - **Key Tables:** 
     - `mp_profiles` (Users/Roles)
     - `mp_pairs` (Mentor/Mentee links)

@@ -5,10 +5,14 @@ import {
   ClipboardList, 
   Calendar,
   GitBranch,
-  ShieldCheck
+  ShieldCheck,
+  Layers,
+  Settings,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 
 interface NavItem {
   icon: React.ElementType;
@@ -18,28 +22,47 @@ interface NavItem {
 
 export function BottomNavBar() {
   const { pathname } = useLocation();
-  const { user } = useAuth();
+  const { user, isOrgAdmin, isSupervisor, isAdmin } = useAuth();
+  const { isMasquerading, isMasqueradingAsSupervisor } = useOrganisation();
   
   // Role-based navigation items
   const getNavItems = (): NavItem[] => {
-    const role = user?.role || 'program-member';
-    
-    if (role === 'supervisor') {
+    // 1. System Owner
+    if (isAdmin) {
       return [
-        { icon: LayoutDashboard, label: 'Hub', path: '/supervisor/dashboard' },
-        { icon: Users, label: 'Members', path: '/supervisor/participants' },
-        { icon: GitBranch, label: 'Pairs', path: '/supervisor/pairs' },
-        { icon: ClipboardList, label: 'Tasks', path: '/supervisor/master-tasks' },
-        { icon: ShieldCheck, label: 'Review', path: '/supervisor/evidence-review' },
-        { icon: Calendar, label: 'Calendar', path: '/supervisor/calendar' },
+        { icon: LayoutDashboard, label: 'Admin', path: '/admin/dashboard' },
+        { icon: Users, label: 'Orgs', path: '/admin/organisations' },
+        { icon: ShieldCheck, label: 'Users', path: '/admin/users' },
       ];
     }
 
-    // Program Members (Mentors/Mentees)
+    // 2. Org Admin
+    if (isOrgAdmin) {
+      return [
+        { icon: LayoutDashboard, label: 'Org Hub', path: '/org-admin/hub' },
+        { icon: Layers, label: 'Programs', path: '/org-admin/programs' },
+        { icon: Users, label: 'Members', path: '/org-admin/participants' },
+        { icon: ClipboardList, label: 'Templates', path: '/org-admin/task-templates' },
+      ];
+    }
+
+    // 3. Supervisor (Direct)
+    if (isSupervisor) {
+      return [
+        { icon: LayoutDashboard, label: 'Hub', path: '/supervisor/hub' },
+        { icon: Users, label: 'Members', path: '/org-admin/participants' },
+        { icon: GitBranch, label: 'Pairs', path: '/supervisor/pairs' },
+        { icon: ClipboardList, label: 'Tasks', path: '/supervisor/program-tasks' },
+        { icon: ShieldCheck, label: 'Review', path: '/supervisor/evidence-review' },
+      ];
+    }
+
+    // 4. Program Members (Mentors/Mentees)
     return [
       { icon: LayoutDashboard, label: 'Hub', path: '/program-member/dashboard' },
       { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
       { icon: Calendar, label: 'Meetings', path: '/program-member/meetings' },
+      { icon: Users, label: 'Partner', path: '/program-member/mentor' },
     ];
   };
 

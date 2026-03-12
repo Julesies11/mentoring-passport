@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
+import { useAuth } from '@/auth/context/auth-context';
 import {
   fetchAllEvidence,
   fetchPairEvidence,
@@ -13,13 +14,15 @@ import {
 } from '@/lib/api/evidence';
 
 export function useAllEvidence() {
-  const { activeProgram } = useOrganisation();
+  const { user } = useAuth();
+  const { activeProgram, activeOrganisation } = useOrganisation();
   const programId = activeProgram?.id;
+  const orgId = activeOrganisation?.id;
 
   return useQuery({
-    queryKey: ['evidence', 'all', programId],
-    queryFn: () => fetchAllEvidence(programId),
-    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['evidence', 'all', programId, orgId],
+    queryFn: () => fetchAllEvidence(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 }
 
@@ -59,19 +62,21 @@ export function usePairEvidence(pairId: string) {
 
 export function usePendingEvidence() {
   const queryClient = useQueryClient();
-  const { activeProgram } = useOrganisation();
+  const { user } = useAuth();
+  const { activeProgram, activeOrganisation } = useOrganisation();
   const programId = activeProgram?.id;
+  const orgId = activeOrganisation?.id;
 
   const { data: evidence = [], isLoading, error } = useQuery({
-    queryKey: ['evidence', 'pending', programId],
-    queryFn: () => fetchPendingEvidence(programId),
-    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['evidence', 'pending', programId, orgId],
+    queryFn: () => fetchPendingEvidence(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['evidence', 'stats', programId],
-    queryFn: () => fetchEvidenceStats(programId),
-    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['evidence', 'stats', programId, orgId],
+    queryFn: () => fetchEvidenceStats(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 
   const reviewMutation = useMutation({

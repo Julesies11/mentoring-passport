@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase';
 import { logError } from '@/lib/logger';
-import { uploadFile, getPublicUrl } from './storage';
 
 export interface Organisation {
   id: string;
@@ -10,22 +9,27 @@ export interface Organisation {
   updated_at: string;
 }
 
-export interface UpdateOrganisationInput {
-  name?: string;
-  logo_url?: string | null;
+export interface SetupOrganisationInput {
+  orgName: string;
+  supervisorEmail: string;
+  supervisorPassword: string;
+  supervisorName: string;
 }
 
 /**
- * Fetch all organisations
+ * Fetch all organisations (Administrator only)
  */
-export async function fetchAllOrganisations(): Promise<Organisation[]> {
+export async function fetchOrganisations(): Promise<Organisation[]> {
   const { data, error } = await supabase
     .from('mp_organisations')
     .select('*')
     .order('name', { ascending: true });
 
   if (error) {
-    console.error('Error fetching organisations:', error);
+    await logError({
+      message: `Failed to fetch organisations: ${error.message}`,
+      componentName: 'organisations-api'
+    });
     throw error;
   }
 
@@ -44,6 +48,11 @@ export async function fetchOrganisation(id: string): Promise<Organisation | null
 
   if (error) {
     if (error.code === 'PGRST116') return null;
+    await logError({
+      message: `Failed to fetch organisation: ${error.message}`,
+      componentName: 'organisations-api',
+      metadata: { id }
+    });
     throw error;
   }
 
@@ -51,13 +60,36 @@ export async function fetchOrganisation(id: string): Promise<Organisation | null
 }
 
 /**
+ * Setup a new organisation with its first supervisor (Administrator only)
+ */
+export async function setupOrganisation(input: SetupOrganisationInput): Promise<string> {
+  const { data: orgId, error } = await supabase.rpc('mp_admin_setup_organisation', {
+    org_name: input.orgName,
+    supervisor_email: input.supervisorEmail,
+    supervisor_password: input.supervisorPassword,
+    supervisor_name: input.supervisorName
+  });
+
+  if (error) {
+    await logError({
+      message: `Failed to setup organisation: ${error.message}`,
+      componentName: 'organisations-api',
+      metadata: input
+    });
+    throw error;
+  }
+
+  return orgId;
+}
+
+/**
  * Update an organisation
  */
-export async function updateOrganisation(id: string, input: UpdateOrganisationInput): Promise<Organisation> {
-  const { data, error } = await supabase
+export async function updateOrganisation(id: string, data: Partial<Organisation>): Promise<Organisation> {
+  const { data: org, error } = await supabase
     .from('mp_organisations')
     .update({
-      ...input,
+      ...data,
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
@@ -67,43 +99,61 @@ export async function updateOrganisation(id: string, input: UpdateOrganisationIn
   if (error) {
     await logError({
       message: `Failed to update organisation: ${error.message}`,
-      stack: error.stack,
       componentName: 'organisations-api',
-      metadata: { id, input }
+      metadata: { id, data }
     });
     throw error;
   }
 
-  return data;
+  return org;
 }
 
 /**
- * Constructs a full public URL for an organisation's logo.
+ * Fetch global statistics (Administrator only)
  */
-export function getLogoUrl(logoPath?: string | null): string {
-  return getPublicUrl('mp-logos', logoPath);
+export async function fetchGlobalStats() {
+  try {
+    const [orgs, users, programs, pairs] = await Promise.all([
+      supabase.from('mp_organisations').select('*', { count: 'exact', head: true }),
+      supabase.from('mp_profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('mp_programs').select('*', { count: 'exact', head: true }),
+      supabase.from('mp_pairs').select('*', { count: 'exact', head: true })
+    ]);
+
+    // Check for errors in any of the requests
+    if (orgs.error) console.error('Error fetching org count:', orgs.error);
+    if (users.error) console.error('Error fetching user count:', users.error);
+    if (programs.error) console.error('Error fetching program count:', programs.error);
+    if (pairs.error) console.error('Error fetching pair count:', pairs.error);
+
+    return {
+      organisations: orgs.count || 0,
+      users: users.count || 0,
+      programs: programs.count || 0,
+      pairs: pairs.count || 0
+    };
+  } catch (err) {
+    console.error('Unexpected error in fetchGlobalStats:', err);
+    return { organisations: 0, users: 0, programs: 0, pairs: 0 };
+  }
 }
 
 /**
- * Handles uploading a new logo or preparing for deletion.
+ * Fetch counts for a specific organisation
  */
-export async function handleLogoUpload(
-  organisationId: string,
-  file?: File | null,
-  shouldDelete?: boolean,
-  currentLogoUrl?: string | null
-): Promise<string | null | undefined> {
-  if (shouldDelete) {
-    return null;
-  }
+export async function fetchOrgCounts(organisationId: string) {
+  try {
+    const [users, programs] = await Promise.all([
+      supabase.from('mp_profiles').select('*', { count: 'exact', head: true }).eq('organisation_id', organisationId),
+      supabase.from('mp_programs').select('*', { count: 'exact', head: true }).eq('organisation_id', organisationId)
+    ]);
 
-  if (file) {
-    const fileName = `${organisationId}-${Date.now()}.jpg`;
-    return await uploadFile(file, {
-      bucket: 'mp-logos',
-      fileName
-    });
+    return {
+      users: users.count || 0,
+      programs: programs.count || 0
+    };
+  } catch (err) {
+    console.error('Error in fetchOrgCounts:', err);
+    return { users: 0, programs: 0 };
   }
-
-  return currentLogoUrl;
 }

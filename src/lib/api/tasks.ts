@@ -4,6 +4,7 @@ export interface Task {
   id: string;
   name: string;
   organisation_id: string;
+  task_list_id: string | null;
   evidence_type_id: string | null;
   sort_order: number;
   is_active: boolean;
@@ -15,6 +16,46 @@ export interface Task {
     requires_submission: boolean;
   };
   subtasks?: MasterSubTask[];
+}
+
+export interface TaskListMaster {
+  id: string;
+  organisation_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  tasks?: Task[];
+}
+
+export interface ProgramTask {
+  id: string;
+  program_id: string;
+  organisation_id: string;
+  name: string;
+  evidence_type_id: string | null;
+  sort_order: number;
+  is_active: boolean;
+  master_task_id: string | null;
+  created_at: string;
+  updated_at: string;
+  evidence_type?: {
+    id: string;
+    name: string;
+    requires_submission: boolean;
+  };
+  subtasks?: ProgramSubTask[];
+}
+
+export interface ProgramSubTask {
+  id: string;
+  program_task_id: string;
+  name: string;
+  sort_order: number;
+  master_subtask_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MasterSubTask {
@@ -40,6 +81,7 @@ export interface PairSubTask {
   evidence_type_id: string | null;
   sort_order: number;
   is_completed: boolean;
+  is_custom: boolean;
   completed_by_id: string | null;
   completed_by?: {
     id: string;
@@ -59,10 +101,12 @@ export interface PairTask {
   id: string;
   pair_id: string;
   master_task_id: string | null;
+  program_task_id: string | null;
   name: string;
   evidence_type_id: string | null;
   sort_order: number;
   status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
+  is_custom: boolean;
   last_feedback?: string | null;
   evidence_notes?: string | null;
   rejection_reason?: string | null;
@@ -76,6 +120,7 @@ export interface PairTask {
   created_at: string;
   updated_at: string;
   task?: Task;
+  program_task?: ProgramTask;
   subtasks?: PairSubTask[];
   evidence_type?: {
     id: string;
@@ -90,6 +135,310 @@ export interface EvidenceType {
   requires_submission: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Fetch all task lists for an organisation
+ */
+export async function fetchTaskLists(organisationId: string): Promise<TaskListMaster[]> {
+  const { data, error } = await supabase
+    .from('mp_task_lists_master')
+    .select(`
+      *,
+      tasks:mp_tasks_master(
+        *,
+        evidence_type:mp_evidence_types(id, name, requires_submission),
+        subtasks:mp_subtasks_master(
+          *,
+          evidence_type:mp_evidence_types(id, name, requires_submission)
+        )
+      )
+    `)
+    .eq('organisation_id', organisationId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching task lists:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch tasks for a specific task list
+ */
+export async function fetchTaskListTasks(taskListId: string): Promise<Task[]> {
+  const { data, error } = await supabase
+    .from('mp_tasks_master')
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission),
+      subtasks:mp_subtasks_master(
+        *,
+        evidence_type:mp_evidence_types(id, name, requires_submission)
+      )
+    `)
+    .eq('task_list_id', taskListId)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching task list tasks:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch program tasks for a specific program
+ */
+export async function fetchProgramTasks(programId: string): Promise<ProgramTask[]> {
+  const { data, error } = await supabase
+    .from('mp_program_tasks')
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission),
+      subtasks:mp_program_subtasks(
+        *
+      )
+    `)
+    .eq('program_id', programId)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching program tasks:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Create a new task list
+ */
+export async function createTaskList(taskList: Omit<TaskListMaster, 'id' | 'created_at' | 'updated_at'>): Promise<TaskListMaster> {
+  const { data, error } = await supabase
+    .from('mp_task_lists_master')
+    .insert(taskList)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating task list:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update a task list
+ */
+export async function updateTaskList(taskListId: string, updates: Partial<TaskListMaster>): Promise<TaskListMaster> {
+  // Clean up updates to avoid updating protected fields
+  const { id: _id, organisation_id: _org_id, created_at: _ca, updated_at: _ua, ...cleanUpdates } = updates as any;
+
+  const { data, error } = await supabase
+    .from('mp_task_lists_master')
+    .update(cleanUpdates)
+    .eq('id', taskListId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating task list:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Delete a task list
+ */
+export async function deleteTaskList(taskListId: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_task_lists_master')
+    .delete()
+    .eq('id', taskListId);
+
+  if (error) {
+    console.error('Error deleting task list:', error);
+    throw error;
+  }
+}
+
+/**
+ * Duplicate a task list and all its tasks/subtasks
+ */
+export async function duplicateTaskList(sourceId: string, newName: string, organisationId: string): Promise<TaskListMaster> {
+  // 1. Fetch source list with tasks and subtasks
+  const { data: sourceList, error: fetchError } = await supabase
+    .from('mp_task_lists_master')
+    .select(`
+      *,
+      tasks:mp_tasks_master(
+        *,
+        subtasks:mp_subtasks_master(*)
+      )
+    `)
+    .eq('id', sourceId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // 2. Create new list
+  const newList = await createTaskList({
+    name: newName,
+    organisation_id: organisationId,
+    description: sourceList.description,
+    is_active: sourceList.is_active
+  });
+
+  // 3. Create tasks and subtasks
+  if (sourceList.tasks && sourceList.tasks.length > 0) {
+    // Sort tasks by sort_order to maintain sequence
+    const sortedTasks = [...sourceList.tasks].sort((a, b) => a.sort_order - b.sort_order);
+    
+    for (const task of sortedTasks) {
+      const { id: _, created_at: _ca, updated_at: _ua, subtasks, evidence_type: _et, ...taskData } = task;
+      const newTask = await createTask({
+        ...taskData,
+        task_list_id: newList.id,
+        organisation_id: organisationId
+      });
+
+      if (subtasks && subtasks.length > 0) {
+        // Sort subtasks by sort_order
+        const sortedSubtasks = [...subtasks].sort((a, b) => a.sort_order - b.sort_order);
+        
+        for (const subtask of sortedSubtasks) {
+          const { id: _sid, created_at: _sca, updated_at: _sua, evidence_type: _set, ...subtaskData } = subtask;
+          await createMasterSubTask({
+            ...subtaskData,
+            task_id: newTask.id
+          });
+        }
+      }
+    }
+  }
+
+  return newList;
+}
+
+/**
+ * Create a program task
+ */
+export async function createProgramTask(task: Omit<ProgramTask, 'id' | 'created_at' | 'updated_at'>): Promise<ProgramTask> {
+  const { data, error } = await supabase
+    .from('mp_program_tasks')
+    .insert(task)
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error creating program task:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update a program task
+ */
+export async function updateProgramTask(taskId: string, updates: Partial<ProgramTask>): Promise<ProgramTask> {
+  const { id: _id, program_id: _program_id, created_at: _created_at, updated_at: _updated_at, ...cleanUpdates } = updates as any;
+
+  const { data, error } = await supabase
+    .from('mp_program_tasks')
+    .update(cleanUpdates)
+    .eq('id', taskId)
+    .select(`
+      *,
+      evidence_type:mp_evidence_types(id, name, requires_submission)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error updating program task:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Delete a program task
+ */
+export async function deleteProgramTask(taskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_program_tasks')
+    .delete()
+    .eq('id', taskId);
+
+  if (error) {
+    console.error('Error deleting program task:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a program subtask
+ */
+export async function createProgramSubTask(subtask: Omit<ProgramSubTask, 'id' | 'created_at' | 'updated_at'>): Promise<ProgramSubTask> {
+  const { data, error } = await supabase
+    .from('mp_program_subtasks')
+    .insert(subtask)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating program subtask:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update a program subtask
+ */
+export async function updateProgramSubTask(subtaskId: string, updates: Partial<ProgramSubTask>): Promise<ProgramSubTask> {
+  const { id: _id, created_at: _created_at, updated_at: _updated_at, ...cleanUpdates } = updates as any;
+
+  const { data, error } = await supabase
+    .from('mp_program_subtasks')
+    .update(cleanUpdates)
+    .eq('id', subtaskId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating program subtask:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Delete a program subtask
+ */
+export async function deleteProgramSubTask(subtaskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('mp_program_subtasks')
+    .delete()
+    .eq('id', subtaskId);
+
+  if (error) {
+    console.error('Error deleting program subtask:', error);
+    throw error;
+  }
 }
 
 /**
@@ -160,10 +509,12 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       id,
       pair_id,
       master_task_id,
+      program_task_id,
       name,
       evidence_type_id,
       sort_order,
       status,
+      is_custom,
       last_feedback,
       evidence_notes,
       rejection_reason,
@@ -188,6 +539,14 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
         is_active,
         evidence_type:mp_evidence_types(id, name, requires_submission)
       ),
+      program_task:mp_program_tasks(
+        id,
+        name,
+        evidence_type_id,
+        sort_order,
+        is_active,
+        evidence_type:mp_evidence_types(id, name, requires_submission)
+      ),
       evidence_type:mp_evidence_types(id, name, requires_submission),
       subtasks:mp_pair_subtasks(
         id,
@@ -197,6 +556,7 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
         evidence_type_id,
         sort_order,
         is_completed,
+        is_custom,
         completed_by_id,
         completed_at,
         created_at,

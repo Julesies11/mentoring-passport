@@ -9,13 +9,15 @@ import {
   deleteMasterSubTask,
   deleteTask,
   fetchEvidenceTypes,
-  fetchTasks,
+  fetchTaskListTasks,
   reorderMasterTasks,
   updateMasterSubTask,
   updateTask,
+  createTaskList,
   type MasterSubTask,
   type Task,
 } from '@/lib/api/tasks';
+import { useTaskLists } from '@/hooks/use-tasks';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,11 +52,16 @@ import { TaskSetupGrid } from '@/components/tasks/task-setup-grid';
 
 export function SupervisorMasterTasksPage() {
   const { user } = useAuth();
-  const { activeOrganisation } = useOrganisation();
+  const { activeOrganisation, membershipRole } = useOrganisation();
   const queryClient = useQueryClient();
   const organisationId = activeOrganisation?.id;
+  const isOrgAdmin = membershipRole === 'org-admin' || user?.role === 'administrator';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
+  const [selectedTaskListId, setSelectedTaskListId] = useState<string | null>(null);
+  const [newListName, setNewListName] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [localSubTasks, setLocalSubTasks] = useState<MasterSubTask[]>([]);
@@ -69,21 +76,31 @@ export function SupervisorMasterTasksPage() {
     sort_order: 0,
   });
 
+  // Fetch task lists
+  const { data: taskLists = [], isLoading: isLoadingLists } = useTaskLists(organisationId);
+
+  // Set initial task list if not set
+  useEffect(() => {
+    if (taskLists.length > 0 && !selectedTaskListId) {
+      setSelectedTaskListId(taskLists[0].id);
+    }
+  }, [taskLists, selectedTaskListId]);
+
   // Fetch evidence types
   const { data: evidenceTypes = [] } = useQuery({
     queryKey: ['evidence-types'],
     queryFn: fetchEvidenceTypes,
   });
 
-  // Fetch master tasks
+  // Fetch master tasks for selected list
   const {
     data: tasks = [],
-    isLoading,
+    isLoading: isLoadingTasks,
     error,
   } = useQuery({
-    queryKey: ['master-tasks', organisationId],
-    queryFn: () => fetchTasks(organisationId, true),
-    enabled: user?.role === 'supervisor' && !!organisationId,
+    queryKey: ['master-tasks', selectedTaskListId],
+    queryFn: () => fetchTaskListTasks(selectedTaskListId!),
+    enabled: !!selectedTaskListId,
   });
 
   // Automatically expand all tasks by default
@@ -93,14 +110,32 @@ export function SupervisorMasterTasksPage() {
     }
   }, [tasks]);
 
+  // Create task list mutation
+  const createTaskListMutation = useMutation({
+    mutationFn: (name: string) => createTaskList({
+      name,
+      organisation_id: organisationId!,
+      is_active: true,
+      description: ''
+    }),
+    onSuccess: (newList) => {
+      queryClient.invalidateQueries({ queryKey: ['task-lists', organisationId] });
+      setSelectedTaskListId(newList.id);
+      setIsNewListDialogOpen(false);
+      setNewListName('');
+      toast.success('Task list created successfully');
+    },
+  });
+
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (data: { task: Omit<Task, 'id' | 'created_at' | 'updated_at'>, subtasks: any[] }) => {
-      if (!organisationId) throw new Error('Organisation not found');
+      if (!organisationId || !selectedTaskListId) throw new Error('Missing ID');
       
       const newTask = await createTask({
         ...data.task,
-        organisation_id: organisationId
+        organisation_id: organisationId,
+        task_list_id: selectedTaskListId
       });
       
       if (data.subtasks && data.subtasks.length > 0) {
@@ -118,7 +153,7 @@ export function SupervisorMasterTasksPage() {
       return newTask;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
       setIsEditDialogOpen(false);
       setSelectedTask(null);
       setLocalSubTasks([]);
@@ -136,7 +171,7 @@ export function SupervisorMasterTasksPage() {
       updates: Partial<Task>;
     }) => updateTask(taskId, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
       setIsEditDialogOpen(false);
       setSelectedTask(null);
       setFormData({ name: '', evidence_type_id: '', is_active: true });
@@ -147,7 +182,7 @@ export function SupervisorMasterTasksPage() {
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
       setIsEditDialogOpen(false);
       setSelectedTask(null);
     },
@@ -169,7 +204,7 @@ export function SupervisorMasterTasksPage() {
       subtask: Omit<MasterSubTask, 'id' | 'created_at' | 'updated_at'>,
     ) => createMasterSubTask(subtask),
     onSuccess: (newSubTask) => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
       setLocalSubTasks((prev) => {
         const updated = [...prev, newSubTask].sort(
           (a, b) => a.sort_order - b.sort_order,
@@ -192,7 +227,7 @@ export function SupervisorMasterTasksPage() {
   const deleteSubTaskMutation = useMutation({
     mutationFn: (subtaskId: string) => deleteMasterSubTask(subtaskId),
     onSuccess: (_, subtaskId) => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
       setLocalSubTasks((prev) => prev.filter((st) => st.id !== subtaskId));
     },
   });
@@ -206,7 +241,7 @@ export function SupervisorMasterTasksPage() {
       return Promise.all(updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
     },
   });
 
@@ -220,14 +255,14 @@ export function SupervisorMasterTasksPage() {
       updates: Partial<MasterSubTask>;
     }) => updateMasterSubTask(subtaskId, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
     },
   });
 
   const reorderTasksMutation = useMutation({
     mutationFn: reorderMasterTasks,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['master-tasks', selectedTaskListId] });
     },
   });
 
@@ -342,6 +377,10 @@ export function SupervisorMasterTasksPage() {
   };
 
   const openCreateDialog = () => {
+    if (!selectedTaskListId) {
+      toast.error('Please select or create a task list first');
+      return;
+    }
     setSelectedTask(null);
     setLocalSubTasks([]);
     const fallback =
@@ -381,37 +420,21 @@ export function SupervisorMasterTasksPage() {
     setIsEditDialogOpen(true);
   };
 
-  if (user?.role !== 'supervisor') {
+  if (!user || (user.role !== 'supervisor' && user.role !== 'administrator')) {
     return (
-      <>
-        <Container>
-          <Toolbar>
-            <ToolbarHeading
-              title="Master Task List"
-              description="Access restricted"
-            />
-          </Toolbar>
-        </Container>
-        <Container>
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="size-20 rounded-full bg-danger-light flex items-center justify-center mb-4">
-                <KeenIcon
-                  icon="shield-slash"
-                  className="text-3xl text-danger"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Access Denied
-              </h3>
-              <p className="text-muted-foreground text-center max-w-sm">
-                You don't have permission to access the Master Task List. Only
-                supervisors can manage program-wide tasks.
-              </p>
-            </CardContent>
-          </Card>
-        </Container>
-      </>
+      <Container>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="size-20 rounded-full bg-danger-light flex items-center justify-center mb-4">
+              <KeenIcon icon="shield-slash" className="text-3xl text-danger" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h3>
+            <p className="text-muted-foreground text-center max-w-sm">
+              You don't have permission to access the Task Lists.
+            </p>
+          </CardContent>
+        </Card>
+      </Container>
     );
   }
 
@@ -419,10 +442,48 @@ export function SupervisorMasterTasksPage() {
     <>
       <Container>
         <Toolbar>
-          <ToolbarHeading
-            title="Master Task List"
-            description="Manage the master list of tasks available for all mentoring pairs"
-          />
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between w-full gap-4">
+            <ToolbarHeading
+              title="Organisation Task Lists"
+              description="Manage master templates for mentoring programs"
+            />
+            
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 max-w-full">
+                <Label htmlFor="taskListSelect" className="shrink-0 text-sm font-medium hidden sm:block">List:</Label>
+                <Select
+                  value={selectedTaskListId || ''}
+                  onValueChange={setSelectedTaskListId}
+                >
+                  <SelectTrigger id="taskListSelect" className="h-10 w-full sm:w-[250px] bg-white">
+                    <SelectValue placeholder="Select a task list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskLists.map((list) => (
+                      <SelectItem key={list.id} value={list.id}>
+                        {list.name}
+                      </SelectItem>
+                    ))}
+                    {taskLists.length === 0 && !isLoadingLists && (
+                      <SelectItem value="none" disabled>No lists found</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {isOrgAdmin && (
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  className="shrink-0 h-10 px-4"
+                  onClick={() => setIsNewListDialogOpen(true)}
+                >
+                  <KeenIcon icon="plus" />
+                  New List
+                </Button>
+              )}
+            </div>
+          </div>
         </Toolbar>
       </Container>
 
@@ -457,13 +518,14 @@ export function SupervisorMasterTasksPage() {
                 variant="outline"
                 size="sm"
                 onClick={openCreateDialog}
+                disabled={!selectedTaskListId}
               >
                 <KeenIcon icon="plus" />
                 Add Task
               </Button>
             </CardHeader>
             <div className="p-0 min-w-0 w-full">
-              {isLoading ? (
+              {isLoadingTasks || isLoadingLists ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <KeenIcon
                     icon="loading"
@@ -479,6 +541,11 @@ export function SupervisorMasterTasksPage() {
                   />
                   <p>Error loading tasks. Please try again.</p>
                 </div>
+              ) : !selectedTaskListId ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <KeenIcon icon="list" className="text-4xl mb-2 opacity-20" />
+                  <p>Select or create a task list to get started</p>
+                </div>
               ) : filteredTasks.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <KeenIcon
@@ -488,7 +555,7 @@ export function SupervisorMasterTasksPage() {
                   <p>
                     {searchTerm
                       ? 'No tasks found matching your search'
-                      : 'Get started by adding your first task'}
+                      : 'Get started by adding your first task to this list'}
                   </p>
                 </div>
               ) : (
@@ -509,6 +576,7 @@ export function SupervisorMasterTasksPage() {
                 size="lg"
                 className="rounded-full shadow-lg h-14 w-14 p-0 flex items-center justify-center bg-primary text-white"
                 onClick={openCreateDialog}
+                disabled={!selectedTaskListId}
               >
                 <KeenIcon icon="plus" className="text-2xl" />
               </Button>
@@ -516,6 +584,38 @@ export function SupervisorMasterTasksPage() {
           </div>
         </div>
       </Container>
+
+      {/* New List Dialog */}
+      <Dialog open={isNewListDialogOpen} onOpenChange={setIsNewListDialogOpen}>
+        <DialogContent className="max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Create New Task List</DialogTitle>
+            <DialogDescription>
+              Create a new master template for mentoring programs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="list-name">List Name</Label>
+              <Input
+                id="list-name"
+                placeholder="e.g. Standard Mentoring Program"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewListDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={() => createTaskListMutation.mutate(newListName)}
+              disabled={!newListName.trim() || createTaskListMutation.isPending}
+            >
+              {createTaskListMutation.isPending ? 'Creating...' : 'Create List'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -526,7 +626,7 @@ export function SupervisorMasterTasksPage() {
         >
           <DialogHeader className="p-4 sm:px-6 sm:py-5 border-b border-gray-100 flex-shrink-0">
             <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900">
-              Edit Task & Subtasks
+              {selectedTask ? 'Edit Task & Subtasks' : 'Add New Task'}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
               Refine the task details and manage sequential subtasks.
@@ -851,7 +951,7 @@ export function SupervisorMasterTasksPage() {
                   </>
                 ) : (
                   <>
-                    <KeenIcon icon="check" className="mr-1.5 sm:mr-2" /> Save Changes
+                    <KeenIcon icon="check" className="mr-1.5 sm:mr-2" /> {selectedTask ? 'Save Changes' : 'Create Task'}
                   </>
                 )}
               </Button>

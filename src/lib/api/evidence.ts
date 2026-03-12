@@ -73,7 +73,7 @@ export async function getEvidenceUrl(path: string | null): Promise<string> {
 /**
  * Fetch all evidence (supervisor only)
  */
-export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> {
+export async function fetchAllEvidence(programId?: string, organisationId?: string): Promise<Evidence[]> {
   let query = supabase
     .from('mp_evidence_uploads')
     .select(`
@@ -84,13 +84,16 @@ export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> 
         id,
         program_id,
         mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentee:mentee_id(id, full_name, job_title),
+        program:mp_programs!inner(organisation_id)
       ),
       reviewer:mp_profiles!reviewed_by(id, full_name)
     `);
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
+  } else if (organisationId) {
+    query = query.eq('pair.program.organisation_id', organisationId);
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -101,7 +104,7 @@ export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> 
 /**
  * Fetch pending and rejected evidence (supervisor only)
  */
-export async function fetchPendingEvidence(programId?: string): Promise<Evidence[]> {
+export async function fetchPendingEvidence(programId?: string, organisationId?: string): Promise<Evidence[]> {
   let query = supabase
     .from('mp_evidence_uploads')
     .select(`
@@ -112,13 +115,16 @@ export async function fetchPendingEvidence(programId?: string): Promise<Evidence
         id,
         program_id,
         mentor:mentor_id(id, full_name, avatar_url, job_title),
-        mentee:mentee_id(id, full_name, avatar_url, job_title)
+        mentee:mentee_id(id, full_name, avatar_url, job_title),
+        program:mp_programs!inner(organisation_id)
       )
     `)
     .in('status', ['pending', 'rejected']);
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
+  } else if (organisationId) {
+    query = query.eq('pair.program.organisation_id', organisationId);
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -368,10 +374,13 @@ export async function uploadEvidenceFile(file: File, pairId: string): Promise<st
 /**
  * Get evidence statistics
  */
-export async function fetchEvidenceStats(programId?: string) {
-  let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id)');
+export async function fetchEvidenceStats(programId?: string, organisationId?: string) {
+  let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id, program:mp_programs!inner(organisation_id))');
+  
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
+  } else if (organisationId) {
+    query = query.eq('pair.program.organisation_id', organisationId);
   }
   const { data, error } = await query;
   if (error) throw error;

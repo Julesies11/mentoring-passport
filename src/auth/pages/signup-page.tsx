@@ -26,7 +26,7 @@ import {
 import { LoaderCircleIcon } from 'lucide-react';
 import { getSignupSchema, SignupSchemaType } from '../forms/signup-schema';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAllOrganisations } from '@/lib/api/organisations';
+import { fetchOrganisations } from '@/lib/api/organisations';
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ export function SignUpPage() {
   // Fetch organisations for the dropdown
   const { data: organisations = [], isLoading: isLoadingOrgs } = useQuery({
     queryKey: ['organisations', 'all'],
-    queryFn: fetchAllOrganisations,
+    queryFn: fetchOrganisations,
   });
 
   const form = useForm<SignupSchemaType>({

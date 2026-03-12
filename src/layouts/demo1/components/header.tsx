@@ -8,16 +8,17 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollPosition } from '@/hooks/use-scroll-position';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { Breadcrumb } from './breadcrumb';
-import { ProgramSelector } from '@/components/common/program-selector';
 
 export function Header() {
   const mobileMode = useIsMobile();
   const { unreadCount } = useNotifications();
   const { user } = useAuth();
+  const { isMasquerading } = useOrganisation();
 
   const scrollPosition = useScrollPosition();
   const headerSticky: boolean = scrollPosition > 0;
@@ -25,9 +26,10 @@ export function Header() {
   return (
     <header
       className={cn(
-        'header fixed top-0 z-10 start-0 flex items-stretch shrink-0 border-b border-transparent bg-background end-0 pe-[var(--removed-body-scroll-bar-size,0px)]',
+        'header fixed start-0 flex items-stretch shrink-0 border-b border-transparent bg-background end-0 pe-[var(--removed-body-scroll-bar-size,0px)] transition-all duration-300',
+        isMasquerading ? 'top-[48px] z-[100]' : 'top-0 z-10',
         'pt-[env(safe-area-inset-top)]',
-        headerSticky && 'border-b border-border shadow-sm transition-all',
+        headerSticky && 'border-b border-border shadow-sm',
       )}
     >
       <Container className="flex justify-between items-stretch lg:gap-4">
@@ -48,9 +50,8 @@ export function Header() {
           </div>
         )}
 
-        {/* Right: Program Selector + Notifications + User Avatar */}
+        {/* Right: Notifications + User Avatar */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <ProgramSelector />
           <NotificationsSheet
             trigger={
               <Button

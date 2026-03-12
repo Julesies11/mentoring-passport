@@ -15,8 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
 import { getMeetingStatus, type Meeting } from '@/lib/api/meetings';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function SupervisorCalendarPage() {
+  const { isOrgAdmin } = useAuth();
   const { meetings = [], isLoading, createMeeting, updateMeeting, deleteMeeting } = useAllMeetings();
   const { data: pairs = [] } = useAllPairs();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
@@ -112,6 +114,7 @@ export function SupervisorCalendarPage() {
             description="View and manage all meetings across all mentor-mentee pairs"
           />
           <ToolbarActions>
+            {isOrgAdmin && <ProgramSelector />}
             <SearchInput
               placeholder="Search meetings or tasks..."
               value={searchQuery}

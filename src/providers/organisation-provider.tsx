@@ -1,70 +1,110 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { fetchOrganisation, Organisation } from '@/lib/api/organisations';
-import { fetchPrograms, Program } from '@/lib/api/programs';
+import { fetchPrograms, fetchAssignedPrograms, Program } from '@/lib/api/programs';
 import { useQuery } from '@tanstack/react-query';
+import { getData, setData } from '@/lib/storage';
+
+const MASQUERADE_KEY = 'mp_masquerade_org_id';
 
 interface OrganisationContextType {
   activeOrganisation: Organisation | null;
   activeProgram: Program | null;
   programs: Program[];
   isLoading: boolean;
+  isMasquerading: boolean;
+  membershipRole: string | null;
   refreshOrganisation: () => void;
   refreshPrograms: () => void;
   setActiveProgram: (programId: string) => void;
+  enterMasquerade: (orgId: string) => void;
+  exitMasquerade: () => void;
 }
 
 const OrganisationContext = createContext<OrganisationContextType | undefined>(undefined);
 
 export function OrganisationProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, activeMembership } = useAuth();
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  
+  // Masquerade state for Administrators
+  const [masqueradedOrgId, setMasqueradedOrgId] = useState<string | null>(() => {
+    return (getData(MASQUERADE_KEY) as string) || null;
+  });
 
-  // Fetch user's organisation
+  // Determine effective organisation ID
+  const effectiveOrgId = useMemo(() => {
+    // 1. Masquerade has highest priority (for System Owners)
+    if (user?.role === 'administrator' && masqueradedOrgId) {
+      return masqueradedOrgId;
+    }
+    // 2. Then the active membership from switchOrganisation
+    if (activeMembership?.organisation_id) {
+      return activeMembership.organisation_id;
+    }
+    // 3. Fallback to legacy field
+    return user?.organisation_id;
+  }, [user, masqueradedOrgId, activeMembership]);
+
+  const isMasquerading = !!(user?.role === 'administrator' && masqueradedOrgId);
+  const baseMembershipRole = isMasquerading ? 'org-admin' : (activeMembership?.role || null);
+
+  // Fetch organisation
   const { 
     data: organisation, 
     isLoading: isOrgLoading, 
     refetch: refetchOrg 
   } = useQuery({
-    queryKey: ['organisation', user?.organisation_id],
-    queryFn: () => (typeof user?.organisation_id === 'string' && user.organisation_id !== '[object Object]') 
-      ? fetchOrganisation(user.organisation_id) 
+    queryKey: ['organisation', effectiveOrgId],
+    queryFn: () => (typeof effectiveOrgId === 'string' && effectiveOrgId !== '[object Object]') 
+      ? fetchOrganisation(effectiveOrgId) 
       : Promise.resolve(null),
-    enabled: typeof user?.organisation_id === 'string' && user.organisation_id !== '[object Object]',
+    enabled: typeof effectiveOrgId === 'string' && effectiveOrgId !== '[object Object]',
   });
 
-  // Fetch programs for this organisation
+  // Fetch programs
   const { 
     data: rawPrograms = [], 
     isLoading: isProgramsLoading,
     refetch: refetchPrograms
   } = useQuery({
-    queryKey: ['programs', user?.organisation_id],
-    queryFn: () => (typeof user?.organisation_id === 'string' && user.organisation_id !== '[object Object]') 
-      ? fetchPrograms(user.organisation_id) 
-      : Promise.resolve([]),
-    enabled: typeof user?.organisation_id === 'string' && user.organisation_id !== '[object Object]',
+    queryKey: ['programs', effectiveOrgId, user?.id, baseMembershipRole],
+    queryFn: () => {
+      if (!effectiveOrgId || typeof effectiveOrgId !== 'string' || effectiveOrgId === '[object Object]') {
+        return Promise.resolve([]);
+      }
+      
+      // Org Admins see ALL programs
+      if (isMasquerading || baseMembershipRole === 'org-admin') {
+        return fetchPrograms(effectiveOrgId);
+      }
+
+      // Regular supervisors see assigned programs
+      return fetchAssignedPrograms(effectiveOrgId);
+    },
+    enabled: typeof effectiveOrgId === 'string' && effectiveOrgId !== '[object Object]',
   });
 
-  // Sort programs: Active first, then latest start_date first
+  // Reset selected program when organisation changes
+  useEffect(() => {
+    setSelectedProgramId(null);
+  }, [effectiveOrgId]);
+
+  // Sort programs
   const sortedPrograms = useMemo(() => {
     return [...rawPrograms].sort((a, b) => {
-      // 1. Active first
       if (a.status === 'active' && b.status !== 'active') return -1;
       if (a.status !== 'active' && b.status === 'active') return 1;
-
-      // 2. Then by start_date (latest first)
       if (a.start_date && b.start_date) {
         return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
       }
       if (a.start_date) return -1;
       if (b.start_date) return 1;
-
       return 0;
     });
   }, [rawPrograms]);
 
-  // Determine active program: use selected if valid, otherwise top of sorted list
+  // Determine active program
   const activeProgram = useMemo(() => {
     if (selectedProgramId) {
       const selected = sortedPrograms.find(p => p.id === selectedProgramId);
@@ -73,14 +113,32 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     return sortedPrograms[0] || null;
   }, [selectedProgramId, sortedPrograms]);
 
+  const enterMasquerade = (orgId: string) => {
+    if (user?.role !== 'administrator') return;
+    setMasqueradedOrgId(orgId);
+    setData(MASQUERADE_KEY, orgId);
+  };
+
+  const exitMasquerade = () => {
+    setMasqueradedOrgId(null);
+    setSelectedProgramId(null);
+    setData(MASQUERADE_KEY, null);
+    localStorage.removeItem(MASQUERADE_KEY);
+  };
+
   const value = {
     activeOrganisation: organisation || null,
     activeProgram,
     programs: sortedPrograms,
     isLoading: isOrgLoading || isProgramsLoading,
+    isMasquerading,
+    isOrgAdmin: baseMembershipRole === 'org-admin',
+    membershipRole: baseMembershipRole,
     refreshOrganisation: refetchOrg,
     refreshPrograms: refetchPrograms,
-    setActiveProgram: setSelectedProgramId
+    setActiveProgram: setSelectedProgramId,
+    enterMasquerade,
+    exitMasquerade
   };
 
   return (

@@ -7,16 +7,27 @@ const APP_ROUTES = [
   '/auth/signup',
   '/auth/reset-password',
   
+  // Admin Pages
+  '/admin/dashboard',
+  '/admin/organisations',
+  '/admin/users',
+  
+  // Org Admin Pages
+  '/org-admin/dashboard',
+  '/org-admin/programs',
+  '/org-admin/task-templates',
+  '/org-admin/supervisors',
+  '/org-admin/settings',
+  
   // Supervisor Pages
   '/supervisor/dashboard',
   '/supervisor/participants',
   '/supervisor/pairs',
-  '/supervisor/master-tasks',
+  '/supervisor/program-tasks',
   '/supervisor/evidence-review',
   '/supervisor/calendar',
   '/supervisor/checklist',
   '/supervisor/error-logs',
-  '/supervisor/programs',
   
   // Program Member Pages
   '/program-member/dashboard',
@@ -38,10 +49,22 @@ test.describe('Exhaustive E2E Smoke Test (White Screen Prevention)', () => {
     for (const route of APP_ROUTES) {
       console.log(`Checking route: ${route}`);
       
+      // Capture console errors
+      const consoleErrors: string[] = [];
+      page.on('console', msg => {
+        if (msg.type() === 'error') consoleErrors.push(msg.text());
+      });
+
       // Navigate to the route
       await page.goto(route);
       
-      // Wait for the DOM to settle (network idle is a good proxy for React having mounted)
+      // Wait for the DOM to settle and React to mount
+      try {
+        await page.waitForSelector('#root > *', { timeout: 10000 });
+      } catch (e) {
+        // If it's a redirect to a page with a different structure, we might not see a direct child of #root immediately
+      }
+      
       await page.waitForLoadState('networkidle');
 
       // The ultimate white screen check: 
@@ -50,9 +73,16 @@ test.describe('Exhaustive E2E Smoke Test (White Screen Prevention)', () => {
       
       const bodyContent = await page.content();
       
-      // Assert the page is not completely blank (A true white screen has almost no HTML inside root)
+      // Assert the page is not completely blank
       const rootHtml = await page.locator('#root').innerHTML();
-      expect(rootHtml.trim().length).toBeGreaterThan(10); // Should be populated
+      
+      if (rootHtml.trim().length <= 10) {
+        console.error(`FAILURE on route ${route}: root was empty.`);
+        console.error('Console Errors:', consoleErrors);
+        console.error('HTML snippet:', (await page.content()).substring(0, 500));
+      }
+
+      expect(rootHtml.trim().length).toBeGreaterThan(10);
       
       // Most routes will redirect to /auth/signin if not authenticated, 
       // which is fine! A redirect means the router successfully evaluated 

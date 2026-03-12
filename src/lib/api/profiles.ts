@@ -5,7 +5,7 @@ import { uploadFile, getPublicUrl } from './storage';
 export interface Profile {
   id: string;
   email: string;
-  role: 'supervisor' | 'program-member';
+  role: 'supervisor' | 'program-member' | 'administrator';
   full_name: string | null;
   job_title: string | null;
   bio: string | null;

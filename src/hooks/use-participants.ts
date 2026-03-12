@@ -1,10 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchParticipants,
   fetchParticipantsByRole,
   fetchParticipant,
+  fetchOrgSupervisors,
+  assignSupervisorToProgram,
+  removeSupervisorFromProgram,
   createParticipant,
   updateParticipant,
   archiveParticipant,
@@ -15,18 +19,58 @@ import {
 
 const EMPTY_ARRAY: any[] = [];
 
+export function useOrgSupervisors() {
+  const queryClient = useQueryClient();
+  const { activeOrganisation } = useOrganisation();
+  const orgId = activeOrganisation?.id;
+
+  const { data: supervisors = [], isLoading } = useQuery({
+    queryKey: ['org-supervisors', orgId],
+    queryFn: () => orgId ? fetchOrgSupervisors(orgId) : Promise.resolve([]),
+    enabled: !!orgId,
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ userId, programId }: { userId: string; programId: string }) => 
+      assignSupervisorToProgram(userId, programId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-supervisors', orgId] });
+    }
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: ({ userId, programId }: { userId: string; programId: string }) => 
+      removeSupervisorFromProgram(userId, programId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-supervisors', orgId] });
+    }
+  });
+
+  return {
+    supervisors,
+    isLoading,
+    assignToProgram: assignMutation.mutateAsync,
+    removeFromProgram: removeMutation.mutateAsync,
+    isAssigning: assignMutation.isPending,
+    isRemoving: removeMutation.isPending
+  };
+}
+
 export function useParticipants() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeOrganisation } = useOrganisation();
+  
+  const orgId = activeOrganisation?.id;
 
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['participants'],
-    queryFn: () => fetchParticipants(),
+    queryKey: ['participants', orgId],
+    queryFn: () => fetchParticipants(orgId),
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['participants', 'stats'],
-    queryFn: () => fetchParticipantStats(),
+    queryKey: ['participants', 'stats', orgId],
+    queryFn: () => fetchParticipantStats(orgId),
   });
 
   const createMutation = useMutation({
@@ -101,13 +145,17 @@ export function useParticipant(id: string) {
 export function useAllParticipants() {
   return useQuery({
     queryKey: ['participants'],
-    queryFn: fetchParticipants,
+    queryFn: () => fetchParticipants(),
   });
 }
 
 export function useParticipantsByRole(role: 'supervisor' | 'program-member') {
+  const { user } = useAuth();
+  const { activeOrganisation } = useOrganisation();
+  const orgId = activeOrganisation?.id;
+
   return useQuery({
-    queryKey: ['participants', 'role', role],
-    queryFn: () => fetchParticipantsByRole(role),
+    queryKey: ['participants', 'role', role, orgId],
+    queryFn: () => fetchParticipantsByRole(role, orgId),
   });
 }

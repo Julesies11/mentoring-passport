@@ -54,11 +54,15 @@ const defaultAuthValue = {
   isAdmin: false,
   role: 'supervisor' as any,
   profileId: '00000000-0000-0000-0000-000000000001',
+  isSystemOwner: false,
+  isOrgAdmin: false,
   isSupervisor: true,
   isMentor: false,
   isMentee: false,
   setIsMentor: () => {},
   setIsMentee: () => {},
+  memberships: [],
+  switchOrganisation: async () => {},
 };
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {

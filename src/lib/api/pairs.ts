@@ -45,9 +45,9 @@ export interface UpdatePairInput {
 }
 
 /**
- * Fetch all pairs for a specific program
+ * Fetch all pairs for a specific program or organisation
  */
-export async function fetchPairs(programId?: string): Promise<Pair[]> {
+export async function fetchPairs(programId?: string, organisationId?: string): Promise<Pair[]> {
   // Defensive check: Ensure programId is a string and not an object
   if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
     console.warn('fetchPairs called with invalid programId:', programId);
@@ -59,11 +59,14 @@ export async function fetchPairs(programId?: string): Promise<Pair[]> {
     .select(`
       *,
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      program:mp_programs!inner(id, name, status, organisation_id)
     `);
 
   if (programId) {
     query = query.eq('program_id', programId);
+  } else if (organisationId) {
+    query = query.eq('program.organisation_id', organisationId);
   }
 
   const { data, error } = await query
@@ -143,16 +146,16 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw pairError;
   }
 
-  // Step 4: Fetch all active tasks from master list FOR THIS ORGANISATION
+  // Step 4: Fetch all active tasks from PROGRAM tasks list
   const { data: tasks, error: tasksError } = await supabase
-    .from('mp_tasks_master')
+    .from('mp_program_tasks')
     .select('id, name, evidence_type_id, sort_order')
     .eq('is_active', true)
-    .eq('organisation_id', program.organisation_id)
+    .eq('program_id', input.program_id)
     .order('sort_order', { ascending: true });
 
   if (tasksError) {
-    console.error('Error fetching tasks:', tasksError);
+    console.error('Error fetching program tasks:', tasksError);
     throw tasksError;
   }
 
@@ -160,11 +163,12 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   if (tasks && tasks.length > 0) {
     const pairTasks = tasks.map(task => ({
       pair_id: pair.id,
-      master_task_id: task.id,
+      program_task_id: task.id,
       name: task.name,
       evidence_type_id: task.evidence_type_id || fallbackEvidenceTypeId,
       sort_order: task.sort_order,
       status: 'not_submitted' as const,
+      is_custom: false
     }));
 
     // Filter out any tasks that still don't have an evidence_type_id if fallback failed
@@ -181,35 +185,36 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
 
       // Step 6: Create pair_subtasks for each pair task
       for (const task of tasks) {
-        // Fetch master subtasks for this task
-        const { data: masterSubtasks, error: subtasksError } = await supabase
-          .from('mp_subtasks_master')
-          .select('id, name, evidence_type_id, sort_order')
-          .eq('task_id', task.id)
+        // Fetch program subtasks for this program task
+        const { data: programSubtasks, error: subtasksError } = await supabase
+          .from('mp_program_subtasks')
+          .select('id, name, sort_order, master_subtask_id')
+          .eq('program_task_id', task.id)
           .order('sort_order', { ascending: true });
 
         if (subtasksError) {
-          console.error('Error fetching master subtasks:', subtasksError);
+          console.error('Error fetching program subtasks:', subtasksError);
           continue;
         }
 
-        if (masterSubtasks && masterSubtasks.length > 0) {
+        if (programSubtasks && programSubtasks.length > 0) {
           // Get the created pair task ID
           const { data: createdPairTask } = await supabase
             .from('mp_pair_tasks')
             .select('id')
             .eq('pair_id', pair.id)
-            .eq('master_task_id', task.id)
+            .eq('program_task_id', task.id)
             .single();
 
           if (createdPairTask) {
-            const pairSubtasks = masterSubtasks.map(subtask => ({
+            const pairSubtasks = programSubtasks.map(subtask => ({
               pair_task_id: createdPairTask.id,
-              master_subtask_id: subtask.id,
+              master_subtask_id: subtask.master_subtask_id,
               name: subtask.name,
-              evidence_type_id: subtask.evidence_type_id || fallbackEvidenceTypeId,
+              evidence_type_id: fallbackEvidenceTypeId, // Subtasks don't always have evidence types, using fallback
               sort_order: subtask.sort_order,
               is_completed: false,
+              is_custom: false
             }));
 
             const validSubtasks = pairSubtasks.filter(st => !!st.evidence_type_id);
@@ -287,7 +292,7 @@ export async function restorePair(id: string): Promise<void> {
 /**
  * Get pair statistics
  */
-export async function fetchPairStats(programId?: string) {
+export async function fetchPairStats(programId?: string, organisationId?: string) {
   // Defensive check: Ensure programId is a string and not an object
   if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
     console.warn('fetchPairStats called with invalid programId:', programId);
@@ -296,10 +301,12 @@ export async function fetchPairStats(programId?: string) {
 
   let query = supabase
     .from('mp_pairs')
-    .select('status');
+    .select('status, program:mp_programs!inner(organisation_id)');
 
   if (programId) {
     query = query.eq('program_id', programId);
+  } else if (organisationId) {
+    query = query.eq('program.organisation_id', organisationId);
   }
 
   const { data, error } = await query;

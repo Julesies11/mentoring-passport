@@ -20,6 +20,16 @@ vi.mock('@/hooks/use-mobile', () => ({
   useIsMobile: vi.fn(() => false),
 }));
 
+// Mock API calls made by providers
+vi.mock('@/lib/api/organisations', () => ({
+  fetchOrganisation: vi.fn(() => Promise.resolve({ id: 'org1', name: 'Test Org' })),
+}));
+
+vi.mock('@/lib/api/programs', () => ({
+  fetchPrograms: vi.fn(() => Promise.resolve([])),
+  fetchAssignedPrograms: vi.fn(() => Promise.resolve([])),
+}));
+
 import { useParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 
@@ -52,6 +62,40 @@ describe('ParticipantsContent', () => {
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText('Developer')).toBeInTheDocument();
+  });
+
+  it('shows management tools for Org Admin', () => {
+    vi.mocked(useParticipants).mockReturnValue({ 
+      participants: mockParticipants, 
+      isLoading: false,
+      stats: { total: 2 }
+    } as any);
+
+    render(<ParticipantsContent />, {
+      authValue: { role: 'org-admin', isOrgAdmin: true }
+    });
+    
+    expect(screen.getByText('Manage Participants')).toBeInTheDocument();
+    expect(screen.getByText('Add Member')).toBeInTheDocument();
+    // Edit buttons should be present
+    expect(screen.getAllByTitle('Edit Member').length).toBeGreaterThan(0);
+  });
+
+  it('hides management tools for Supervisor', () => {
+    vi.mocked(useParticipants).mockReturnValue({ 
+      participants: mockParticipants, 
+      isLoading: false,
+      stats: { total: 2 }
+    } as any);
+
+    render(<ParticipantsContent />, {
+      authValue: { role: 'supervisor', isOrgAdmin: false, isSupervisor: true }
+    });
+    
+    expect(screen.getByText('View Participants')).toBeInTheDocument();
+    expect(screen.queryByText('Add Member')).not.toBeInTheDocument();
+    // Edit buttons should be hidden
+    expect(screen.queryByTitle('Edit Member')).not.toBeInTheDocument();
   });
 
   it('filters participants by search term', async () => {
@@ -137,3 +181,4 @@ describe('ParticipantsContent', () => {
     });
   });
 });
+

@@ -1,3 +1,4 @@
+import { useAuth } from '@/auth/context/auth-context';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -5,8 +6,11 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { PairsContent } from './components/pairs-content';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function PairsPage() {
+  const { isOrgAdmin } = useAuth();
+
   return (
     <>
       <div className="hidden sm:block">
@@ -17,7 +21,7 @@ export function PairsPage() {
               description="Manage mentor-mentee pairings and track their progress"
             />
             <ToolbarActions>
-              {/* Action buttons are handled inside PairsContent or can be moved here */}
+              {isOrgAdmin && <ProgramSelector />}
             </ToolbarActions>
           </Toolbar>
         </Container>

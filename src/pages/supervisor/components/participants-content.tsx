@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
+import { useAuth } from '@/auth/context/auth-context';
 import { Participant } from '@/lib/api/participants';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,6 +36,9 @@ import { DataTablePagination } from '@/components/common/data-table-pagination';
 export function ParticipantsContent() {
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id');
+  const { role } = useAuth();
+  const isOrgAdmin = role === 'org-admin';
+
   const { 
     participants, 
     stats, 
@@ -175,7 +179,7 @@ export function ParticipantsContent() {
     if (!editingParticipant) return;
     setIsSubmitting(true);
     try {
-      const { avatar_file, delete_avatar, ...input } = data;
+      const { avatar_file, delete_avatar, full_name, role, job_title, department, phone, bio, status } = data;
       
       const finalAvatarUrl = await handleAvatarUpload(
         editingParticipant.id,
@@ -185,7 +189,13 @@ export function ParticipantsContent() {
       );
 
       await updateParticipantAsync(editingParticipant.id, {
-        ...input,
+        full_name,
+        role,
+        job_title,
+        department,
+        phone,
+        bio,
+        status,
         avatar_url: finalAvatarUrl,
       });
 
@@ -230,6 +240,7 @@ export function ParticipantsContent() {
   };
 
   const openEditDialog = (participant: Participant) => {
+    if (!isOrgAdmin) return;
     setEditingParticipant(participant);
     setIsDialogOpen(true);
   };
@@ -291,7 +302,9 @@ export function ParticipantsContent() {
 
       <Card className="border-0 sm:border">
         <CardHeader className="flex-wrap gap-3 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
-          <CardTitle className="text-sm sm:text-lg font-bold">Manage Participants</CardTitle>
+          <CardTitle className="text-sm sm:text-lg font-bold">
+            {isOrgAdmin ? 'Manage Participants' : 'View Participants'}
+          </CardTitle>
           <CardToolbar className="gap-2 sm:gap-2.5 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -328,15 +341,17 @@ export function ParticipantsContent() {
                 </SelectContent>
               </Select>
 
-              <Button 
-                variant="outline"
-                onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} 
-                className="h-9 sm:h-10 rounded-xl font-bold gap-1 sm:gap-2 shrink-0"
-              >
-                <UserPlus size={16} className="sm:size-[18px]" />
-                <span className="hidden sm:inline">Add Member</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
+              {isOrgAdmin && (
+                <Button 
+                  variant="outline"
+                  onClick={() => { setEditingParticipant(null); setIsDialogOpen(true); }} 
+                  className="h-9 sm:h-10 rounded-xl font-bold gap-1 sm:gap-2 shrink-0"
+                >
+                  <UserPlus size={16} className="sm:size-[18px]" />
+                  <span className="hidden sm:inline">Add Member</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              )}
             </div>
           </CardToolbar>
         </CardHeader>
@@ -375,8 +390,11 @@ export function ParticipantsContent() {
                         <TableRow 
                           key={p.id} 
                           id={`participant-${p.id}`}
-                          className="hover:bg-primary/[0.01] transition-colors group cursor-pointer scroll-mt-20"
-                          onClick={() => openEditDialog(p)}
+                          className={cn(
+                            "transition-colors group scroll-mt-20",
+                            isOrgAdmin ? "hover:bg-primary/[0.01] cursor-pointer" : ""
+                          )}
+                          onClick={() => isOrgAdmin && openEditDialog(p)}
                         >
                           <TableCell className="px-3 sm:px-6 py-3 sm:py-4 overflow-hidden">
                             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
@@ -450,48 +468,52 @@ export function ParticipantsContent() {
                         </TableCell>
                         <TableCell className="hidden md:table-cell px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              mode="icon" 
-                              className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all text-gray-400" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditDialog(p);
-                              }}
-                              title="Edit Member"
-                            >
-                              <KeenIcon icon="pencil" className="text-lg" />
-                            </Button>
-                            
-                            {p.status === 'active' ? (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                mode="icon" 
-                                className="size-9 rounded-full hover:bg-danger/10 hover:text-danger transition-all text-gray-400" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleArchive(p.id);
-                                }}
-                                title="Archive Member"
-                              >
-                                <KeenIcon icon="trash" className="text-lg" />
-                              </Button>
-                            ) : (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                mode="icon" 
-                                className="size-9 rounded-full hover:bg-success/10 hover:text-success transition-all text-gray-400" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRestore(p.id);
-                                }}
-                                title="Restore Member"
-                              >
-                                <KeenIcon icon="check-circle" className="text-lg" />
-                              </Button>
+                            {isOrgAdmin && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  mode="icon" 
+                                  className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all text-gray-400" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditDialog(p);
+                                  }}
+                                  title="Edit Member"
+                                >
+                                  <KeenIcon icon="pencil" className="text-lg" />
+                                </Button>
+                                
+                                {p.status === 'active' ? (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    mode="icon" 
+                                    className="size-9 rounded-full hover:bg-danger/10 hover:text-danger transition-all text-gray-400" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleArchive(p.id);
+                                    }}
+                                    title="Archive Member"
+                                  >
+                                    <KeenIcon icon="trash" className="text-lg" />
+                                  </Button>
+                                ) : (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    mode="icon" 
+                                    className="size-9 rounded-full hover:bg-success/10 hover:text-success transition-all text-gray-400" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRestore(p.id);
+                                    }}
+                                    title="Restore Member"
+                                  >
+                                    <KeenIcon icon="check-circle" className="text-lg" />
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </TableCell>

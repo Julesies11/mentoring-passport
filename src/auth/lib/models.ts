@@ -10,8 +10,22 @@ export interface AuthModel {
   refresh_token?: string;
 }
 
-// Role type for mentoring passport
-export type UserRole = 'supervisor' | 'program-member';
+// Role type for mentoring passport (Global/Legacy)
+export type UserRole = 'supervisor' | 'program-member' | 'administrator';
+
+// Specific roles within an organisation
+export type MembershipRole = 'org-admin' | 'supervisor' | 'program-member';
+
+export interface Membership {
+  id: UUID;
+  organisation_id: UUID;
+  role: MembershipRole;
+  status: 'active' | 'archived';
+  organisation?: {
+    name: string;
+    logo_url: string | null;
+  };
+}
 
 // User model representing the user profile
 export interface UserModel {
@@ -30,16 +44,20 @@ export interface UserModel {
   roles?: number[]; // Array of role IDs (legacy)
   pic?: string;
   language?: LanguageCode; // Maintain existing type
-  is_admin?: boolean; // Added admin flag
+  is_admin?: boolean; // Legacy/Global admin flag
   
   // Mentoring Passport specific fields from mp_profiles
-  role: UserRole; // supervisor or program-member
+  role: UserRole; // Current active role or global role
   profile_id: UUID; // Same as id, but explicit for clarity
   job_title?: string;
   avatar_url?: string;
   department?: string;
   bio?: string;
   status?: 'active' | 'archived';
-  organisation_id?: UUID;
+  organisation_id?: UUID; // Current active organisation
   must_change_password?: boolean; // Flag to force password change on first login
+
+  // Multi-tenant memberships
+  memberships?: Membership[];
+  selected_organisation_id?: UUID;
 }

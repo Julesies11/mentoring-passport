@@ -17,19 +17,20 @@ import {
 export function useAllMeetings() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { activeProgram } = useOrganisation();
+  const { activeProgram, activeOrganisation } = useOrganisation();
   const programId = activeProgram?.id;
+  const orgId = activeOrganisation?.id;
 
   const { data: meetings = [], isLoading, error } = useQuery({
-    queryKey: ['meetings', 'all', programId],
-    queryFn: () => fetchAllMeetings(programId),
-    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['meetings', 'all', programId, orgId],
+    queryFn: () => fetchAllMeetings(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['meetings', 'stats', programId],
-    queryFn: () => fetchMeetingStats(programId),
-    enabled: !!programId && typeof programId === 'string' && programId !== '[object Object]',
+    queryKey: ['meetings', 'stats', programId, orgId],
+    queryFn: () => fetchMeetingStats(programId, orgId),
+    enabled: !!(programId || orgId || user?.role === 'administrator'),
   });
 
   const createMutation = useMutation({

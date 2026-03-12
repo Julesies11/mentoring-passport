@@ -6,9 +6,10 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { SupervisorDashboardContent } from './components/supervisor-dashboard-content';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function SupervisorDashboardPage() {
-  const { user } = useAuth();
+  const { user, isOrgAdmin } = useAuth();
 
   return (
     <>
@@ -16,11 +17,11 @@ export function SupervisorDashboardPage() {
         <Container>
           <Toolbar>
             <ToolbarHeading
-              title="Supervisor Dashboard"
+              title="Supervisor Hub"
               description={`Welcome back, ${user?.full_name || user?.email}`}
             />
             <ToolbarActions>
-              {/* Add any actions here if needed in the future */}
+              {isOrgAdmin && <ProgramSelector />}
             </ToolbarActions>
           </Toolbar>
         </Container>
