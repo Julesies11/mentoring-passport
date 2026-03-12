@@ -92,12 +92,12 @@ jobs:
           name: dist
           path: dist
 
-      e2e:
-      name: Playwright E2E Tests
-      needs: ci
-      timeout-minutes: 60
-      runs-on: ubuntu-latest
-      steps:
+  e2e:
+    name: Playwright E2E Tests
+    needs: ci
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
