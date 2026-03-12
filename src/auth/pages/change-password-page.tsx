@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
+import { logDebug } from '@/lib/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -39,8 +40,8 @@ export function ChangePasswordPage() {
     searchParams.get('code') ||
     searchParams.get('token_hash');
 
-  if (import.meta.env.DEV) console.log('Reset token from URL:', token);
-  if (import.meta.env.DEV) console.log(
+  logDebug('Reset token from URL:', token);
+  logDebug(
     'All search parameters:',
     Object.fromEntries(searchParams.entries()),
   );
@@ -51,7 +52,7 @@ export function ChangePasswordPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         // Token is valid and has been processed by Supabase
-        if (import.meta.env.DEV) console.log('Password recovery mode activated');
+        logDebug('Password recovery mode activated');
         setTokenValid(true);
         setSuccessMessage('You can now set your new password');
       }
@@ -71,7 +72,7 @@ export function ChangePasswordPage() {
       hashParams.get('token_hash');
 
     if (hashToken && !token) {
-      if (import.meta.env.DEV) console.log('Found token in URL hash fragment:', hashToken);
+      logDebug('Found token in URL hash fragment:', hashToken);
       // Optionally, you could update the state or reload the page with the token as a query param
     }
   }, [token]);

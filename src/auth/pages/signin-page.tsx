@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { supabase } from '@/lib/supabase';
+import { logDebug } from '@/lib/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -119,7 +120,7 @@ export function SignInPage() {
       setIsProcessing(true);
       setError(null);
 
-      if (import.meta.env.DEV) console.log('Attempting to sign in with email:', values.email);
+      logDebug('Attempting to sign in with email:', values.email);
 
       // Simple validation
       if (!values.email.trim() || !values.password) {
@@ -276,7 +277,7 @@ export function SignInPage() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="Your email" {...field} />
+                <Input type="email" placeholder="Your email" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

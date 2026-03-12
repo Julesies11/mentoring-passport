@@ -21,7 +21,6 @@ import {
   fetchTaskLists,
   fetchTaskListTasks,
   fetchProgramTasks,
-  createTaskList,
   createProgramTask,
   updateProgramTask,
   deleteProgramTask,
@@ -31,7 +30,6 @@ import {
   type PairTask,
   type Task,
   type PairSubTask,
-  type TaskListMaster,
   type ProgramTask,
   type ProgramSubTask
 } from '@/lib/api/tasks';
@@ -95,7 +93,6 @@ export function useTasks() {
 }
 
 export function useTaskLists(organisationId?: string) {
-  const { user } = useAuth();
   const { activeOrganisation } = useOrganisation();
   const orgId = organisationId || activeOrganisation?.id;
 

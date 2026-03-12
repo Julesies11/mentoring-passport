@@ -75,7 +75,7 @@ describe('ParticipantsContent', () => {
       authValue: { role: 'org-admin', isOrgAdmin: true }
     });
     
-    expect(screen.getByText('Manage Participants')).toBeInTheDocument();
+    expect(screen.getByText('Manage Members')).toBeInTheDocument();
     expect(screen.getByText('Add Member')).toBeInTheDocument();
     // Edit buttons should be present
     expect(screen.getAllByTitle('Edit Member').length).toBeGreaterThan(0);
@@ -92,7 +92,7 @@ describe('ParticipantsContent', () => {
       authValue: { role: 'supervisor', isOrgAdmin: false, isSupervisor: true }
     });
     
-    expect(screen.getByText('View Participants')).toBeInTheDocument();
+    expect(screen.getByText('Member Directory')).toBeInTheDocument();
     expect(screen.queryByText('Add Member')).not.toBeInTheDocument();
     // Edit buttons should be hidden
     expect(screen.queryByTitle('Edit Member')).not.toBeInTheDocument();

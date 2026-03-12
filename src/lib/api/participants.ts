@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logDebug } from '@/lib/logger';
 import { ROLES, STATUS, UserRole, EntityStatus } from '@/config/constants';
 
 export interface Participant {
@@ -348,7 +349,7 @@ export async function syncProgramSupervisors(programId: string, supervisorIds: s
  * This creates both the auth user and the profile using a secure RPC
  */
 export async function createParticipant(input: CreateParticipantInput & { avatar_url?: string }): Promise<Participant> {
-  if (import.meta.env.DEV) console.log('Creating participant via RPC:', input.email);
+  logDebug('Creating participant via RPC:', input.email);
   
   // Use the RPC function to create user without logging out the supervisor
   const { data: newUserId, error: rpcError } = await supabase.rpc('mp_admin_create_user', {

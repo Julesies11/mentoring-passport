@@ -150,7 +150,6 @@ export function useAllParticipants() {
 }
 
 export function useParticipantsByRole(role: 'supervisor' | 'program-member') {
-  const { user } = useAuth();
   const { activeOrganisation } = useOrganisation();
   const orgId = activeOrganisation?.id;
 

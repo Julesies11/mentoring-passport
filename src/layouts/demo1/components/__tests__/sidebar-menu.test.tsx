@@ -47,7 +47,7 @@ describe('SidebarMenu', () => {
     // it just lists the items.
     expect(screen.queryByText('Administration')).not.toBeInTheDocument();
     expect(screen.getByText('Supervisor Hub')).toBeInTheDocument();
-    expect(screen.getByText('Participants')).toBeInTheDocument();
+    expect(screen.getByText('Pairs')).toBeInTheDocument();
     
     // Org Admin specific items should NOT be there
     expect(screen.queryByText('Org Hub')).not.toBeInTheDocument();

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllEvidence, usePendingEvidence } from '@/hooks/use-evidence';
 import { useAuth } from '@/auth/context/auth-context';
@@ -106,6 +106,7 @@ export function EvidenceReviewPage() {
       setReviewDialogOpen(false);
       setSelectedEvidence(null);
     } catch (_error) {
+      console.error('Failed to process review:', _error);
       toast.error('Failed to process review');
     }
   };

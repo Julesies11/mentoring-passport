@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchErrorLogs, clearAllErrorLogs, deleteErrorLog, type ErrorLog } from '@/lib/api/error-logs';
+import { fetchErrorLogs, clearAllErrorLogs, type ErrorLog } from '@/lib/api/error-logs';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,

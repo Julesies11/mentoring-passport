@@ -1,4 +1,5 @@
 import { CSSProperties, Fragment, useId } from 'react';
+import { logDebug } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { useDataGrid } from '@/components/ui/data-grid';
 import {
@@ -112,7 +113,7 @@ function DataGridTableDnd<TData>({ handleDragEnd }: { handleDragEnd: (event: Dra
         <DataGridTableBase>
           <DataGridTableHead>
             {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>, index) => {
-              if (import.meta.env.DEV) console.log('table.getState().columnOrder:', table.getState().columnOrder);
+              logDebug('table.getState().columnOrder:', table.getState().columnOrder);
 
               return (
                 <DataGridTableHeadRow headerGroup={headerGroup} key={index}>

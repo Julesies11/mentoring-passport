@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase';
 import { updatePairTaskStatus } from './tasks';
 import { NotificationService } from './notifications-service';
 import { uploadFile } from './storage';
-import { getPublicUrl } from './storage';
 
 export interface Evidence {
   id: string;

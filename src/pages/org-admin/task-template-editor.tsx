@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,16 +18,14 @@ import {
   type Task,
 } from '@/lib/api/tasks';
 import { usePrograms } from '@/hooks/use-programs';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,7 +53,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 export function TaskTemplateEditorPage() {
   const { id: taskListId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { activeOrganisation } = useOrganisation();
   const queryClient = useQueryClient();
   const organisationId = activeOrganisation?.id;
@@ -100,7 +96,6 @@ export function TaskTemplateEditorPage() {
   const {
     data: tasks = [],
     isLoading: isLoadingTasks,
-    error,
   } = useQuery({
     queryKey: ['master-tasks', taskListId],
     queryFn: () => fetchTaskListTasks(taskListId!),

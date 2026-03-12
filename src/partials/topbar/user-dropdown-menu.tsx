@@ -53,6 +53,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
       toast.success('Switched hospital context');
       navigate('/');
     } catch (error) {
+      console.error('Failed to switch hospital:', error);
       toast.error('Failed to switch hospital');
     }
   };

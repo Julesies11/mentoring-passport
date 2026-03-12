@@ -8,14 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { KeenIcon } from '@/components/keenicons';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { format, isAfter, parseISO } from 'date-fns';
+import { isAfter, parseISO } from 'date-fns';
 import { calculatePairProgress } from '@/lib/utils/progress';
 import { cn } from '@/lib/utils';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 export function OrgAdminDashboardContent() {
   const navigate = useNavigate();
-  const { activeOrganisation, programs = [] } = useOrganisation();
+  const { programs = [] } = useOrganisation();
   const { pairs = [] } = usePairs();
   const { participants = [] } = useParticipants();
   const { supervisors = [] } = useOrgSupervisors();

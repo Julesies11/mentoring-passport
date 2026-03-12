@@ -17,7 +17,6 @@ import { OrgAdminDashboardPage } from '@/pages/org-admin/dashboard';
 import { OrgAdminProgramsPage } from '@/pages/org-admin/programs';
 import { OrgAdminTaskTemplatesPage } from '@/pages/org-admin/task-templates';
 import { ManageSupervisorsPage } from '@/pages/org-admin/supervisors';
-import { OrgSettingsPage } from '@/pages/org-admin/settings';
 
 // Program Member Pages
 import { ProgramMemberDashboardPage } from '@/pages/dashboards/program-member-dashboard';

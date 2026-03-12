@@ -28,6 +28,7 @@ export function OrgSettingsContent() {
       await refreshOrganisation();
       toast.success('Organisation updated successfully');
     } catch (error) {
+      console.error('Failed to update organisation:', error);
       toast.error('Failed to update organisation');
     } finally {
       setIsSaving(false);

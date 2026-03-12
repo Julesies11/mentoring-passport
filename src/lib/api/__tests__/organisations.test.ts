@@ -7,9 +7,7 @@ describe('Organisations API', () => {
   beforeEach(() => {
     // Reset handlers
     server.use(
-      http.get('*/rest/v1/mp_organisations*', ({ request }) => {
-        const url = new URL(request.url);
-        
+      http.get('*/rest/v1/mp_organisations*', () => {
         return HttpResponse.json(
           { 
             id: 'org1', 

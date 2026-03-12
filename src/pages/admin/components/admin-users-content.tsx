@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchParticipants, updateParticipant, archiveParticipant, restoreParticipant, Participant } from '@/lib/api/participants';
 import { fetchOrganisations } from '@/lib/api/organisations';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
@@ -79,7 +79,7 @@ export function AdminUsersContent() {
     if (!editingUser) return;
     setIsSubmitting(true);
     try {
-      const { avatar_file, delete_avatar, ...input } = data;
+      const { avatar_file: _avatar_file, delete_avatar: _delete_avatar, ...input } = data;
       await updateParticipant(editingUser.id, input);
       queryClient.invalidateQueries({ queryKey: ['admin-global-users'] });
       toast.success('User updated successfully');

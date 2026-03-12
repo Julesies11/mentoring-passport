@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotificationService } from '../notifications-service';
 import * as notificationsApi from '../notifications';
-import { supabase } from '@/lib/supabase';
 
 // Mock the core notification API
 vi.mock('../notifications', () => ({

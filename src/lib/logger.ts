@@ -8,6 +8,12 @@ export interface LogErrorParams {
   severity?: 'info' | 'warning' | 'error' | 'critical';
 }
 
+export const logDebug = (message: string, ...args: any[]) => {
+  if (import.meta.env.DEV) {
+    console.log(`[Debug] ${message}`, ...args);
+  }
+};
+
 /**
  * Logs an error to the mp_error_logs table in Supabase.
  * If Supabase is unreachable, it falls back to console.error.

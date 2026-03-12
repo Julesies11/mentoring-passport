@@ -15,9 +15,9 @@ const APP_ROUTES = [
   // Org Admin Pages
   '/org-admin/dashboard',
   '/org-admin/programs',
+  '/org-admin/participants',
   '/org-admin/task-templates',
   '/org-admin/supervisors',
-  '/org-admin/settings',
   
   // Supervisor Pages
   '/supervisor/dashboard',
@@ -44,7 +44,7 @@ test.describe('Exhaustive E2E Smoke Test (White Screen Prevention)', () => {
   
   test('App should not render a white screen on any known route', async ({ page }) => {
     // Increase timeout for exhaustive crawling
-    test.setTimeout(120000);
+    test.setTimeout(300000);
 
     for (const route of APP_ROUTES) {
       console.log(`Checking route: ${route}`);
@@ -61,7 +61,9 @@ test.describe('Exhaustive E2E Smoke Test (White Screen Prevention)', () => {
       // Wait for the DOM to settle and React to mount
       try {
         await page.waitForSelector('#root > *', { timeout: 10000 });
-      } catch (e) {
+        // Ensure screen loader is gone
+        await page.waitForSelector('[data-slot="screen-loader"]', { state: 'hidden', timeout: 10000 }).catch(() => {});
+      } catch (_e) {
         // If it's a redirect to a page with a different structure, we might not see a direct child of #root immediately
       }
       
@@ -70,8 +72,6 @@ test.describe('Exhaustive E2E Smoke Test (White Screen Prevention)', () => {
       // The ultimate white screen check: 
       // 1. The body must have content.
       // 2. We should not find a React error boundary overlay if one exists.
-      
-      const bodyContent = await page.content();
       
       // Assert the page is not completely blank
       const rootHtml = await page.locator('#root').innerHTML();

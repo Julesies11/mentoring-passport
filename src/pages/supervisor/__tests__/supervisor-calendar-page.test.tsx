@@ -1,11 +1,9 @@
-import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SupervisorCalendarPage } from '../calendar-page';
 import { render } from '@/test/utils';
 import * as meetingsHook from '@/hooks/use-meetings';
 import * as pairsHook from '@/hooks/use-pairs';
-import * as organisationProvider from '@/providers/organisation-provider';
 
 // Mock hooks
 vi.mock('@/hooks/use-meetings', () => ({

@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAuth } from '@/auth/context/auth-context';
-import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchPairs,
   fetchPair,

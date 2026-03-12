@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { logDebug } from '@/lib/logger';
 
 // Define the state interface
 interface StoreClientState {
@@ -56,7 +57,7 @@ function storeClientReducer(
       };
     case 'ADD_TO_CART':
       // Log productId for now; extend to update cart state if needed
-      if (import.meta.env.DEV) console.log(`Added product ${action.productId} to cart`);
+      logDebug(`Added product ${action.productId} to cart`);
       return { ...state, isCartSheetOpen: true }; // Open cart sheet on add
     default:
       return state;

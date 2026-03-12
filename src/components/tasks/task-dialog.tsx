@@ -62,7 +62,7 @@ export function TaskDialog({
   const [submittingAction, setSubmittingAction] = useState<'draft' | 'review' | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  const [{ files, isDragging }, { addFiles, removeFile, clearFiles, getInputProps }] = useFileUpload({
+  const [{ files, isDragging }, { addFiles: _addFiles, removeFile, clearFiles, getInputProps }] = useFileUpload({
     multiple: true,
     compress: true,
     compressionOptions: {

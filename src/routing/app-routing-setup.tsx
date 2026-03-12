@@ -2,7 +2,6 @@ import { AuthRouting } from '@/auth/auth-routing';
 import { RequireAuth } from '@/auth/require-auth';
 import { RequireRole } from '@/auth/require-role';
 import { useAuth } from '@/auth/context/auth-context';
-import { useOrganisation } from '@/providers/organisation-provider';
 import { ErrorRouting } from '@/errors/error-routing';
 import { Demo1Layout } from '@/layouts/demo1/layout';
 import { Navigate, Route, Routes } from 'react-router-dom';
@@ -17,7 +16,6 @@ const EvidenceReviewPage = lazy(() => import('@/pages/supervisor').then(m => ({ 
 const SupervisorCalendarPage = lazy(() => import('@/pages/supervisor').then(m => ({ default: m.SupervisorCalendarPage })));
 const SupervisorChecklistPage = lazy(() => import('@/pages/supervisor').then(m => ({ default: m.SupervisorChecklistPage })));
 const SupervisorErrorLogsPage = lazy(() => import('@/pages/supervisor').then(m => ({ default: m.SupervisorErrorLogsPage })));
-const OrganisationSettingsPage = lazy(() => import('@/pages/supervisor').then(m => ({ default: m.OrganisationSettingsPage })));
 
 const ProgramMemberDashboardPage = lazy(() => import('@/pages/dashboards/program-member-dashboard').then(m => ({ default: m.ProgramMemberDashboardPage })));
 const ProgramMemberTasksPage = lazy(() => import('@/pages/program-member').then(m => ({ default: m.ProgramMemberTasksPage })));
@@ -38,7 +36,6 @@ const TaskTemplatesLibraryPage = lazy(() => import('@/pages/org-admin/task-templ
 
 const TaskTemplateEditorPage = lazy(() => import('@/pages/org-admin/task-templates').then(m => ({ default: m.TaskTemplateEditorPage })));
 const ManageSupervisorsPage = lazy(() => import('@/pages/org-admin/supervisors').then(m => ({ default: m.ManageSupervisorsPage })));
-const OrgSettingsPage = lazy(() => import('@/pages/org-admin/settings').then(m => ({ default: m.OrgSettingsPage })));
 
 // Loading component for suspense
 const PageLoading = () => null;

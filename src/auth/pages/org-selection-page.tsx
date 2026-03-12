@@ -1,5 +1,5 @@
 import { useAuth } from '@/auth/context/auth-context';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ export function OrgSelectionPage() {
       toast.success('Hospital context selected');
       navigate('/'); // RoleBasedRedirect will handle the rest
     } catch (error) {
+      console.error('Failed to select hospital:', error);
       toast.error('Failed to select hospital');
     }
   };
@@ -70,7 +71,7 @@ export function OrgSelectionPage() {
   );
 }
 
-function Badge({ children, variant, className }: any) {
+function Badge({ children, _variant, className }: any) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${className}`}>
       {children}

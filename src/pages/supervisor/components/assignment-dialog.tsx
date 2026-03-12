@@ -54,6 +54,7 @@ export function AssignmentDialog({
         toast.success('Program assigned to supervisor');
       }
     } catch (error) {
+      console.error('Failed to update assignment:', error);
       toast.error('Failed to update assignment');
     } finally {
       setProcessingId(null);

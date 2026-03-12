@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@/test/utils';
+import { render, screen, fireEvent } from '@/test/utils';
 import { SupervisorChecklistPage } from '../checklist-page';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as pairsHook from '@/hooks/use-pairs';

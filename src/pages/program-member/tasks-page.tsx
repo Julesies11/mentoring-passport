@@ -5,7 +5,6 @@ import { useAllMeetings } from '@/hooks/use-meetings';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logDebug } from '@/lib/logger';
 import { StoreClientProductDetailsSheet } from '../components/sheets/product-details-sheet';
 import { SearchResults } from '../search-results-grid';
 
@@ -7,7 +8,7 @@ export function ProductDetailsContent() {
   const [selectedProductId] = useState('123');
 
   const handleAddToCart = ({ productId }: { productId: string }) => {
-    if (import.meta.env.DEV) console.log('Added to cart:', productId);
+    logDebug('Added to cart:', productId);
   };
 
   return (

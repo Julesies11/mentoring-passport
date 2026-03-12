@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
-import { handleAvatarUpload } from '@/lib/api/profiles';
 
 // Mock the avatar upload utility
 vi.mock('@/lib/api/profiles', async (importOriginal) => {

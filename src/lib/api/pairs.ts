@@ -115,7 +115,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   }
 
   // Step 1: Fetch program to get organisation_id
-  const { data: program, error: programError } = await supabase
+  const { error: programError } = await supabase
     .from('mp_programs')
     .select('organisation_id')
     .eq('id', input.program_id)

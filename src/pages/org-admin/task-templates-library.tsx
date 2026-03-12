@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -38,7 +37,6 @@ import { Badge } from '@/components/ui/badge';
 
 export function TaskTemplatesLibraryPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { activeOrganisation } = useOrganisation();
   const queryClient = useQueryClient();
   const organisationId = activeOrganisation?.id;
@@ -237,7 +235,7 @@ export function TaskTemplatesLibraryPage() {
                       {/* Sneak Peek of top 3 tasks */}
                       <div className="space-y-1.5 mb-4">
                         {list.tasks && list.tasks.length > 0 ? (
-                          list.tasks.slice(0, 3).map((task, idx) => (
+                          list.tasks.slice(0, 3).map((task, _idx) => (
                             <div key={task.id} className="flex items-center gap-2 text-xs text-gray-600 truncate">
                               <span className="size-1 rounded-full bg-gray-300 shrink-0" />
                               <span className="truncate">{task.name}</span>

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { logError } from '@/lib/logger';
 import { uploadFile, getPublicUrl } from './storage';
-import { ROLES, STATUS, STORAGE_BUCKETS, UserRole, EntityStatus } from '@/config/constants';
+import { ROLES, STORAGE_BUCKETS, UserRole, EntityStatus } from '@/config/constants';
 
 export interface Profile {
   id: string;

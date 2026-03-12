@@ -1,7 +1,6 @@
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { ManageSupervisorsContent } from './components/manage-supervisors-content';

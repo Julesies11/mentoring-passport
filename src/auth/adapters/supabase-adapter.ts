@@ -1,5 +1,6 @@
 import { AuthModel, UserModel } from '@/auth/lib/models';
 import { supabase } from '@/lib/supabase';
+import { logDebug } from '@/lib/logger';
 
 /**
  * Supabase adapter that maintains the same interface as the existing auth flow
@@ -10,7 +11,7 @@ export const SupabaseAdapter = {
    * Login with email and password
    */
   async login(email: string, password: string): Promise<AuthModel> {
-    if (import.meta.env.DEV) console.log('SupabaseAdapter: Attempting login with email:', email);
+    logDebug('SupabaseAdapter: Attempting login with email:', email);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -23,7 +24,7 @@ export const SupabaseAdapter = {
         throw new Error(error.message);
       }
 
-      if (import.meta.env.DEV) console.log(
+      logDebug(
         'SupabaseAdapter: Login successful, session:',
         data.session
           ? {
@@ -66,7 +67,7 @@ export const SupabaseAdapter = {
       const redirectTo =
         options?.redirectTo || `${window.location.origin}/auth/callback`;
 
-      if (import.meta.env.DEV) console.log('SupabaseAdapter: Using redirect URL:', redirectTo);
+      logDebug('SupabaseAdapter: Using redirect URL:', redirectTo);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -80,7 +81,7 @@ export const SupabaseAdapter = {
         throw new Error(error.message);
       }
 
-      if (import.meta.env.DEV) console.log('SupabaseAdapter: OAuth flow initiated successfully');
+      logDebug('SupabaseAdapter: OAuth flow initiated successfully');
 
       // No need to return anything - the browser will be redirected
     } catch (error) {
@@ -141,12 +142,12 @@ export const SupabaseAdapter = {
    * Request password reset
    */
   async requestPasswordReset(email: string): Promise<void> {
-    if (import.meta.env.DEV) console.log('Requesting password reset for:', email);
+    logDebug('Requesting password reset for:', email);
 
     try {
       // Ensure the redirect URL is properly formatted with a hash for token
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
-      if (import.meta.env.DEV) console.log('Using redirect URL:', redirectUrl);
+      logDebug('Using redirect URL:', redirectUrl);
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
@@ -157,7 +158,7 @@ export const SupabaseAdapter = {
         throw new Error(error.message);
       }
 
-      if (import.meta.env.DEV) console.log('Password reset email sent successfully');
+      logDebug('Password reset email sent successfully');
     } catch (err) {
       console.error('Unexpected error in password reset:', err);
       throw err;

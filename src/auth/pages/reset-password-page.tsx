@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
+import { logDebug } from '@/lib/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, MoveLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -40,7 +41,7 @@ export function ResetPasswordPage() {
       setIsProcessing(true);
       setError(null);
 
-      if (import.meta.env.DEV) console.log('Submitting password reset for:', values.email);
+      logDebug('Submitting password reset for:', values.email);
 
       // Request password reset using Supabase directly
       const { error } = await supabase.auth.resetPasswordForEmail(

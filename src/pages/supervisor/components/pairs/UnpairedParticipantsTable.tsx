@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,6 @@ import { KeenIcon } from '@/components/keenicons';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
 import { Participant } from '@/lib/api/participants';
-import { cn } from '@/lib/utils';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 
@@ -91,7 +90,6 @@ export function UnpairedParticipantsTable({ participants, pairs, onPairNow, prog
     paginatedItems: paginatedUnpaired,
     goToNextPage,
     goToPrevPage,
-    goToPage,
     totalItems,
     startIndex,
     endIndex
