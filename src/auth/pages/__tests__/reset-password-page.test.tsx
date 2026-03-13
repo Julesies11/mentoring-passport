@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ResetPasswordPage } from '../ResetPasswordPage';
+import { ResetPasswordPage } from '../reset-password-page';
 import { render } from '@/test/utils';
 import { supabase } from '@/lib/supabase';
 

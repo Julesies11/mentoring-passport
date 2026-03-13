@@ -97,5 +97,3 @@ export function CallbackPage() {
     </div>
   );
 }
-
-export default CallbackPage;

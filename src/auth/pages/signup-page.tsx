@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Check, Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
@@ -24,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { LoaderCircleIcon } from 'lucide-react';
 import { getSignupSchema, SignupSchemaType } from '../forms/signup-schema';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOrganisations } from '@/lib/api/organisations';
@@ -95,14 +94,14 @@ export function SignUpPage() {
 
   return (
     <Card className="max-w-[400px] w-full mx-auto">
-      <CardContent className="p-6 lg:p-8">
+      <CardContent className="p-6">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
             className="block w-full space-y-5"
           >
             <div className="text-center space-y-1 pb-3">
-              <h1 className="text-2xl font-semibold tracking-tight uppercase tracking-widest text-gray-900">Sign Up</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Sign Up</h1>
               <p className="text-sm text-muted-foreground">
                 Create your account to get started
               </p>
@@ -136,9 +135,9 @@ export function SignUpPage() {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">First Name</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="First Name" {...field} className="h-10" />
+                      <Input placeholder="First Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,9 +149,9 @@ export function SignUpPage() {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Last Name</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Last Name" {...field} className="h-10" />
+                      <Input placeholder="Last Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,14 +164,14 @@ export function SignUpPage() {
               name="organisation_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Organisation</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Organisation</FormLabel>
                   <Select
                     disabled={isLoadingOrgs}
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="h-10">
+                      <SelectTrigger>
                         <SelectValue placeholder={isLoadingOrgs ? "Loading..." : "Select organisation"} />
                       </SelectTrigger>
                     </FormControl>
@@ -194,13 +193,12 @@ export function SignUpPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Email</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Email</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Your email address"
                       type="email"
                       {...field}
-                      className="h-10"
                     />
                   </FormControl>
                   <FormMessage />
@@ -213,13 +211,12 @@ export function SignUpPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Password</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Password</FormLabel>
                   <div className="relative">
                     <Input
                       placeholder="Create a password"
                       type={passwordVisible ? 'text' : 'password'}
                       {...field}
-                      className="h-10"
                     />
                     <Button
                       type="button"
@@ -245,13 +242,12 @@ export function SignUpPage() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Confirm Password</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Confirm Password</FormLabel>
                   <div className="relative">
                     <Input
-                      placeholder="Confirm your password"
+                      placeholder="Verify your password"
                       type={confirmPasswordVisible ? 'text' : 'password'}
                       {...field}
-                      className="h-10"
                     />
                     <Button
                       type="button"
@@ -301,10 +297,10 @@ export function SignUpPage() {
               )}
             />
 
-            <Button type="submit" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
+            <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
               {isProcessing ? (
                 <span className="flex items-center gap-2">
-                  <LoaderCircleIcon className="h-4 w-4 animate-spin" /> Creating account...
+                  <LoaderCircle className="h-4 w-4 animate-spin" /> Creating account...
                 </span>
               ) : (
                 'Create Account'
@@ -326,5 +322,3 @@ export function SignUpPage() {
     </Card>
   );
 }
-
-export default SignUpPage;

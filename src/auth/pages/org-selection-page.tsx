@@ -145,5 +145,3 @@ export function OrgSelectionPage() {
     </div>
   );
 }
-
-export default OrgSelectionPage;

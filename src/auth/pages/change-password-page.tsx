@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { logDebug } from '@/lib/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Check, Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -17,7 +17,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { LoaderCircleIcon } from 'lucide-react';
 import {
   getNewPasswordSchema,
   NewPasswordSchemaType,
@@ -157,9 +156,9 @@ export function ChangePasswordPage() {
   if (!token && !tokenValid && !isLoggedIn) {
     return (
       <Card className="max-w-[400px] w-full mx-auto">
-        <CardContent className="p-6 lg:p-8 space-y-5">
+        <CardContent className="p-6 space-y-5">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight uppercase tracking-widest text-gray-900">Reset Password</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Reset Password</h1>
             <p className="text-sm text-muted-foreground">
               You need a valid reset link to change your password
             </p>
@@ -192,11 +191,11 @@ export function ChangePasswordPage() {
 
   return (
     <Card className="max-w-[400px] w-full mx-auto">
-      <CardContent className="p-6 lg:p-8">
+      <CardContent className="p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight uppercase tracking-widest text-gray-900">
+              <h1 className="text-2xl font-semibold tracking-tight">
                 {isLoggedIn && !token ? 'Update Password' : 'Set New Password'}
               </h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -238,7 +237,6 @@ export function ChangePasswordPage() {
                         type={passwordVisible ? 'text' : 'password'}
                         autoComplete="new-password"
                         {...field}
-                        className="h-10"
                       />
                       <Button
                         type="button"
@@ -271,7 +269,6 @@ export function ChangePasswordPage() {
                         type={confirmPasswordVisible ? 'text' : 'password'}
                         autoComplete="new-password"
                         {...field}
-                        className="h-10"
                       />
                       <Button
                         type="button"
@@ -295,10 +292,10 @@ export function ChangePasswordPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
+            <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
               {isProcessing ? (
                 <span className="flex items-center gap-2">
-                  <LoaderCircleIcon className="h-4 w-4 animate-spin" /> Updating...
+                  <LoaderCircle className="h-4 w-4 animate-spin" /> Updating...
                 </span>
               ) : (
                 'Save New Password'
@@ -316,5 +313,3 @@ export function ChangePasswordPage() {
     </Card>
   );
 }
-
-export default ChangePasswordPage;

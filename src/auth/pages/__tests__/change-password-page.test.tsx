@@ -1,6 +1,6 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChangePasswordPage } from '../ChangePasswordPage';
+import { ChangePasswordPage } from '../change-password-page';
 import { render } from '@/test/utils';
 
 // Mock Supabase with manual return functions to avoid vi.mocked chains failing

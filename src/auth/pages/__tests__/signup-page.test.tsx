@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SignUpPage } from '../SignUpPage';
+import { SignUpPage } from '../signup-page';
 import { render } from '@/test/utils';
 
 // Mock useNavigate

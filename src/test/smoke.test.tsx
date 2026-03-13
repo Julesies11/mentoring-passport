@@ -28,7 +28,7 @@ import { ProgramMemberRelationshipPage } from '@/pages/program-member/relationsh
 import { EditProfilePage } from '@/pages/profile/edit-profile';
 
 // Auth Pages
-import { SignUpPage } from '@/auth/pages/SignUpPage';
+import { SignUpPage } from '@/auth/pages/signup-page';
 
 // Admin Pages
 import { AdminDashboardPage } from '@/pages/admin/dashboard';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { logDebug } from '@/lib/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Check, MoveLeft } from 'lucide-react';
+import { AlertCircle, Check, MoveLeft, LoaderCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -18,7 +18,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { LoaderCircleIcon } from 'lucide-react';
 import {
   getResetRequestSchema,
   ResetRequestSchemaType,
@@ -77,11 +76,11 @@ export function ResetPasswordPage() {
 
   return (
     <Card className="max-w-[400px] w-full mx-auto">
-      <CardContent className="p-6 lg:p-8">
+      <CardContent className="p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight uppercase tracking-widest text-gray-900">
+              <h1 className="text-2xl font-semibold tracking-tight">
                 Reset Password
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -113,14 +112,13 @@ export function ResetPasswordPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Email</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Email</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="your.email@example.com"
                         type="email"
                         autoComplete="email"
                         {...field}
-                        className="h-10"
                       />
                     </FormControl>
                     <FormMessage />
@@ -128,10 +126,10 @@ export function ResetPasswordPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
+              <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
                 {isProcessing ? (
                   <span className="flex items-center gap-2">
-                    <LoaderCircleIcon className="h-4 w-4 animate-spin" /> Sending...
+                    <LoaderCircle className="h-4 w-4 animate-spin" /> Sending...
                   </span>
                 ) : (
                   'Send Reset Link'
@@ -153,5 +151,3 @@ export function ResetPasswordPage() {
     </Card>
   );
 }
-
-export default ResetPasswordPage;

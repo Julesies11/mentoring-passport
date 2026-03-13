@@ -3,7 +3,7 @@ import { useAuth } from '@/auth/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { logDebug } from '@/lib/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Check, Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { getSigninSchema, SigninSchemaType } from '../forms/signin-schema';
-import { LoaderCircleIcon } from 'lucide-react';
 
 export function SignInPage() {
   const [searchParams] = useSearchParams();
@@ -166,14 +165,14 @@ export function SignInPage() {
 
   return (
     <Card className="max-w-[400px] w-full mx-auto">
-      <CardContent className="p-6 lg:p-8">
+      <CardContent className="p-6">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
             className="block w-full space-y-5"
           >
             <div className="text-center space-y-1 pb-3">
-              <h1 className="text-2xl font-semibold tracking-tight uppercase tracking-widest text-gray-900">Sign In</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
               <p className="text-sm text-muted-foreground">
                 Welcome back! Log in with your credentials.
               </p>
@@ -194,11 +193,11 @@ export function SignInPage() {
                 type="button"
                 onClick={() => handleTestLogin('admin@test.com', 'Admin123!')}
                 disabled={isProcessing}
-                className="w-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700 font-bold h-9"
+                className="w-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700 font-bold"
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2 text-xs">
-                    <LoaderCircleIcon className="size-3.5 animate-spin" /> Signing in...
+                    <LoaderCircle className="size-4 animate-spin" /> Signing in...
                   </span>
                 ) : (
                   <span className="text-xs">Org Admin (Leesa)</span>
@@ -210,11 +209,11 @@ export function SignInPage() {
                 type="button"
                 onClick={() => handleTestLogin('nick@test.com', 'Demo123!!')}
                 disabled={isProcessing}
-                className="w-full bg-primary border-primary text-white hover:bg-primary-dark font-bold h-9"
+                className="w-full bg-primary border-primary text-white hover:bg-primary-dark font-bold"
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2 text-xs">
-                    <LoaderCircleIcon className="size-3.5 animate-spin" /> Signing in...
+                    <LoaderCircle className="size-4 animate-spin" /> Signing in...
                   </span>
                 ) : (
                   <span className="text-xs">Supervisor (Nick)</span>
@@ -278,9 +277,9 @@ export function SignInPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Email</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="Your email" {...field} className="h-10" />
+                    <Input type="email" placeholder="Your email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -293,14 +292,13 @@ export function SignInPage() {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex justify-between items-center gap-2.5">
-                    <FormLabel className="text-xs font-black uppercase tracking-widest text-gray-500">Password</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Password</FormLabel>
                   </div>
                   <div className="relative">
                     <Input
                       placeholder="Your password"
                       type={passwordVisible ? 'text' : 'password'}
                       {...field}
-                      className="h-10"
                     />
                     <Button
                       type="button"
@@ -349,10 +347,10 @@ export function SignInPage() {
               )}
             />
 
-            <Button type="submit" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
+            <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" disabled={isProcessing}>
               {isProcessing ? (
                 <span className="flex items-center gap-2">
-                  <LoaderCircleIcon className="h-4 w-4 animate-spin" /> Loading...
+                  <LoaderCircle className="h-4 w-4 animate-spin" /> Loading...
                 </span>
               ) : (
                 'Sign In'
@@ -374,5 +372,3 @@ export function SignInPage() {
     </Card>
   );
 }
-
-export default SignInPage;

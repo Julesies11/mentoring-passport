@@ -1,6 +1,6 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SignInPage } from '../SignInPage';
+import { SignInPage } from '../signin-page';
 import { render } from '@/test/utils';
 import { supabase } from '@/lib/supabase';
 
