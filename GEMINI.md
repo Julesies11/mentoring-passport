@@ -143,23 +143,9 @@ This ensures:
   - Use responsive labeling: hide "Show" and "per page" text on small mobile screens.
 
 # ===============================
-# 4. IMAGE HANDLING & COMPRESSION STANDARDS
+# 5. RESEARCH & VERIFICATION MANDATES
 # ===============================
-- **Unified Processing Engine:**
-  - ALL image processing must use the centralized engine in `src/lib/utils/image.ts` powered by `browser-image-compression`.
-  - **NEVER** use manual canvas operations or legacy resizing logic.
-  - **Privacy First:** All uploads MUST strip EXIF metadata (GPS, camera info) by setting `preserveExif: false`.
-  - **No Upscaling:** The engine must never "blow up" images smaller than the target dimensions.
-
-- **Standardized Presets:**
-  - **AVATAR Preset:** Optimized for performance in lists of 50+ members.
-    - `maxWidthOrHeight: 256` (2x retina for 128px display)
-    - `maxSizeMB: 0.05` (50KB)
-  - **EVIDENCE Preset:** Optimized for legibility and audit requirements.
-    - `maxWidthOrHeight: 1600` (High-fidelity document view)
-    - `maxSizeMB: 0.8` (800KB)
-
-- **Storage API Integration:**
-  - The "Gold Standard" `uploadFile` API in `src/lib/api/storage.ts` is the single entry point for uploads.
-  - It automatically handles compression based on the `compressionPreset` parameter.
-  - UI components should pass raw `File` objects to the API and let the centralized engine handle optimization.
+- **NO GUESSING:** Never guess the names of database tables, columns, storage buckets, or environment variables.
+- **VERIFY FIRST:** Always verify names against the primary source code (e.g., `src/config/constants.ts`, `docs/DATABASE_SCHEMA.md`) before implementation.
+- **ASK IF UNCERTAIN:** If a name is not found in the codebase or documentation, you MUST ask the user for clarification before proceeding.
+- **AUDIT IMPORTS:** When adding features, audit existing files for established naming conventions to ensure consistency.

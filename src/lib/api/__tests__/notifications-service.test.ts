@@ -41,7 +41,8 @@ describe('NotificationService', () => {
         mentorId,
         menteeId,
         actorId,
-        true
+        true,
+        'org-1'
       );
 
       // Should only call createNotification ONCE (for the mentee)
@@ -52,7 +53,8 @@ describe('NotificationService', () => {
         'New Meeting Scheduled',
         expect.stringContaining('Meeting: Initial Chat'),
         expect.stringContaining('id=meeting-1'),
-        'meeting-1'
+        'meeting-1',
+        'org-1'
       );
     });
 
@@ -68,7 +70,8 @@ describe('NotificationService', () => {
         mentorId,
         menteeId,
         actorId,
-        false // isNew = false (Update)
+        false, // isNew = false (Update)
+        'org-1'
       );
 
       expect(notificationsApi.createNotification).toHaveBeenCalledWith(
@@ -77,7 +80,8 @@ describe('NotificationService', () => {
         'Meeting Details Updated',
         expect.stringContaining('Meeting: Initial Chat'),
         expect.stringContaining('id=meeting-1'),
-        'meeting-1'
+        'meeting-1',
+        'org-1'
       );
     });
 
@@ -91,7 +95,8 @@ describe('NotificationService', () => {
         new Date().toISOString(),
         mentorId,
         menteeId,
-        actorId
+        actorId,
+        'org-1'
       );
 
       expect(notificationsApi.createNotification).toHaveBeenCalledWith(
@@ -99,7 +104,9 @@ describe('NotificationService', () => {
         'meeting_updated',
         'Meeting Cancelled',
         expect.stringContaining('Meeting cancelled: Initial Chat'),
-        '/program-member/meetings'
+        '/program-member/meetings',
+        null,
+        'org-1'
       );
     });
   });
@@ -114,7 +121,8 @@ describe('NotificationService', () => {
         'John Mentor',
         'Sarah Mentee',
         actorId,
-        'John Mentor'
+        'John Mentor',
+        'org-1'
       );
 
       // Should mock 2 supervisors. Total calls = 2
@@ -125,7 +133,8 @@ describe('NotificationService', () => {
         'Task Re-opened',
         expect.stringContaining('John Mentor has re-opened "Site Visit"'),
         expect.stringContaining('pair=pair-1'),
-        'pair-1'
+        'pair-1',
+        'org-1'
       );
     });
   });
@@ -144,7 +153,8 @@ describe('NotificationService', () => {
         'John Mentor',
         'Sarah Mentee',
         actorId,
-        'Sarah Mentee'
+        'Sarah Mentee',
+        'org-1'
       );
 
       // Should call getSupervisors (which mocks 2 supervisors)
@@ -158,7 +168,8 @@ describe('NotificationService', () => {
         'Task Awaiting Review',
         expect.stringContaining('Sarah Mentee submitted "Site Visit" for your review'),
         expect.stringContaining('/supervisor/evidence-review'),
-        'pair-1'
+        'pair-1',
+        'org-1'
       );
 
       // Check Partner Notification (Mentor)
@@ -168,7 +179,8 @@ describe('NotificationService', () => {
         'Task Submitted for Review',
         expect.stringContaining('Sarah Mentee has submitted Site Visit for Supervisor review'),
         expect.stringContaining('/program-member/tasks'),
-        'pair-1'
+        'pair-1',
+        'org-1'
       );
     });
   });

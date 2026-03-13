@@ -3,7 +3,6 @@ import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
 import {
   UserCircle,
-  Layers,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -21,19 +20,18 @@ import {
   AvatarImage 
 } from '@/components/ui/avatar';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
-import { Building2, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { OrganisationLogo } from '@/components/common/organisation-logo';
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { 
     logout, 
     user, 
-    isOrgAdmin, 
     memberships, 
     activeMembership, 
     switchOrganisation 
   } = useAuth();
-  const { isMasquerading } = useOrganisation();
   const navigate = useNavigate();
 
   // Use display data from currentUser
@@ -50,11 +48,11 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
     if (orgId === activeMembership?.organisation_id) return;
     try {
       await switchOrganisation(orgId);
-      toast.success('Switched hospital context');
+      toast.success('Switched organisation context');
       navigate('/');
     } catch (error) {
-      console.error('Failed to switch hospital:', error);
-      toast.error('Failed to switch hospital');
+      console.error('Failed to switch organisation:', error);
+      toast.error('Failed to switch organisation');
     }
   };
 
@@ -93,23 +91,11 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           </Link>
         </DropdownMenuItem>
 
-        {(isOrgAdmin || isMasquerading) && (
-          <DropdownMenuItem asChild>
-            <Link
-              to="/org-admin/programs"
-              className="flex items-center gap-2"
-            >
-              <Layers className="size-4" />
-              Mentoring Programs
-            </Link>
-          </DropdownMenuItem>
-        )}
-
         {memberships.length > 1 && (
           <>
             <DropdownMenuSeparator />
             <div className="px-3 py-2">
-              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Switch Hospital</span>
+              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Switch Organisation</span>
             </div>
             <div className="max-h-[160px] overflow-y-auto px-1">
               {memberships.map((m) => (
@@ -118,8 +104,14 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                   onClick={() => handleSwitch(m.organisation_id)}
                   className="flex items-center justify-between gap-2 cursor-pointer py-2"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Building2 className={cn("size-3.5 shrink-0", m.organisation_id === activeMembership?.organisation_id ? "text-primary" : "text-gray-400")} />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <OrganisationLogo 
+                      orgId={m.organisation_id}
+                      logoPath={m.organisation?.logo_url}
+                      name={m.organisation?.name}
+                      size="xs"
+                      className="shrink-0 rounded-md shadow-sm border border-gray-100"
+                    />
                     <div className="flex flex-col min-w-0">
                       <span className={cn("truncate text-xs font-bold leading-none mb-1", m.organisation_id === activeMembership?.organisation_id ? "text-primary" : "text-gray-700")}>
                         {m.organisation?.name}

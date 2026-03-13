@@ -40,6 +40,7 @@ export function ProgramMemberTasksPage() {
     updateStatus, 
     createTask, 
     updateTask,
+    deleteTask,
     createSubTask,
     updateSubTask,
     deleteSubTask,
@@ -350,7 +351,8 @@ export function ProgramMemberTasksPage() {
           mentorName,
           menteeName,
           user.id,
-          actorName
+          actorName,
+          task?.pair?.organisation_id
         );
       }
 
@@ -406,7 +408,7 @@ export function ProgramMemberTasksPage() {
         }
       });
     } else {
-      updateTask({ taskId, updates }, {
+      updateTask(taskId, updates, {
         onSuccess: () => {
           setIsEditTaskOpen(false);
           setEditingTaskId(null);
@@ -614,7 +616,7 @@ export function ProgramMemberTasksPage() {
             setEditingTaskId(null);
           } else if (currentTask?.is_custom) {
             if (window.confirm('Are you sure you want to delete this custom task?')) {
-              deletePairTask(id).then(() => {
+              deleteTask(id).then(() => {
                 queryClient.invalidateQueries({ queryKey: ['pair-tasks', selectedPair?.id] });
                 setIsEditTaskOpen(false);
                 setEditingTaskId(null);

@@ -25,6 +25,7 @@ vi.mock('@/providers/organisation-provider', async (importOriginal) => {
   return {
     ...actual,
     useOrganisation: vi.fn(() => ({
+      programs: [{ id: 'prog1', name: 'Test Program', status: 'active' }],
       activeProgram: { id: 'prog1', name: 'Test Program', status: 'active' },
       isLoading: false
     })),

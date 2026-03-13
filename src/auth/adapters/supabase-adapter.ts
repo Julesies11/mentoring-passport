@@ -239,8 +239,8 @@ export const SupabaseAdapter = {
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile) {
-      throw new Error(profileError?.message || 'Profile not found');
+    if (profileError) {
+      console.warn('SupabaseAdapter: Could not fetch profile from mp_profiles table. Synthesizing from metadata...', profileError);
     }
 
     // Fetch memberships for multi-tenancy
@@ -255,36 +255,37 @@ export const SupabaseAdapter = {
 
     // Get user metadata for active context
     const metadata = user.user_metadata || {};
-    const selectedOrgId = metadata.selected_organisation_id;
+    const selectedOrgId = metadata.selected_organisation_id || metadata.active_org_id;
+    const userRole = metadata.role || metadata.active_role;
 
     // Format data combining auth.users and mp_profiles
     return {
       id: user.id,
       profile_id: user.id,
-      email: user.email || profile.email || '',
+      email: user.email || profile?.email || '',
       email_verified: user.email_confirmed_at !== null,
       username: metadata.username || user.email?.split('@')[0] || '',
       first_name: metadata.first_name || '',
       last_name: metadata.last_name || '',
-      fullname: metadata.fullname || profile.full_name || '',
-      full_name: profile.full_name || '',
+      fullname: metadata.fullname || profile?.full_name || '',
+      full_name: profile?.full_name || '',
       occupation: metadata.occupation || '',
       company_name: metadata.company_name || '',
-      phone: profile.phone || metadata.phone || '',
+      phone: profile?.phone || metadata.phone || '',
       roles: metadata.roles || [],
-      pic: profile.avatar_url || metadata.pic || '',
+      pic: profile?.avatar_url || metadata.pic || '',
       language: metadata.language || 'en',
-      is_admin: metadata.role === 'administrator',
+      is_admin: userRole === 'administrator' || metadata.is_system_owner === true,
       
       // Mentoring Passport specific fields from mp_profiles
-      role: metadata.role as any, // System-wide role
-      job_title: profile.job_title || metadata.job_title || '',
-      avatar_url: profile.avatar_url,
-      department: profile.department,
-      bio: profile.bio,
-      status: profile.status,
-      organisation_id: profile.organisation_id,
-      must_change_password: profile.must_change_password,
+      role: userRole as any, // System-wide role
+      job_title: profile?.job_title || metadata.job_title || '',
+      avatar_url: profile?.avatar_url,
+      department: profile?.department,
+      bio: profile?.bio,
+      status: profile?.status,
+      organisation_id: profile?.organisation_id,
+      must_change_password: profile?.must_change_password,
 
       // Multi-tenant memberships
       memberships: (memberships || []) as any,
@@ -296,13 +297,33 @@ export const SupabaseAdapter = {
    * Switch the active organisation context
    */
   async switchOrganisation(orgId: string): Promise<UserModel> {
-    const { error } = await supabase.auth.updateUser({
-      data: { selected_organisation_id: orgId }
+    logDebug('SupabaseAdapter: Switching active organisation to:', orgId);
+    
+    // 1. Call the database RPC to update user_metadata on the server
+    const { data, error } = await supabase.rpc('switch_active_org', { 
+      new_org_id: orgId 
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('SupabaseAdapter: RPC error switching organisation:', error);
+      throw new Error(error.message);
+    }
+
+    logDebug('SupabaseAdapter: RPC switch successful, refreshing session...');
+
+    // 2. Refresh the session to force Supabase to issue a NEW JWT with the updated metadata
+    const { error: refreshError } = await supabase.auth.refreshSession();
     
-    return (await this.getCurrentUser()) as UserModel;
+    if (refreshError) {
+      console.error('SupabaseAdapter: Error refreshing session after org switch:', refreshError);
+      throw new Error(refreshError.message);
+    }
+    
+    // 3. Get the updated user model from the new session
+    const user = await this.getCurrentUser();
+    if (!user) throw new Error('Failed to retrieve user after organisation switch');
+    
+    return user;
   },
 
   /**
@@ -370,6 +391,23 @@ export const SupabaseAdapter = {
    * Logout the current user
    */
   async logout(): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Clear active context on server so selection is required on next login
+        await supabase.auth.updateUser({
+          data: { 
+            active_org_id: null,
+            active_role: null,
+            selected_organisation_id: null,
+            role: null
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('SupabaseAdapter: Failed to clear metadata during logout', error);
+    }
+    
     const { error } = await supabase.auth.signOut();
     if (error) throw new Error(error.message);
   },

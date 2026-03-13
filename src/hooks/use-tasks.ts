@@ -37,14 +37,11 @@ import {
 export function useTasks() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { activeOrganisation } = useOrganisation();
-  
-  const orgId = activeOrganisation?.id;
 
   const { data: tasks = [], isLoading, error } = useQuery<Task[]>({
-    queryKey: ['tasks', orgId],
-    queryFn: () => fetchTasks(orgId),
-    enabled: !!(orgId || user?.role === 'administrator'),
+    queryKey: ['tasks'],
+    queryFn: () => fetchTasks(),
+    enabled: true,
   });
 
   const reorderTasksMutation = useMutation({
@@ -92,14 +89,11 @@ export function useTasks() {
   };
 }
 
-export function useTaskLists(organisationId?: string) {
-  const { activeOrganisation } = useOrganisation();
-  const orgId = organisationId || activeOrganisation?.id;
-
+export function useTaskLists() {
   return useQuery({
-    queryKey: ['task-lists', orgId],
-    queryFn: () => fetchTaskLists(orgId!),
-    enabled: !!orgId,
+    queryKey: ['task-lists'],
+    queryFn: () => fetchTaskLists(),
+    enabled: true,
   });
 }
 
@@ -216,6 +210,7 @@ export function usePairTasks(pairId: string) {
       const menteeId = currentTask?.pair?.mentee_id;
       const mentorName = currentTask?.pair?.mentor?.full_name || 'Mentor';
       const menteeName = currentTask?.pair?.mentee?.full_name || 'Mentee';
+      const orgId = currentTask?.pair?.organisation_id;
 
       // 1. Handle Task Submission (Notify Supervisors AND Partner)
       if (updatedTask.status === 'awaiting_review' && user?.id && mentorId && menteeId) {
@@ -228,7 +223,8 @@ export function usePairTasks(pairId: string) {
           mentorName, 
           menteeName, 
           user.id,
-          actorName
+          actorName,
+          orgId
         );
       }
 
@@ -236,9 +232,9 @@ export function usePairTasks(pairId: string) {
       const freshStats = await fetchPairTaskStats(pairId);
       const actorName = user.full_name || user.email || 'Participant';
       if (freshStats.completed === freshStats.total) {
-        await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName);
+        await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName, orgId);
       } else if (freshStats.completed >= freshStats.total / 2 && (freshStats.completed - 1) < freshStats.total / 2) {
-        await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName);
+        await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName, orgId);
       }
     },
   });
@@ -257,8 +253,9 @@ export function usePairTasks(pairId: string) {
         const firstTask = currentTasks[0];
         const mentorId = firstTask?.pair?.mentor_id;
         const menteeId = firstTask?.pair?.mentee_id;
+        const orgId = firstTask?.pair?.organisation_id;
         if (mentorId && menteeId && user?.id) {
-          await NotificationService.notifyTaskAdded(newTask.id, newTask.name, mentorId, menteeId, user.id);
+          await NotificationService.notifyTaskAdded(newTask.id, newTask.name, mentorId, menteeId, user.id, orgId);
         }
       }
     },

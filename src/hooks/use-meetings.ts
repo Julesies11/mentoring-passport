@@ -40,16 +40,25 @@ export function useAllMeetings() {
       
       // Notify partner
       const meetingData = newMeeting as any;
-      if (meetingData.mp_pairs && user?.id) {
-        await NotificationService.notifyMeetingChange(
-          meetingData.id,
-          meetingData.title,
-          meetingData.date_time,
-          meetingData.mp_pairs.mentor_id,
-          meetingData.mp_pairs.mentee_id,
-          user.id,
-          true
-        );
+      const pair = meetingData.mp_pairs;
+      if (pair && user?.id) {
+        // Handle both old and new data structures
+        const mentorId = pair.mentor_id || pair.mentor?.id;
+        const menteeId = pair.mentee_id || pair.mentee?.id;
+        const orgId = pair.organisation_id || pair.program?.organisation_id;
+
+        if (mentorId && menteeId) {
+          await NotificationService.notifyMeetingChange(
+            meetingData.id,
+            meetingData.title,
+            meetingData.date_time,
+            mentorId,
+            menteeId,
+            user.id,
+            true,
+            orgId
+          );
+        }
       }
     },
   });
@@ -62,16 +71,24 @@ export function useAllMeetings() {
       
       // Notify partner
       const meetingData = updatedMeeting as any;
-      if (meetingData.mp_pairs && user?.id) {
-        await NotificationService.notifyMeetingChange(
-          meetingData.id,
-          meetingData.title,
-          meetingData.date_time,
-          meetingData.mp_pairs.mentor_id,
-          meetingData.mp_pairs.mentee_id,
-          user.id,
-          false
-        );
+      const pair = meetingData.mp_pairs;
+      if (pair && user?.id) {
+        const mentorId = pair.mentor_id || pair.mentor?.id;
+        const menteeId = pair.mentee_id || pair.mentee?.id;
+        const orgId = pair.organisation_id || pair.program?.organisation_id;
+
+        if (mentorId && menteeId) {
+          await NotificationService.notifyMeetingChange(
+            meetingData.id,
+            meetingData.title,
+            meetingData.date_time,
+            mentorId,
+            menteeId,
+            user.id,
+            false,
+            orgId
+          );
+        }
       }
     },
   });
@@ -83,14 +100,22 @@ export function useAllMeetings() {
 
       // Notify partner
       const meetingData = deletedMeeting as any;
-      if (meetingData.mp_pairs && user?.id) {
-        await NotificationService.notifyMeetingCancelled(
-          meetingData.title,
-          meetingData.date_time,
-          meetingData.mp_pairs.mentor_id,
-          meetingData.mp_pairs.mentee_id,
-          user.id
-        );
+      const pair = meetingData.mp_pairs;
+      if (pair && user?.id) {
+        const mentorId = pair.mentor_id || pair.mentor?.id;
+        const menteeId = pair.mentee_id || pair.mentee?.id;
+        const orgId = pair.organisation_id || pair.program?.organisation_id;
+
+        if (mentorId && menteeId) {
+          await NotificationService.notifyMeetingCancelled(
+            meetingData.title,
+            meetingData.date_time,
+            mentorId,
+            menteeId,
+            user.id,
+            orgId
+          );
+        }
       }
     },
   });
@@ -128,16 +153,24 @@ export function usePairMeetings(pairId: string) {
       
       // Notify partner
       const meetingData = newMeeting as any;
-      if (meetingData.mp_pairs && user?.id) {
-        await NotificationService.notifyMeetingChange(
-          meetingData.id,
-          meetingData.title,
-          meetingData.date_time,
-          meetingData.mp_pairs.mentor_id,
-          meetingData.mp_pairs.mentee_id,
-          user.id,
-          true
-        );
+      const pair = meetingData.mp_pairs;
+      if (pair && user?.id) {
+        const mentorId = pair.mentor_id || pair.mentor?.id;
+        const menteeId = pair.mentee_id || pair.mentee?.id;
+        const orgId = pair.organisation_id || pair.program?.organisation_id;
+
+        if (mentorId && menteeId) {
+          await NotificationService.notifyMeetingChange(
+            meetingData.id,
+            meetingData.title,
+            meetingData.date_time,
+            mentorId,
+            menteeId,
+            user.id,
+            true,
+            orgId
+          );
+        }
       }
     },
   });
@@ -151,16 +184,24 @@ export function usePairMeetings(pairId: string) {
       
       // Notify partner
       const meetingData = updatedMeeting as any;
-      if (meetingData.mp_pairs && user?.id) {
-        await NotificationService.notifyMeetingChange(
-          meetingData.id,
-          meetingData.title,
-          meetingData.date_time,
-          meetingData.mp_pairs.mentor_id,
-          meetingData.mp_pairs.mentee_id,
-          user.id,
-          false
-        );
+      const pair = meetingData.mp_pairs;
+      if (pair && user?.id) {
+        const mentorId = pair.mentor_id || pair.mentor?.id;
+        const menteeId = pair.mentee_id || pair.mentee?.id;
+        const orgId = pair.organisation_id || pair.program?.organisation_id;
+
+        if (mentorId && menteeId) {
+          await NotificationService.notifyMeetingChange(
+            meetingData.id,
+            meetingData.title,
+            meetingData.date_time,
+            mentorId,
+            menteeId,
+            user.id,
+            false,
+            orgId
+          );
+        }
       }
     },
   });

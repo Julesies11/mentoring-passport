@@ -77,10 +77,11 @@ describe('AuthProvider Role Derivation', () => {
     const mockUser = {
       id: 'u2',
       is_admin: false,
-      role: 'program-member',
+      role: 'org-admin',
       memberships: [
         { organisation_id: 'org1', role: 'org-admin', status: 'active' }
       ],
+      selected_organisation_id: 'org1',
       organisation_id: 'org1'
     };
     vi.mocked(SupabaseAdapter.getCurrentUser).mockResolvedValue(mockUser as any);
@@ -107,6 +108,7 @@ describe('AuthProvider Role Derivation', () => {
       memberships: [
         { organisation_id: 'org1', role: 'supervisor', status: 'active' }
       ],
+      selected_organisation_id: 'org1',
       organisation_id: 'org1'
     };
     vi.mocked(SupabaseAdapter.getCurrentUser).mockResolvedValue(mockUser as any);

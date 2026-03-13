@@ -28,16 +28,12 @@ import { ProgramMemberRelationshipPage } from '@/pages/program-member/relationsh
 import { EditProfilePage } from '@/pages/profile/edit-profile';
 
 // Auth Pages
-import { SignUpPage } from '@/auth/pages/signup-page';
+import { SignUpPage } from '@/auth/pages/SignUpPage';
 
 // Admin Pages
-
 import { AdminDashboardPage } from '@/pages/admin/dashboard';
 import { AdminOrganisationsPage } from '@/pages/admin/organisations';
 import { AdminUsersPage } from '@/pages/admin/users';
-
-// Auth & Error (Need separate tests or mocked differently as they don't use Demo1Layout typically)
-// For simplicity in this smoke test, we'll focus on the core authenticated pages that share complex layout/hooks.
 
 // Mock complex chart components or heavy libraries that might fail in JSDOM
 vi.mock('react-apexcharts', () => ({
@@ -47,7 +43,21 @@ vi.mock('react-apexcharts', () => ({
 describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
   
   describe('Administrator Pages', () => {
-    const adminAuth = { role: 'administrator' as any, isSupervisor: true, isOrgAdmin: true, isSystemOwner: true, isMentor: false, isMentee: false };
+    const adminAuth = { 
+      role: 'administrator' as any, 
+      isSupervisor: true, 
+      isOrgAdmin: true, 
+      isSystemOwner: true, 
+      isMentor: false, 
+      isMentee: false,
+      user: {
+        id: 'admin-id',
+        email: 'admin@test.com',
+        role: 'administrator',
+        is_admin: true,
+        is_system_owner: true
+      }
+    };
 
     it('Admin Dashboard renders without crashing', async () => {
       const { container } = render(<AdminDashboardPage />, { authValue: adminAuth });

@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import { logError } from '@/lib/logger';
 
+import { uploadFile, getPublicUrl } from './storage';
+import { STORAGE_BUCKETS } from '@/config/constants';
+
 export interface Organisation {
   id: string;
   name: string;
@@ -9,11 +12,91 @@ export interface Organisation {
   updated_at: string;
 }
 
+/**
+ * Constructs a full public URL for an organisation's logo.
+ */
+export function getOrganisationLogoUrl(orgId: string, logoPath?: string | null): string {
+  if (!logoPath) return '';
+  return getPublicUrl(STORAGE_BUCKETS.LOGOS, logoPath, orgId);
+}
+
+/**
+ * Handles uploading a new logo or preparing for deletion.
+ */
+export async function handleLogoUpload(
+  orgId: string,
+  file?: File | null,
+  shouldDelete?: boolean,
+  currentLogoUrl?: string | null
+): Promise<string | null | undefined> {
+  if (shouldDelete) {
+    return null;
+  }
+
+  if (file) {
+    const fileName = `${orgId}-${Date.now()}.jpg`;
+    return await uploadFile(file, {
+      bucket: STORAGE_BUCKETS.LOGOS,
+      folder: orgId,
+      fileName,
+      compressionPreset: 'AVATAR' // Reusing AVATAR preset for consistent sizing
+    });
+  }
+
+  return currentLogoUrl;
+}
+
 export interface SetupOrganisationInput {
   orgName: string;
-  supervisorEmail: string;
-  supervisorPassword: string;
-  supervisorName: string;
+  orgLogoUrl?: string | null;
+  adminMode: 'new' | 'existing';
+  adminUserId?: string;
+  adminEmail?: string;
+  adminPassword?: string;
+  adminName?: string;
+}
+
+/**
+ * Fetch all organisations with their Org Admins (Administrator only)
+ * Performs app-side join to follow project standards.
+ */
+export async function fetchOrganisationsWithAdmins(): Promise<(Organisation & { admins: any[] })[]> {
+  const { data: orgs, error: orgError } = await supabase
+    .from('mp_organisations')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (orgError) throw orgError;
+  if (!orgs || orgs.length === 0) return [];
+
+  // App-side join: Fetch all org-admin memberships for these organisations
+  const { data: memberships, error: memError } = await supabase
+    .from('mp_memberships')
+    .select(`
+      organisation_id,
+      user_id,
+      role,
+      profile:mp_profiles (
+        id,
+        full_name,
+        email,
+        avatar_url
+      )
+    `)
+    .in('organisation_id', orgs.map(o => o.id))
+    .eq('role', 'org-admin')
+    .eq('status', 'active');
+
+  if (memError) throw memError;
+
+  // Merge data
+  return orgs.map(org => ({
+    ...org,
+    admins: memberships
+      ?.filter(m => m.organisation_id === org.id)
+      ?.map(m => m.profile)
+      ?.filter(Boolean) || []
+  }));
 }
 
 /**
@@ -64,14 +147,17 @@ export async function fetchOrganisation(id: string): Promise<Organisation | null
 }
 
 /**
- * Setup a new organisation with its first supervisor (Administrator only)
+ * Setup a new organisation with its first org-admin (Administrator only)
  */
 export async function setupOrganisation(input: SetupOrganisationInput): Promise<string> {
-  const { data: orgId, error } = await supabase.rpc('mp_admin_setup_organisation', {
+  const { data: orgId, error } = await supabase.rpc('mp_admin_setup_organisation_v2', {
     org_name: input.orgName,
-    supervisor_email: input.supervisorEmail,
-    supervisor_password: input.supervisorPassword,
-    supervisor_name: input.supervisorName
+    org_logo_url: input.orgLogoUrl,
+    admin_mode: input.adminMode,
+    admin_user_id: input.adminUserId,
+    admin_name: input.adminName,
+    admin_email: input.adminEmail,
+    admin_password: input.adminPassword
   });
 
   if (error) {

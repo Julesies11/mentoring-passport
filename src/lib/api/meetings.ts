@@ -166,11 +166,25 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
  * Create a new meeting
  */
 export async function createMeeting(input: CreateMeetingInput): Promise<Meeting> {
+  // 1. Fetch pair details to get organisation and program context
+  const { data: pair, error: pairError } = await supabase
+    .from('mp_pairs')
+    .select('organisation_id, program_id')
+    .eq('id', input.pair_id)
+    .single();
+
+  if (pairError || !pair) {
+    throw new Error('Could not verify pairing context for meeting creation.');
+  }
+
+  // 2. Insert the meeting with full isolation context
   const { data, error } = await supabase
     .from('mp_meetings')
     .insert({
       pair_id: input.pair_id,
       pair_task_id: input.pair_task_id,
+      organisation_id: pair.organisation_id,
+      program_id: pair.program_id,
       title: input.title,
       notes: input.notes,
       date_time: input.date_time,

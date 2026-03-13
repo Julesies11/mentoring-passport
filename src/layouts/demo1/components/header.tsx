@@ -16,7 +16,7 @@ export function Header() {
   const mobileMode = useIsMobile();
   const { unreadCount } = useNotifications();
   const { user } = useAuth();
-  const { isMasquerading } = useOrganisation();
+  const { isMasquerading, activeOrganisation } = useOrganisation();
 
   const scrollPosition = useScrollPosition();
   const headerSticky: boolean = scrollPosition > 0;
@@ -33,9 +33,7 @@ export function Header() {
       <Container className="flex justify-between items-stretch lg:gap-4">
         {/* Mobile: Logo on left, Desktop: Breadcrumbs */}
         {mobileMode ? (
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            {/* Breadcrumb or title could go here if needed, but keeping it clean for now */}
-          </div>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0" />
         ) : (
           <div className="flex items-center gap-4 flex-1">
             <Breadcrumb />

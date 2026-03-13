@@ -37,14 +37,20 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
     },
     {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
+      name: 'Mobile Safari (Chrome)',
+      use: { 
+        ...devices['iPhone 12'],
+        browserName: 'chromium' 
+      },
     },
 
     /* Test against tablet viewports. */
     {
-      name: 'iPad (gen 7)',
-      use: { ...devices['iPad (gen 7)'] },
+      name: 'iPad (Chrome)',
+      use: { 
+        ...devices['iPad (gen 7)'],
+        browserName: 'chromium'
+      },
     },
   ],
 

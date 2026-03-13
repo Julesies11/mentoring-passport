@@ -21,20 +21,18 @@ const EMPTY_ARRAY: any[] = [];
 
 export function useOrgSupervisors() {
   const queryClient = useQueryClient();
-  const { activeOrganisation } = useOrganisation();
-  const orgId = activeOrganisation?.id;
 
   const { data: supervisors = [], isLoading } = useQuery({
-    queryKey: ['org-supervisors', orgId],
-    queryFn: () => orgId ? fetchOrgSupervisors(orgId) : Promise.resolve([]),
-    enabled: !!orgId,
+    queryKey: ['org-supervisors'],
+    queryFn: () => fetchOrgSupervisors(),
+    enabled: true,
   });
 
   const assignMutation = useMutation({
     mutationFn: ({ userId, programId }: { userId: string; programId: string }) => 
       assignSupervisorToProgram(userId, programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['org-supervisors', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['org-supervisors'] });
     }
   });
 
@@ -42,7 +40,7 @@ export function useOrgSupervisors() {
     mutationFn: ({ userId, programId }: { userId: string; programId: string }) => 
       removeSupervisorFromProgram(userId, programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['org-supervisors', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['org-supervisors'] });
     }
   });
 
@@ -59,20 +57,17 @@ export function useOrgSupervisors() {
 export function useParticipants() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { activeOrganisation } = useOrganisation();
-  
-  const orgId = activeOrganisation?.id;
 
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['participants', orgId],
-    queryFn: () => fetchParticipants(orgId),
-    enabled: !!orgId && typeof orgId === 'string' && orgId !== '[object Object]',
+    queryKey: ['participants'],
+    queryFn: () => fetchParticipants(),
+    enabled: true,
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['participants', 'stats', orgId],
-    queryFn: () => fetchParticipantStats(orgId),
-    enabled: !!orgId && typeof orgId === 'string' && orgId !== '[object Object]',
+    queryKey: ['participants', 'stats'],
+    queryFn: () => fetchParticipantStats(),
+    enabled: true,
   });
 
   const createMutation = useMutation({
@@ -97,7 +92,8 @@ export function useParticipants() {
       );
 
       if (isNewlyCompleted && user?.id) {
-        await NotificationService.notifyProfileCompleted(updatedParticipant.id, updatedParticipant.full_name, user.id);
+        const orgId = updatedParticipant.organisation_id;
+        await NotificationService.notifyProfileCompleted(updatedParticipant.id, updatedParticipant.full_name, user.id, orgId);
       }
     },
   });

@@ -83,8 +83,7 @@ export async function fetchAllEvidence(programId?: string, organisationId?: stri
         id,
         program_id,
         mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title),
-        program:mp_programs!inner(organisation_id)
+        mentee:mentee_id(id, full_name, job_title)
       ),
       reviewer:mp_profiles!reviewed_by(id, full_name)
     `);
@@ -92,7 +91,7 @@ export async function fetchAllEvidence(programId?: string, organisationId?: stri
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
   } else if (organisationId) {
-    query = query.eq('pair.program.organisation_id', organisationId);
+    // organisation filtering handled by RLS
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -114,8 +113,7 @@ export async function fetchPendingEvidence(programId?: string, organisationId?: 
         id,
         program_id,
         mentor:mentor_id(id, full_name, avatar_url, job_title),
-        mentee:mentee_id(id, full_name, avatar_url, job_title),
-        program:mp_programs!inner(organisation_id)
+        mentee:mentee_id(id, full_name, avatar_url, job_title)
       )
     `)
     .in('status', ['pending', 'rejected']);
@@ -123,7 +121,7 @@ export async function fetchPendingEvidence(programId?: string, organisationId?: 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
   } else if (organisationId) {
-    query = query.eq('pair.program.organisation_id', organisationId);
+    // organisation filtering handled by RLS
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -216,12 +214,26 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  // 1. Fetch pair details to get organisation and program context
+  const { data: pair, error: pairError } = await supabase
+    .from('mp_pairs')
+    .select('organisation_id, program_id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name)')
+    .eq('id', input.pair_id)
+    .single();
+
+  if (pairError || !pair) {
+    throw new Error('Could not verify pairing context for evidence creation.');
+  }
+
+  // 2. Insert the evidence with full isolation context
   const { data, error } = await supabase
     .from('mp_evidence_uploads')
     .insert({
       pair_id: input.pair_id,
       pair_task_id: input.pair_task_id,
       pair_subtask_id: input.pair_subtask_id,
+      organisation_id: pair.organisation_id,
+      program_id: pair.program_id,
       evidence_type_id: input.evidence_type_id,
       file_url: input.file_url,
       file_name: input.file_name,
@@ -234,31 +246,32 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
     })
     .select(`
       *,
-      task:mp_pair_tasks!pair_task_id(id, name),
-      pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
+      task:mp_pair_tasks!pair_task_id(id, name)
     `)
     .single();
 
   if (error) throw error;
 
   // Pulse notification to partner
-  const pair = data.pair as any;
-  if (pair) {
-    const isMentor = user.id === pair.mentor_id;
-    const recipientId = isMentor ? pair.mentee_id : pair.mentor_id;
-    const submitterName = isMentor ? pair.mentor?.full_name : pair.mentee?.full_name;
+  const enrichedPair = pair as any;
+  if (enrichedPair) {
+    const isMentor = user.id === enrichedPair.mentor_id;
+    const recipientId = isMentor ? enrichedPair.mentee_id : enrichedPair.mentor_id;
+    const submitterName = isMentor ? enrichedPair.mentor?.full_name : enrichedPair.mentee?.full_name;
     
     await NotificationService.notifyEvidencePulse(
       data.id, 
       data.task?.name || 'an item', 
       submitterName || 'Partner', 
       recipientId,
-      user.id
+      user.id,
+      pair.organisation_id
     );
   }
 
   return {
     ...data,
+    pair: pair as any,
     file_url: await getEvidenceUrl(data.file_url)
   };
 }
@@ -276,7 +289,7 @@ export async function reviewEvidence(
   // 1. First, get the evidence to find the pair_task_id
   const { data: currentEvidence } = await supabase
     .from('mp_evidence_uploads')
-    .select('pair_task_id')
+    .select('pair_task_id, organisation_id')
     .eq('id', evidenceId)
     .single();
 
@@ -301,7 +314,7 @@ export async function reviewEvidence(
     *,
     task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
     subtask:mp_pair_subtasks!pair_subtask_id(id, name),
-    pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
+    pair:mp_pairs(id, organisation_id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
   `);
 
   if (updateError) throw updateError;
@@ -347,7 +360,8 @@ export async function reviewEvidence(
       pair.mentor?.full_name || 'Mentor',
       pair.mentee?.full_name || 'Mentee',
       isMentorSubmitter,
-      user.id
+      user.id,
+      pair.organisation_id
     );
   }
 
@@ -374,12 +388,12 @@ export async function uploadEvidenceFile(file: File, pairId: string): Promise<st
  * Get evidence statistics
  */
 export async function fetchEvidenceStats(programId?: string, organisationId?: string) {
-  let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id, program:mp_programs!inner(organisation_id))');
+  let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id)');
   
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
   } else if (organisationId) {
-    query = query.eq('pair.program.organisation_id', organisationId);
+    // organisation filtering handled by RLS
   }
   const { data, error } = await query;
   if (error) throw error;

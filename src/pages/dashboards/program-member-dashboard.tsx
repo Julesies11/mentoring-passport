@@ -20,6 +20,7 @@ import {
 } from '@/layouts/demo1/components/toolbar';
 
 import { getMeetingStatus } from '@/lib/api/meetings';
+import { OrganisationLogo } from '@/components/common/organisation-logo';
 
 export function ProgramMemberDashboardPage() {
   const { user } = useAuth();
@@ -127,7 +128,16 @@ export function ProgramMemberDashboardPage() {
     return (
       <div key={stat.pair.id} className="mb-8 sm:mb-12 last:mb-0">
         {/* Program Header */}
-        <div className="flex items-center gap-2 mb-4 px-1">
+        <div className="flex items-center gap-3 mb-4 px-1">
+          {stat.pair.organisation && (
+            <OrganisationLogo 
+              orgId={stat.pair.organisation_id} 
+              logoPath={stat.pair.organisation.logo_url} 
+              name={stat.pair.organisation.name} 
+              size="sm"
+              className="rounded-lg shrink-0"
+            />
+          )}
           <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full border border-gray-200 shadow-sm">
             <KeenIcon icon="abstract-24" className="text-primary text-[10px]" />
             <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">

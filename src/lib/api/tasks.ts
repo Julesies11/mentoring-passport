@@ -140,14 +140,8 @@ export interface EvidenceType {
 /**
  * Fetch all task lists for an organisation
  */
-export async function fetchTaskLists(organisationId: string): Promise<TaskListMaster[]> {
-  // Defensive check
-  if (!organisationId || typeof organisationId !== 'string' || organisationId === '[object Object]') {
-    console.warn('fetchTaskLists called with invalid organisationId:', organisationId);
-    return [];
-  }
-
-  const { data, error } = await supabase
+export async function fetchTaskLists(organisationId?: string): Promise<TaskListMaster[]> {
+  let query = supabase
     .from('mp_task_lists_master')
     .select(`
       *,
@@ -159,9 +153,13 @@ export async function fetchTaskLists(organisationId: string): Promise<TaskListMa
           evidence_type:mp_evidence_types(id, name, requires_submission)
         )
       )
-    `)
-    .eq('organisation_id', organisationId)
-    .order('created_at', { ascending: false });
+    `);
+
+  if (organisationId && typeof organisationId === 'string' && organisationId !== '[object Object]') {
+    query = query.eq('organisation_id', organisationId);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching task lists:', error);
@@ -469,12 +467,6 @@ export async function fetchEvidenceTypes(): Promise<EvidenceType[]> {
  * Fetch all tasks
  */
 export async function fetchTasks(organisationId?: string, includeInactive: boolean = false): Promise<Task[]> {
-  // Defensive check: Ensure organisationId is a string and not an object
-  if (organisationId && (typeof organisationId !== 'string' || organisationId === '[object Object]')) {
-    console.warn('fetchTasks called with invalid organisationId:', organisationId);
-    return [];
-  }
-
   const query = supabase
     .from('mp_tasks_master')
     .select(`
@@ -486,7 +478,7 @@ export async function fetchTasks(organisationId?: string, includeInactive: boole
       )
     `);
 
-  if (organisationId) {
+  if (organisationId && typeof organisationId === 'string' && organisationId !== '[object Object]') {
     query.eq('organisation_id', organisationId);
   }
 
@@ -911,9 +903,25 @@ export async function deleteMasterSubTask(subtaskId: string): Promise<void> {
  * Create a new task for a pair
  */
 export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 'updated_at' | 'task' | 'subtasks' | 'evidence_type'>): Promise<PairTask> {
+  // 1. Fetch pair details to get organisation and program context
+  const { data: pair, error: pairError } = await supabase
+    .from('mp_pairs')
+    .select('organisation_id, program_id')
+    .eq('id', task.pair_id)
+    .single();
+
+  if (pairError || !pair) {
+    throw new Error('Could not verify pairing context for task creation.');
+  }
+
+  // 2. Insert the task with full isolation context
   const { data, error } = await supabase
     .from('mp_pair_tasks')
-    .insert(task)
+    .insert({
+      ...task,
+      organisation_id: pair.organisation_id,
+      program_id: pair.program_id
+    })
     .select(`
       *,
       evidence_type:mp_evidence_types(id, name, requires_submission)

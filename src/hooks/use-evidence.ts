@@ -14,15 +14,13 @@ import {
 } from '@/lib/api/evidence';
 
 export function useAllEvidence() {
-  const { user } = useAuth();
-  const { activeProgram, activeOrganisation } = useOrganisation();
+  const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
-  const orgId = activeOrganisation?.id;
 
   return useQuery({
-    queryKey: ['evidence', 'all', programId, orgId],
-    queryFn: () => fetchAllEvidence(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+    queryKey: ['evidence', 'all', programId],
+    queryFn: () => fetchAllEvidence(programId),
+    enabled: true,
   });
 }
 
@@ -62,21 +60,19 @@ export function usePairEvidence(pairId: string) {
 
 export function usePendingEvidence() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const { activeProgram, activeOrganisation } = useOrganisation();
+  const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
-  const orgId = activeOrganisation?.id;
 
   const { data: evidence = [], isLoading, error } = useQuery({
-    queryKey: ['evidence', 'pending', programId, orgId],
-    queryFn: () => fetchPendingEvidence(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+    queryKey: ['evidence', 'pending', programId],
+    queryFn: () => fetchPendingEvidence(programId),
+    enabled: true,
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['evidence', 'stats', programId, orgId],
-    queryFn: () => fetchEvidenceStats(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+    queryKey: ['evidence', 'stats', programId],
+    queryFn: () => fetchEvidenceStats(programId),
+    enabled: true,
   });
 
   const reviewMutation = useMutation({

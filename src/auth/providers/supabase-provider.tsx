@@ -1,7 +1,8 @@
-import { PropsWithChildren, useEffect, useState } from 'react';
+import { PropsWithChildren, useEffect, useState, useRef } from 'react';
 import { SupabaseAdapter } from '@/auth/adapters/supabase-adapter';
 import { AuthContext } from '@/auth/context/auth-context';
 import { supabase } from '@/lib/supabase';
+import { logDebug } from '@/lib/logger';
 import * as authHelper from '@/auth/lib/helpers';
 import { AuthModel, UserModel } from '@/auth/lib/models';
 
@@ -16,70 +17,125 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [isMentor, setIsMentor] = useState(false);
   const [isMentee, setIsMentee] = useState(false);
+  const [isAutoSelecting, setIsAutoSelecting] = useState(false);
+  const hasAutoSelected = useRef(false);
 
-  // Derived active context
+  // 1. Derive active context STRICTLY from JWT metadata
+  // We ignore currentUser.organisation_id here because that is a static profile field,
+  // not a dynamic session context.
+  const activeOrgId = currentUser?.selected_organisation_id;
+  
+  // Find the membership matching the ACTIVE context
   const activeMembership = currentUser?.memberships?.find(
-    m => m.organisation_id === (currentUser.selected_organisation_id || currentUser.organisation_id)
-  ) || currentUser?.memberships?.[0];
+    m => m.organisation_id === activeOrgId
+  );
 
-  console.log('AuthProvider: currentUser:', currentUser?.email, 'role:', currentUser?.role);
-  console.log('AuthProvider: activeMembership:', activeMembership);
+  // 2. Derive roles synchronously to prevent layout flashes/race conditions
+  const currentIsSystemOwner = !!currentUser?.is_admin || currentUser?.role === 'administrator';
+  
+  // For the effective role, we prefer the one signed in the JWT metadata.
+  // If no context is active yet, we don't have an effective org-role (unless System Owner).
+  const effectiveRole = currentUser?.role || activeMembership?.role;
+  const currentIsOrgAdmin = currentIsSystemOwner || activeMembership?.role === 'org-admin';
+  const currentIsSupervisor = currentIsOrgAdmin || activeMembership?.role === 'supervisor';
 
-  // Check roles and pairings based on active context
+  // Debug logging
   useEffect(() => {
-    // 1. System Owner (Global Admin)
-    const systemOwner = !!currentUser?.is_admin;
-    setIsSystemOwner(systemOwner);
-    setIsAdmin(systemOwner);
-
-    // 2. Org Roles based on Membership
-    if (activeMembership) {
-      setIsOrgAdmin(activeMembership.role === 'org-admin');
-      setIsSupervisor(activeMembership.role === 'supervisor' || activeMembership.role === 'org-admin');
-    } else {
-      setIsOrgAdmin(false);
-      setIsSupervisor(false);
+    if (currentUser) {
+      console.log('AuthProvider: Context Updated', { 
+        email: currentUser.email, 
+        activeOrgId, 
+        role: effectiveRole,
+        membershipCount: currentUser.memberships?.length,
+        hasActiveMembership: !!activeMembership,
+        isAutoSelecting
+      });
     }
+  }, [currentUser?.id, activeOrgId, effectiveRole, !!activeMembership, isAutoSelecting]);
+
+  // Initial session verification
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        logDebug('AuthProvider: Initial session found, verifying...');
+        await verify();
+      } else {
+        logDebug('AuthProvider: No initial session found.');
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Check pairings based on active context
+  useEffect(() => {
+    // Sync state-based flags for backward compatibility/external hooks
+    setIsSystemOwner(currentIsSystemOwner);
+    setIsAdmin(currentIsSystemOwner);
+    setIsOrgAdmin(currentIsOrgAdmin);
+    setIsSupervisor(currentIsSupervisor);
 
     const checkPairings = async () => {
-      if (currentUser?.id) {
+      if (currentUser?.id && activeOrgId) {
         try {
-          const orgId = activeMembership?.organisation_id || currentUser.organisation_id;
-          
           // Check active pairings in this specific organisation
-          let query = supabase
+          const { count: mentorCount } = await supabase
             .from('mp_pairs')
-            .select('mentor_id, mentee_id', { count: 'exact', head: true })
-            .eq('status', 'active');
-
-          if (orgId) {
-            query = query.eq('organisation_id', orgId);
-          }
-
-          const { count: mentorCount } = await query.eq('mentor_id', currentUser.id);
-          
-          // Reset query for mentee check
-          let menteeQuery = supabase
-            .from('mp_pairs')
-            .select('mentor_id, mentee_id', { count: 'exact', head: true })
+            .select('*', { count: 'exact', head: true })
+            .eq('mentor_id', currentUser.id)
+            .eq('organisation_id', activeOrgId)
             .eq('status', 'active');
           
-          if (orgId) {
-            menteeQuery = menteeQuery.eq('organisation_id', orgId);
-          }
-          
-          const { count: menteeCount } = await menteeQuery.eq('mentee_id', currentUser.id);
+          const { count: menteeCount } = await supabase
+            .from('mp_pairs')
+            .select('*', { count: 'exact', head: true })
+            .eq('mentee_id', currentUser.id)
+            .eq('organisation_id', activeOrgId)
+            .eq('status', 'active');
 
           setIsMentor((mentorCount || 0) > 0);
           setIsMentee((menteeCount || 0) > 0);
         } catch (error) {
           console.error('Error checking pairings:', error);
         }
+      } else {
+        setIsMentor(false);
+        setIsMentee(false);
       }
     };
 
     checkPairings();
-  }, [currentUser, activeMembership]);
+  }, [currentUser?.id, activeOrgId, currentIsSystemOwner, currentIsOrgAdmin, currentIsSupervisor]);
+
+  // AUTO-SELECTION LOGIC: If user has 1 org and no active context, set it automatically
+  useEffect(() => {
+    const autoSelect = async () => {
+      if (currentUser && !activeOrgId && currentUser.memberships?.length === 1 && !hasAutoSelected.current) {
+        hasAutoSelected.current = true;
+        setIsAutoSelecting(true);
+        
+        // Brief delay to allow initial layout to settle and prevent double-loading triggers
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const onlyOrgId = currentUser.memberships[0].organisation_id;
+        console.log('AuthProvider: Auto-selecting single organization:', onlyOrgId);
+        try {
+          await switchOrganisation(onlyOrgId);
+        } catch (error) {
+          console.error('AuthProvider: Auto-selection failed:', error);
+          // Do not reset hasAutoSelected to prevent infinite retry loops on permanent failures
+        } finally {
+          setIsAutoSelecting(false);
+        }
+      }
+    };
+    
+    if (!loading) {
+      autoSelect();
+    }
+  }, [currentUser, activeOrgId, loading]);
 
   const switchOrganisation = async (orgId: string) => {
     setLoading(true);
@@ -102,10 +158,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const user = await getUser();
         setCurrentUser(user || undefined);
-      } catch {
+      } catch (err) {
+        console.error('AuthProvider: Verification failed:', err);
         saveAuth(undefined);
         setCurrentUser(undefined);
+      } finally {
+        setLoading(false);
       }
+    } else {
+      setLoading(false);
     }
   };
 
@@ -119,6 +180,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   const login = async (email: string, password: string) => {
+    setLoading(true);
     try {
       const auth = await SupabaseAdapter.login(email, password);
       saveAuth(auth);
@@ -127,6 +189,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (error) {
       saveAuth(undefined);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -137,6 +201,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     firstName?: string,
     lastName?: string,
   ) => {
+    setLoading(true);
     try {
       const auth = await SupabaseAdapter.register(
         email,
@@ -151,6 +216,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (error) {
       saveAuth(undefined);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -203,15 +270,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
         updateProfile,
         logout,
         verify,
-        isAdmin,
+        isAdmin: currentIsSystemOwner,
         // Mentoring Passport role helpers
-        role: activeMembership?.role || currentUser?.role,
+        role: effectiveRole,
         profileId: currentUser?.profile_id,
-        isSystemOwner,
-        isOrgAdmin,
-        isSupervisor,
+        isSystemOwner: currentIsSystemOwner,
+        isOrgAdmin: currentIsOrgAdmin,
+        isSupervisor: currentIsSupervisor,
         isMentor,
         isMentee,
+        isAutoSelecting,
         setIsMentor,
         setIsMentee,
         // Multi-tenant

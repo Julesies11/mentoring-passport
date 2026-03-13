@@ -12,20 +12,27 @@ import { createNotification } from './notifications';
 export const NotificationService = {
   
   /**
-   * Helper to fetch all supervisors
+   * Helper to fetch all supervisors for a specific organisation
    */
-  async getSupervisors() {
-    const { data, error } = await supabase
-      .from('mp_profiles')
-      .select('id')
-      .eq('role', 'supervisor')
+  async getSupervisors(organisationId?: string) {
+    let query = supabase
+      .from('mp_memberships')
+      .select('user_id')
+      .in('role', ['org-admin', 'supervisor'])
       .eq('status', 'active');
+    
+    if (organisationId) {
+      query = query.eq('organisation_id', organisationId);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error('Error fetching supervisors for notification:', error);
       return [];
     }
-    return data || [];
+    // Map user_id to id to maintain compatibility with calling methods
+    return data?.map(m => ({ id: m.user_id })) || [];
   },
 
   /**
@@ -40,9 +47,10 @@ export const NotificationService = {
     mentorName: string, 
     menteeName: string,
     actorId: string,
-    actorName: string
+    actorName: string,
+    organisationId?: string
   ) {
-    const supervisors = await this.getSupervisors();
+    const supervisors = await this.getSupervisors(organisationId);
     
     // 1. Notify Supervisors (Action Required)
     const supervisorPromises = supervisors
@@ -54,7 +62,8 @@ export const NotificationService = {
           'Task Awaiting Review',
           `${actorName} submitted "${taskName}" for your review (Pair: ${mentorName} & ${menteeName}).`,
           `/supervisor/evidence-review?pairId=${pairId}`,
-          pairId
+          pairId,
+          organisationId
         )
       );
 
@@ -69,7 +78,8 @@ export const NotificationService = {
         'Task Submitted for Review',
         `${actorName} has submitted ${taskName} for Supervisor review.`,
         `/program-member/tasks?taskId=${pairId}`,
-        pairId
+        pairId,
+        organisationId
       );
     }
     
@@ -89,7 +99,8 @@ export const NotificationService = {
     mentorName: string,
     menteeName: string,
     isMentorSubmitter: boolean,
-    actorId: string // The Supervisor reviewing it
+    actorId: string, // The Supervisor reviewing it
+    organisationId?: string
   ) {
     const statusLabel = status === 'approved' ? 'Approved' : 'Revision Requested';
     const type = status === 'approved' ? 'evidence_approved' : 'evidence_rejected';
@@ -104,7 +115,8 @@ export const NotificationService = {
             ? `Your evidence for ${taskName} has been approved by the Supervisor.`
             : `Revision requested on ${taskName}. Feedback: ${feedback || 'Check details.'}`,
           `/program-member/tasks?taskId=${taskId}`,
-          taskId
+          taskId,
+          organisationId
         )
       : Promise.resolve(null);
 
@@ -119,7 +131,8 @@ export const NotificationService = {
             ? `The Supervisor approved the evidence uploaded by ${partnerName}.`
             : `Revision requested on evidence by ${partnerName}. Feedback: ${feedback || 'Check details.'}`,
           `/program-member/tasks?taskId=${taskId}`,
-          taskId
+          taskId,
+          organisationId
         )
       : Promise.resolve(null);
 
@@ -136,7 +149,8 @@ export const NotificationService = {
     mentorId: string,
     menteeId: string,
     actorId: string,
-    isNew: boolean
+    isNew: boolean,
+    organisationId?: string
   ) {
     const type = isNew ? 'meeting_created' : 'meeting_updated';
     const titleLabel = isNew ? 'New Meeting Scheduled' : 'Meeting Details Updated';
@@ -151,7 +165,7 @@ export const NotificationService = {
     const recipients = [mentorId, menteeId].filter(id => id !== actorId);
 
     const promises = recipients.map(id => 
-      createNotification(id, type, titleLabel, description, actionUrl, meetingId)
+      createNotification(id, type, titleLabel, description, actionUrl, meetingId, organisationId)
     );
 
     await Promise.all(promises);
@@ -165,7 +179,8 @@ export const NotificationService = {
     dateTime: string,
     mentorId: string,
     menteeId: string,
-    actorId: string
+    actorId: string,
+    organisationId?: string
   ) {
     const formattedDate = new Date(dateTime).toLocaleString('en-GB', { 
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' 
@@ -177,7 +192,7 @@ export const NotificationService = {
     const recipients = [mentorId, menteeId].filter(id => id !== actorId);
 
     const promises = recipients.map(id => 
-      createNotification(id, 'meeting_updated', 'Meeting Cancelled', description, '/program-member/meetings')
+      createNotification(id, 'meeting_updated', 'Meeting Cancelled', description, '/program-member/meetings', null, organisationId)
     );
 
     await Promise.all(promises);
@@ -193,9 +208,10 @@ export const NotificationService = {
     mentorName: string, 
     menteeName: string,
     actorId: string,
-    actorName: string
+    actorName: string,
+    organisationId?: string
   ) {
-    const supervisors = await this.getSupervisors();
+    const supervisors = await this.getSupervisors(organisationId);
     
     const promises = supervisors
       .filter(s => s.id !== actorId)
@@ -206,7 +222,8 @@ export const NotificationService = {
           'Task Re-opened',
           `${actorName} has re-opened "${taskName}" for the pair ${mentorName} & ${menteeName}.`,
           `/supervisor/checklist?pair=${pairId}`,
-          pairId
+          pairId,
+          organisationId
         )
       );
     
@@ -216,15 +233,15 @@ export const NotificationService = {
   /**
    * Notify when a supervisor adds a task to an existing pair
    */
-  async notifyTaskAdded(taskId: string, taskName: string, mentorId: string, menteeId: string, actorId: string) {
+  async notifyTaskAdded(taskId: string, taskName: string, mentorId: string, menteeId: string, actorId: string, organisationId?: string) {
     const title = 'New Task Assigned';
     const mentorDesc = `The Supervisor has added a new task to your pairing: ${taskName}`;
     const menteeDesc = `A new task has been added to your checklist: ${taskName}`;
     const actionUrl = `/program-member/tasks?taskId=${taskId}`;
 
     const recipients = [];
-    if (mentorId !== actorId) recipients.push(createNotification(mentorId, 'task_completed', title, mentorDesc, actionUrl, taskId));
-    if (menteeId !== actorId) recipients.push(createNotification(menteeId, 'task_completed', title, menteeDesc, actionUrl, taskId));
+    if (mentorId !== actorId) recipients.push(createNotification(mentorId, 'task_completed', title, mentorDesc, actionUrl, taskId, organisationId));
+    if (menteeId !== actorId) recipients.push(createNotification(menteeId, 'task_completed', title, menteeDesc, actionUrl, taskId, organisationId));
 
     await Promise.all(recipients);
   },
@@ -232,7 +249,7 @@ export const NotificationService = {
   /**
    * Notify partner when an individual evidence file is uploaded (Pulse)
    */
-  async notifyEvidencePulse(evidenceId: string, taskName: string, submitterName: string, recipientId: string, actorId: string) {
+  async notifyEvidencePulse(evidenceId: string, taskName: string, submitterName: string, recipientId: string, actorId: string, organisationId?: string) {
     // STRICT FILTER: No self-notification
     if (recipientId === actorId) return;
 
@@ -242,7 +259,8 @@ export const NotificationService = {
       'Partner Shared Evidence',
       `${submitterName} shared evidence for: ${taskName}`,
       `/program-member/tasks?id=${evidenceId}`,
-      evidenceId
+      evidenceId,
+      organisationId
     );
   },
 
@@ -255,9 +273,10 @@ export const NotificationService = {
     mentorName: string, 
     menteeName: string, 
     actorId: string,
-    actorName: string
+    actorName: string,
+    organisationId?: string
   ) {
-    const supervisors = await this.getSupervisors();
+    const supervisors = await this.getSupervisors(organisationId);
     
     const title = type === 'pair_completed' ? 'Program Checklist Completed' : '50% Milestone Reached';
     const description = type === 'pair_completed'
@@ -268,7 +287,7 @@ export const NotificationService = {
     const promises = supervisors
       .filter(s => s.id !== actorId)
       .map(s => 
-        createNotification(s.id, type, title, description, `/supervisor/pairs?pairId=${pairId}`, pairId)
+        createNotification(s.id, type, title, description, `/supervisor/pairs?pairId=${pairId}`, pairId, organisationId)
       );
 
     await Promise.all(promises);
@@ -277,8 +296,8 @@ export const NotificationService = {
   /**
    * Notify supervisor when a profile is completed
    */
-  async notifyProfileCompleted(profileId: string, fullName: string, actorId: string) {
-    const supervisors = await this.getSupervisors();
+  async notifyProfileCompleted(profileId: string, fullName: string, actorId: string, organisationId?: string) {
+    const supervisors = await this.getSupervisors(organisationId);
     
     // STRICT FILTER: No self-notification
     const promises = supervisors
@@ -290,7 +309,8 @@ export const NotificationService = {
           'New Participant Onboarded',
           `${fullName} has completed their initial profile setup.`,
           `/org-admin/participants?id=${profileId}`,
-          profileId
+          profileId,
+          organisationId
         )
       );
 

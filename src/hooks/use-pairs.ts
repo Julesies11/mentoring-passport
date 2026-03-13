@@ -17,21 +17,20 @@ const EMPTY_ARRAY: any[] = [];
 
 export function usePairs() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const { activeProgram, activeOrganisation } = useOrganisation();
+  const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
-  const orgId = activeOrganisation?.id;
 
   const { data: pairs = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['pairs', programId, orgId],
-    queryFn: () => fetchPairs(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+    queryKey: ['pairs', programId],
+    queryFn: () => fetchPairs(programId),
+    // Always enabled as RLS will handle the filtering automatically
+    enabled: true,
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['pairs', 'stats', programId, orgId],
-    queryFn: () => fetchPairStats(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+    queryKey: ['pairs', 'stats', programId],
+    queryFn: () => fetchPairStats(programId),
+    enabled: true,
   });
 
   const createMutation = useMutation({

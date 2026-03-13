@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { usePairs } from '@/hooks/use-pairs';
 import { useParticipants, useOrgSupervisors } from '@/hooks/use-participants';
@@ -12,15 +12,18 @@ import { isAfter, parseISO } from 'date-fns';
 import { calculatePairProgress } from '@/lib/utils/progress';
 import { cn } from '@/lib/utils';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { OrganisationLogo } from '@/components/common/organisation-logo';
+import { EditOrganisationDialog } from '@/components/common/edit-organisation-dialog';
 
 export function OrgAdminDashboardContent() {
   const navigate = useNavigate();
-  const { programs = [] } = useOrganisation();
+  const { activeOrganisation, programs = [] } = useOrganisation();
   const { pairs = [] } = usePairs();
   const { participants = [] } = useParticipants();
   const { supervisors = [] } = useOrgSupervisors();
   const { data: allStatuses = [] } = useAllPairTaskStatuses();
   const { data: taskLists = [] } = useTaskLists();
+  const [isEditOrgOpen, setIsEditOrgOpen] = useState(false);
 
   // 1. Executive Summary Metrics
   const stats = useMemo(() => {
@@ -92,6 +95,68 @@ export function OrgAdminDashboardContent() {
 
   return (
     <div className="grid gap-5 lg:gap-7.5">
+      {/* Organisation Branding Header */}
+      <Card className="border border-gray-200 shadow-none overflow-hidden rounded-[2rem]">
+        <CardContent className="p-0">
+          <div className="flex flex-col md:flex-row items-center justify-between p-6 md:p-8 gap-6 bg-gray-50/50">
+            <div className="flex items-center gap-6">
+              <div 
+                className="group relative cursor-pointer active:scale-95 transition-transform shrink-0"
+                onClick={() => setIsEditOrgOpen(true)}
+              >
+                <OrganisationLogo 
+                  orgId={activeOrganisation?.id || ''} 
+                  logoPath={activeOrganisation?.logo_url} 
+                  name={activeOrganisation?.name} 
+                  size="lg"
+                  className="rounded-2xl border-2 border-white shadow-sm group-hover:opacity-80 transition-opacity"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                  <KeenIcon icon="camera" className="text-white text-xl" />
+                </div>
+              </div>
+              <div className="space-y-1 min-w-0">
+                <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter truncate">
+                  {activeOrganisation?.name}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Badge variant="primary" appearance="light" size="xs" className="uppercase font-black tracking-widest">
+                    Active Tenant
+                  </Badge>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">
+                    ID: {activeOrganisation?.id.slice(0, 8)}...
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsEditOrgOpen(true)}
+                className="rounded-xl font-bold text-xs h-10 px-5 gap-2"
+              >
+                <KeenIcon icon="pencil" className="text-base" />
+                Edit Organisation
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {activeOrganisation && (
+        <EditOrganisationDialog
+          open={isEditOrgOpen}
+          onOpenChange={setIsEditOrgOpen}
+          organisation={{
+            id: activeOrganisation.id,
+            name: activeOrganisation.name,
+            logo_url: activeOrganisation.logo_url
+          }}
+        />
+      )}
+
       {/* 1. Governance Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
         <Card className="border-none shadow-sm bg-primary text-white">

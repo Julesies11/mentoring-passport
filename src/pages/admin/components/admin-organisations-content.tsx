@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchOrganisations, setupOrganisation, updateOrganisation, fetchOrgCounts, Organisation } from '@/lib/api/organisations';
+import { fetchOrganisationsWithAdmins, setupOrganisation, updateOrganisation, fetchOrgCounts, Organisation } from '@/lib/api/organisations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KeenIcon } from '@/components/keenicons';
 import { Button } from '@/components/ui/button';
@@ -10,14 +10,17 @@ import { OrganisationDialog } from './organisation-dialog';
 import { supabase } from '@/lib/supabase';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarUrl } from '@/lib/api/profiles';
+import { OrganisationLogo } from '@/components/common/organisation-logo';
 
 export function AdminOrganisationsContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { enterMasquerade } = useOrganisation();
   const { data: organisations = [], isLoading } = useQuery({
-    queryKey: ['organisations'],
-    queryFn: fetchOrganisations,
+    queryKey: ['organisations', 'with-admins'],
+    queryFn: fetchOrganisationsWithAdmins,
   });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -28,7 +31,7 @@ export function AdminOrganisationsContent() {
     mutationFn: setupOrganisation,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organisations'] });
-      toast.success('Organisation and Supervisor created successfully');
+      toast.success('Organisation and Org Admin setup successfully');
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
@@ -117,6 +120,7 @@ export function AdminOrganisationsContent() {
               <thead className="bg-gray-50 border-b border-gray-100 text-gray-400">
                 <tr>
                   <th className="text-left py-3 px-6 text-[10px] font-black uppercase tracking-widest">Name</th>
+                  <th className="text-left py-3 px-6 text-[10px] font-black uppercase tracking-widest">Admins</th>
                   <th className="text-center py-3 px-6 text-[10px] font-black uppercase tracking-widest">Activity</th>
                   <th className="text-center py-3 px-6 text-[10px] font-black uppercase tracking-widest w-[150px]">Created</th>
                   <th className="text-right py-3 px-6 text-[10px] font-black uppercase tracking-widest w-[120px]">Actions</th>
@@ -125,13 +129,13 @@ export function AdminOrganisationsContent() {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-gray-400">
+                    <td colSpan={5} className="py-10 text-center text-gray-400">
                        <div className="animate-spin size-6 border-2 border-primary border-t-transparent rounded-full mx-auto" />
                     </td>
                   </tr>
                 ) : organisations.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-gray-400 italic">No organisations found.</td>
+                    <td colSpan={5} className="py-10 text-center text-gray-400 italic">No organisations found.</td>
                   </tr>
                 ) : (
                   organisations.map((org) => (
@@ -170,9 +174,40 @@ function OrganisationRow({ org, onEdit, onDelete, onEnter }: { org: any, onEdit:
   return (
     <tr className="hover:bg-gray-50/50 transition-colors group">
       <td className="py-4 px-6">
-        <div className="flex flex-col">
-          <span className="font-bold text-gray-900 group-hover:text-primary transition-colors cursor-pointer" onClick={onEdit}>{org.name}</span>
-          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">ID: {org.id.split('-')[0]}...</span>
+        <div className="flex items-center gap-3">
+          <OrganisationLogo 
+            orgId={org.id} 
+            logoPath={org.logo_url} 
+            name={org.name} 
+            size="sm" 
+            className="rounded-lg shrink-0 shadow-xs"
+          />
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-gray-900 group-hover:text-primary transition-colors cursor-pointer truncate" onClick={onEdit}>{org.name}</span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight truncate">ID: {org.id.split('-')[0]}...</span>
+          </div>
+        </div>
+      </td>
+      <td className="py-4 px-6">
+        <div className="flex flex-col gap-3">
+          {org.admins && org.admins.length > 0 ? (
+            org.admins.map((admin: any) => (
+              <div key={admin.id} className="flex items-center gap-3">
+                <Avatar className="size-8 rounded-lg border border-gray-100 shadow-sm">
+                  <AvatarImage src={getAvatarUrl(admin.id, admin.avatar_url)} />
+                  <AvatarFallback className="bg-primary-light text-primary text-[10px] font-black uppercase">
+                    {admin.full_name?.substring(0, 2) || admin.email?.substring(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-black text-gray-800 uppercase tracking-tight truncate">{admin.full_name}</span>
+                  <span className="text-[10px] font-bold text-gray-400 truncate">{admin.email}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">No Admins</span>
+          )}
         </div>
       </td>
       <td className="py-4 px-6">

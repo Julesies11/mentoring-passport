@@ -49,9 +49,6 @@ export interface UpdateParticipantInput {
  * Fetch all participants
  */
 export async function fetchParticipants(organisationId?: string, programId?: string): Promise<Participant[]> {
-  // Defensive check: Ensure organisationId is a string and not an object from React Query context
-  const validOrgId = (typeof organisationId === 'string' && organisationId !== '[object Object]') ? organisationId : undefined;
-  
   let query = supabase
     .from('mp_profiles')
     .select(`
@@ -70,8 +67,8 @@ export async function fetchParticipants(organisationId?: string, programId?: str
     .order('created_at', { ascending: false })
     .limit(1000);
 
-  if (validOrgId) {
-    query = query.eq('organisation_id', validOrgId);
+  if (organisationId && typeof organisationId === 'string' && organisationId !== '[object Object]') {
+    query = query.eq('organisation_id', organisationId);
   }
 
   // If programId is provided, filter participants who are part of that program
@@ -106,10 +103,10 @@ export async function fetchParticipants(organisationId?: string, programId?: str
   // Map the results to resolve the role for the requested organisation
   return (data || []).map(p => {
     const memberships = (p.memberships as any[]) || [];
-    // If we have a validOrgId, find that specific membership. 
+    // If we have a organisationId, find that specific membership. 
     // Otherwise, prefer any non-program-member role, or just the first one.
-    const membership = validOrgId 
-      ? memberships.find(m => m.organisation_id === validOrgId)
+    const membership = organisationId 
+      ? memberships.find(m => m.organisation_id === organisationId)
       : memberships.find(m => m.role !== ROLES.PROGRAM_MEMBER) || memberships[0];
 
     return {
@@ -223,9 +220,9 @@ export async function fetchParticipant(id: string, organisationId?: string): Pro
 /**
  * Fetch all supervisors for an organisation with their assigned programs
  */
-export async function fetchOrgSupervisors(organisationId: string) {
+export async function fetchOrgSupervisors(organisationId?: string) {
   // 1. Fetch memberships joined with profiles
-  const { data: memberships, error: memberError } = await supabase
+  let query = supabase
     .from('mp_memberships')
     .select(`
       user_id,
@@ -233,8 +230,13 @@ export async function fetchOrgSupervisors(organisationId: string) {
       status,
       profile:mp_profiles(id, full_name, email, job_title, avatar_url)
     `)
-    .eq('organisation_id', organisationId)
     .in('role', ['org-admin', 'supervisor']);
+
+  if (organisationId) {
+    query = query.eq('organisation_id', organisationId);
+  }
+
+  const { data: memberships, error: memberError } = await query;
 
   if (memberError) {
     console.error('Error fetching org memberships:', memberError);
@@ -256,19 +258,25 @@ export async function fetchOrgSupervisors(organisationId: string) {
   }
 
   // 3. Merge the data in TypeScript
-  return memberships.map(m => {
-    const userAssignments = assignments?.filter(a => a.user_id === m.user_id) || [];
-    return {
-      id: m.user_id,
-      full_name: (m.profile as any)?.full_name,
-      email: (m.profile as any)?.email,
-      job_title: (m.profile as any)?.job_title,
-      avatar_url: (m.profile as any)?.avatar_url,
-      role: m.role,
-      status: m.status,
-      assigned_program_ids: userAssignments.map(a => a.program_id)
-    };
+  const uniqueSupervisors = new Map();
+  
+  memberships.forEach(m => {
+    if (!uniqueSupervisors.has(m.user_id)) {
+      const userAssignments = assignments?.filter(a => a.user_id === m.user_id) || [];
+      uniqueSupervisors.set(m.user_id, {
+        id: m.user_id,
+        full_name: (m.profile as any)?.full_name,
+        email: (m.profile as any)?.email,
+        job_title: (m.profile as any)?.job_title,
+        avatar_url: (m.profile as any)?.avatar_url,
+        role: m.role,
+        status: m.status,
+        assigned_program_ids: userAssignments.map(a => a.program_id)
+      });
+    }
   });
+
+  return Array.from(uniqueSupervisors.values());
 }
 
 /**

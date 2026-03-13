@@ -25,11 +25,9 @@ export function ClassicLayout() {
             />
           </Link>
         </div>
-        <Card className="w-full max-w-[400px]">
-          <CardContent className="p-6">
-            <Outlet />
-          </CardContent>
-        </Card>
+        <div className="w-full">
+          <Outlet />
+        </div>
       </div>
     </>
   );

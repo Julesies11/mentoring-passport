@@ -77,7 +77,6 @@ export function BottomNavBar() {
       { icon: LayoutDashboard, label: 'Hub', path: '/program-member/dashboard' },
       { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
       { icon: Calendar, label: 'Meetings', path: '/program-member/meetings' },
-      { icon: Menu, label: 'Menu', path: '#', isMenu: true },
     ];
   };
 

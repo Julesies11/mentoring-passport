@@ -2,15 +2,15 @@ import { RouteObject } from 'react-router-dom';
 import { BrandedLayout } from './layouts/branded';
 import { ClassicLayout } from './layouts/classic';
 import { CallbackPage } from './pages/callback-page';
-import { ChangePasswordPage } from './pages/change-password-page';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { CheckEmail } from './pages/extended/check-email';
 import { ResetPasswordChanged } from './pages/extended/reset-password-changed';
 import { ResetPasswordCheckEmail } from './pages/extended/reset-password-check-email';
 import { TwoFactorAuth } from './pages/extended/tfa';
-import { ResetPasswordPage } from './pages/reset-password-page';
-import { SignInPage } from './pages/signin-page';
-import { SignUpPage } from './pages/signup-page';
-import { OrgSelectionPage } from './pages/org-selection-page';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { SignInPage } from './pages/SignInPage';
+import { SignUpPage } from './pages/SignUpPage';
+import { OrgSelectionPage } from './pages/OrgSelectionPage';
 
 // Define the auth routes
 export const authRoutes: RouteObject[] = [

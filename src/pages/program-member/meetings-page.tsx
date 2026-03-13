@@ -79,7 +79,7 @@ export function ProgramMemberMeetingsPage() {
         toast.success('Meeting scheduled successfully');
       }
       setIsDialogOpen(false);
-    } catch (_error) {
+    } catch (error) {
       console.error('Error saving meeting:', error);
       toast.error('Failed to save meeting');
     }
@@ -89,7 +89,7 @@ export function ProgramMemberMeetingsPage() {
     try {
       await deleteMeeting(meetingId);
       toast.success('Meeting removed');
-    } catch (_error) {
+    } catch (error) {
       console.error('Error deleting meeting:', error);
       toast.error('Failed to remove meeting');
     }

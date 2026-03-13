@@ -29,6 +29,68 @@ export interface UpdateProfileInput {
   organisation_id?: string | null;
 }
 
+/**
+ * Fetch all users across the entire system (Administrator only)
+ */
+export async function fetchAllUsers(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('mp_profiles')
+    .select(`
+      *,
+      memberships:mp_memberships(role, organisation_id)
+    `)
+    .order('full_name', { ascending: true });
+
+  if (error) {
+    await logError({
+      message: `Failed to fetch users: ${error.message}`,
+      componentName: 'profiles-api'
+    });
+    throw error;
+  }
+
+  // Derive role for each user (prefer non-program-member)
+  return (data || []).map(p => {
+    const role = (p.memberships as any[])?.find(m => m.role !== ROLES.PROGRAM_MEMBER)?.role 
+      || (p.memberships as any[])?.[0]?.role 
+      || ROLES.PROGRAM_MEMBER;
+    return { ...p, role };
+  }) as Profile[];
+}
+
+/**
+ * Search for users across the entire system (Administrator only)
+ */
+export async function searchUsers(query: string): Promise<Profile[]> {
+  if (!query) return fetchAllUsers();
+  
+  const { data, error } = await supabase
+    .from('mp_profiles')
+    .select(`
+      *,
+      memberships:mp_memberships(role, organisation_id)
+    `)
+    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .order('full_name', { ascending: true });
+
+  if (error) {
+    await logError({
+      message: `Failed to search users: ${error.message}`,
+      componentName: 'profiles-api',
+      metadata: { query }
+    });
+    throw error;
+  }
+
+  // Derive role for each user
+  return (data || []).map(p => {
+    const role = (p.memberships as any[])?.find(m => m.role !== ROLES.PROGRAM_MEMBER)?.role 
+      || (p.memberships as any[])?.[0]?.role 
+      || ROLES.PROGRAM_MEMBER;
+    return { ...p, role };
+  }) as Profile[];
+}
+
 export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<Profile> {
   try {
     const { data: profile, error } = await supabase

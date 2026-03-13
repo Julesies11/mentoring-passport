@@ -246,7 +246,8 @@ export function SupervisorChecklistPage() {
         status: 'not_submitted',
         sort_order: tasks.length + 1,
         evidence_type_id: updates.evidence_type_id,
-        master_task_id: null
+        master_task_id: null,
+        is_custom: true
       } as any, {
         onSuccess: (newTask) => {
           // If there were local subtasks added during creation, create them now
@@ -257,7 +258,8 @@ export function SupervisorChecklistPage() {
                 name: st.name,
                 evidence_type_id: st.evidence_type_id,
                 sort_order: st.sort_order,
-                is_completed: false
+                is_completed: false,
+                is_custom: true
               } as any)
             )).then(() => {
               setIsEditTaskOpen(false);
@@ -304,7 +306,8 @@ export function SupervisorChecklistPage() {
       sort_order: maxSortOrder + 1,
       is_completed: false,
       evidence_type_id: evidenceTypeId,
-      master_subtask_id: null
+      master_subtask_id: null,
+      is_custom: true
     } as any);
   };
 

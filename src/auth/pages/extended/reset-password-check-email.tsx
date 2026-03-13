@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { useSettings } from '@/providers/settings-provider';
 
+import { Card, CardContent } from '@/components/ui/card';
+
 const ResetPasswordCheckEmail = () => {
-  const { settings } = useSettings();
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -12,8 +13,8 @@ const ResetPasswordCheckEmail = () => {
   }, []);
 
   return (
-    <div className="card max-w-[440px] w-full">
-      <div className="card-body p-10">
+    <Card className="max-w-[400px] w-full mx-auto">
+      <CardContent className="p-6 lg:p-8">
         <div className="flex justify-center py-10">
           <img
             src={toAbsoluteUrl('/media/illustrations/30.svg')}
@@ -27,51 +28,43 @@ const ResetPasswordCheckEmail = () => {
           />
         </div>
 
-        <h3 className="text-lg font-medium text-mono text-center mb-3">
+        <h3 className="text-xl font-bold text-gray-900 text-center mb-3 uppercase tracking-widest leading-tight">
           Check your email
         </h3>
-        <div className="text-sm text-center text-secondary-foreground mb-7.5">
+        <div className="text-sm text-center text-muted-foreground mb-7.5 leading-relaxed font-bold uppercase tracking-tight">
           Please click the link sent to your email{' '}
           <a
             href="#"
-            className="text-sm text-foreground font-medium hover:text-primary-active"
+            className="text-primary hover:underline"
           >
-            {email}
+            {email || 'your@email.com'}
           </a>
           <br />
-          to reset your password. Thank you
+          to reset your password.
         </div>
 
         <div className="flex justify-center mb-5">
           <Link
-            to={
-              settings?.layout === 'auth-branded'
-                ? '/auth/reset-password/changed'
-                : '/auth/classic/reset-password/changed'
-            }
-            className="btn btn-primary flex justify-center"
+            to="/auth/signin"
+            className="btn btn-primary flex justify-center w-full h-11 rounded-xl font-bold uppercase tracking-widest shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
           >
-            Skip for now
+            Back to Login
           </Link>
         </div>
 
-        <div className="flex items-center justify-center gap-1">
-          <span className="text-xs text-secondary-foreground">
+        <div className="flex items-center justify-center gap-1 mt-4">
+          <span className="text-xs text-muted-foreground font-bold uppercase tracking-tight">
             Didn’t receive an email?
           </span>
           <Link
-            to={
-              settings?.layout === 'auth-branded'
-                ? '/auth/reset-password/enter-email'
-                : '/auth/classic/reset-password/enter-email'
-            }
-            className="text-xs font-medium link"
+            to="/auth/reset-password"
+            className="text-xs font-bold text-primary hover:underline"
           >
             Resend
           </Link>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

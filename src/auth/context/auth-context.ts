@@ -37,6 +37,7 @@ export const AuthContext = createContext<{
   isSupervisor: boolean;
   isMentor: boolean;
   isMentee: boolean;
+  isAutoSelecting: boolean;
   setIsMentor: React.Dispatch<React.SetStateAction<boolean>>;
   setIsMentee: React.Dispatch<React.SetStateAction<boolean>>;
   // Multi-tenant
@@ -65,6 +66,7 @@ export const AuthContext = createContext<{
   isSupervisor: false,
   isMentor: false,
   isMentee: false,
+  isAutoSelecting: false,
   setIsMentor: () => {},
   setIsMentee: () => {},
   memberships: [],

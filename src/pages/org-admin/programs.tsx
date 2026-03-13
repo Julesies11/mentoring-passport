@@ -22,8 +22,6 @@ import { updateOrganisation } from '@/lib/api/organisations';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProgramDialog } from '../supervisor/components/program-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { AvatarGroup, AvatarGroupItem, AvatarGroupTooltip } from '@/components/ui/avatar-group';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +32,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { OrganisationLogo } from '@/components/common/organisation-logo';
+import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 export function OrgAdminProgramsPage() {
   const { activeOrganisation, refreshOrganisation, isLoading: isOrgLoadingContext } = useOrganisation();
@@ -48,17 +48,6 @@ export function OrgAdminProgramsPage() {
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const [duplicatingProgram, setDuplicatingProgram] = useState<Program | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
-
-  // Org Name Editing
-  const [isOrgNameDialogOpen, setIsOrgNameDialogOpen] = useState(false);
-  const [newOrgName, setNewOrgName] = useState('');
-  const [isUpdatingOrg, setIsUpdatingOrg] = useState(false);
-
-  useEffect(() => {
-    if (activeOrganisation) {
-      setNewOrgName(activeOrganisation.name);
-    }
-  }, [activeOrganisation]);
 
   // Data fetching
   const { data: programs = [], isLoading: isLoadingPrograms, error: programsError } = useQuery({
@@ -183,22 +172,6 @@ export function OrgAdminProgramsPage() {
     }
   };
 
-  const handleUpdateOrgName = async () => {
-    if (!organisationId || !newOrgName.trim()) return;
-    setIsUpdatingOrg(true);
-    try {
-      await updateOrganisation(organisationId, { name: newOrgName });
-      await refreshOrganisation();
-      toast.success('Organisation name updated');
-      setIsOrgNameDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update org name:', error);
-      toast.error('Failed to update organisation name');
-    } finally {
-      setIsUpdatingOrg(false);
-    }
-  };
-
   const sortedPrograms = useMemo(() => {
     return [...programs].sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1;
@@ -220,21 +193,21 @@ export function OrgAdminProgramsPage() {
     <>
       <Container>
         <Toolbar>
-          <ToolbarHeading 
-            title={activeOrganisation?.name || "Mentoring Programs"} 
-            description="Manage and monitor all mentoring initiatives within your organisation" 
-          />
+          <div className="flex items-center gap-4">
+            <OrganisationLogo 
+              orgId={activeOrganisation?.id || ''} 
+              logoPath={activeOrganisation?.logo_url} 
+              name={activeOrganisation?.name} 
+              size="md"
+              className="rounded-lg shadow-sm"
+            />
+            <ToolbarHeading 
+              title={activeOrganisation?.name || "Mentoring Programs"} 
+              description="Manage and monitor all mentoring initiatives within your organisation" 
+            />
+          </div>
           <ToolbarActions>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-xl h-10 font-bold"
-                onClick={() => setIsOrgNameDialogOpen(true)}
-              >
-                <KeenIcon icon="pencil" />
-                Edit Organisation
-              </Button>
               <Button 
                 variant="primary"
                 size="sm" 
@@ -258,8 +231,8 @@ export function OrgAdminProgramsPage() {
                   <tr>
                     <th className="text-left py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest min-w-[200px]">Program Details</th>
                     <th className="text-left py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Task Template</th>
-                    <th className="text-center py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Supervisors</th>
-                    <th className="text-center py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Engagement</th>
+                    <th className="text-left py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest min-w-[180px]">Supervisors</th>
+                    <th className="text-center py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">PAIRS</th>
                     <th className="text-center py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Overall Progress</th>
                     <th className="text-right py-4 px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Actions</th>
                   </tr>
@@ -308,31 +281,26 @@ export function OrgAdminProgramsPage() {
                             </span>
                           </td>
                           <td className="py-5 px-6">
-                            <div className="flex justify-center">
+                            <div className="flex flex-col gap-3">
                               {stats.supervisors.length > 0 ? (
-                                <AvatarGroup>
-                                  {stats.supervisors.slice(0, 5).map((s) => (
-                                    <AvatarGroupItem key={s.id}>
-                                      <Avatar className="size-8 border-2 border-white ring-0">
-                                        <AvatarImage src={s.avatar_url || ''} />
-                                        <AvatarFallback className="text-[10px] font-black">
-                                          {s.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <AvatarGroupTooltip>
-                                        <div className="flex flex-col gap-0.5">
-                                          <span className="font-bold">{s.name}</span>
-                                          <span className="text-[10px] opacity-80">{s.email}</span>
-                                        </div>
-                                      </AvatarGroupTooltip>
-                                    </AvatarGroupItem>
-                                  ))}
-                                  {stats.supervisors.length > 5 && (
-                                    <div className="flex items-center justify-center size-8 rounded-full border-2 border-white bg-gray-100 text-[10px] font-black text-gray-500 z-10 -ml-2.5">
-                                      +{stats.supervisors.length - 5}
+                                stats.supervisors.map((s) => (
+                                  <div key={s.id} className="flex items-center gap-2">
+                                    <ProfileAvatar 
+                                      userId={s.id} 
+                                      currentAvatar={s.avatar_url} 
+                                      userName={s.name} 
+                                      size="xs" 
+                                    />
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-[11px] font-bold text-gray-800 leading-tight truncate">
+                                        {s.name}
+                                      </span>
+                                      <span className="text-[9px] text-gray-400 font-medium leading-none truncate">
+                                        {s.email}
+                                      </span>
                                     </div>
-                                  )}
-                                </AvatarGroup>
+                                  </div>
+                                ))
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
                               )}
@@ -340,8 +308,16 @@ export function OrgAdminProgramsPage() {
                           </td>
                           <td className="py-5 px-6 text-center">
                             <div className="flex flex-col items-center">
-                              <span className="text-xs font-bold text-gray-900">{stats.pairCount}</span>
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-tighter">Pairs</span>
+                              {stats.pairCount === 0 ? (
+                                <Badge 
+                                  variant="outline" 
+                                  className="bg-danger-light text-danger border-danger/10 font-bold px-2.5 h-6 rounded-lg"
+                                >
+                                  0
+                                </Badge>
+                              ) : (
+                                <span className="text-sm font-bold text-gray-900">{stats.pairCount}</span>
+                              )}
                             </div>
                           </td>
                           <td className="py-5 px-6 text-center">
@@ -462,43 +438,6 @@ export function OrgAdminProgramsPage() {
               disabled={!duplicateName.trim() || duplicateMutation.isPending}
             >
               {duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Org Name Dialog */}
-      <Dialog open={isOrgNameDialogOpen} onOpenChange={setIsOrgNameDialogOpen}>
-        <DialogContent className="max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Edit Organisation Name</DialogTitle>
-            <DialogDescription>
-              Update the official name of this mentoring organisation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="org-name">Organisation Name</Label>
-              <Input
-                id="org-name"
-                value={newOrgName}
-                onChange={(e) => setNewOrgName(e.target.value)}
-                placeholder="e.g. Fiona Stanley Hospital"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOrgNameDialogOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleUpdateOrgName}
-              disabled={!newOrgName.trim() || isUpdatingOrg || newOrgName === activeOrganisation?.name}
-            >
-              {isUpdatingOrg ? (
-                <>
-                  <KeenIcon icon="loading" className="animate-spin mr-2" />
-                  Updating...
-                </>
-              ) : 'Update Name'}
             </Button>
           </DialogFooter>
         </DialogContent>

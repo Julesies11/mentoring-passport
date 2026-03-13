@@ -307,7 +307,7 @@ export async function fetchPairStats(programId?: string, organisationId?: string
 
   let query = supabase
     .from('mp_pairs')
-    .select('status, program:mp_programs!inner(organisation_id)');
+    .select('status'); // organisation isolation handled by RLS
 
   if (programId) {
     query = query.eq('program_id', programId);

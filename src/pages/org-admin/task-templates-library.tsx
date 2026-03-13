@@ -34,6 +34,7 @@ import { Label } from '@/components/ui/label';
 import { Container } from '@/components/common/container';
 import { KeenIcon } from '@/components/keenicons';
 import { Badge } from '@/components/ui/badge';
+import { OrganisationLogo } from '@/components/common/organisation-logo';
 
 export function TaskTemplatesLibraryPage() {
   const navigate = useNavigate();
@@ -121,9 +122,16 @@ export function TaskTemplatesLibraryPage() {
     <>
       <Container>
         <Toolbar>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between w-full gap-4">
+          <div className="flex items-center gap-4">
+            <OrganisationLogo 
+              orgId={activeOrganisation?.id || ''} 
+              logoPath={activeOrganisation?.logo_url} 
+              name={activeOrganisation?.name} 
+              size="md"
+              className="rounded-lg shadow-sm"
+            />
             <ToolbarHeading
-              title="Template Library"
+              title={activeOrganisation?.name || "Template Library"}
               description="Manage master templates for mentoring programs"
             />
           </div>
