@@ -19,7 +19,7 @@ export interface Participant {
   active_mentee_count: number;
   inactive_mentor_count: number;
   inactive_mentee_count: number;
-  role: UserRole; // Inferred from memberships or global role
+  role: UserRole; // Contextual role from mp_memberships
 }
 
 export interface CreateParticipantInput {
@@ -52,7 +52,6 @@ export async function fetchParticipants(organisationId?: string, programId?: str
   // Defensive check: Ensure organisationId is a string and not an object from React Query context
   const validOrgId = (typeof organisationId === 'string' && organisationId !== '[object Object]') ? organisationId : undefined;
   
-  // Use a join to get the membership role if we have an organisationId
   let query = supabase
     .from('mp_profiles')
     .select(`
@@ -77,7 +76,6 @@ export async function fetchParticipants(organisationId?: string, programId?: str
 
   // If programId is provided, filter participants who are part of that program
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
-    // We join through mp_pairs to find participants in the program
     const { data: pairProfiles } = await supabase
       .from('mp_pairs')
       .select('mentor_id, mentee_id')
@@ -93,7 +91,7 @@ export async function fetchParticipants(organisationId?: string, programId?: str
       if (ids.size > 0) {
         query = query.in('id', Array.from(ids));
       } else {
-        return []; // No participants in this program
+        return [];
       }
     }
   }
@@ -105,9 +103,15 @@ export async function fetchParticipants(organisationId?: string, programId?: str
     throw error;
   }
 
-  // Map the results to prefer the membership role for the current organisation
+  // Map the results to resolve the role for the requested organisation
   return (data || []).map(p => {
-    const membership = (p.memberships as any[])?.find(m => m.organisation_id === validOrgId);
+    const memberships = (p.memberships as any[]) || [];
+    // If we have a validOrgId, find that specific membership. 
+    // Otherwise, prefer any non-program-member role, or just the first one.
+    const membership = validOrgId 
+      ? memberships.find(m => m.organisation_id === validOrgId)
+      : memberships.find(m => m.role !== ROLES.PROGRAM_MEMBER) || memberships[0];
+
     return {
       ...p,
       role: membership?.role || ROLES.PROGRAM_MEMBER
@@ -169,10 +173,14 @@ export async function fetchParticipantsByRole(role: UserRole, organisationId?: s
     throw error;
   }
 
-  // Filter and map to current org context
+  // Filter and map to contextually resolve the role
   return (data || [])
     .map(p => {
-      const membership = (p.memberships as any[])?.find(m => m.organisation_id === organisationId);
+      const memberships = (p.memberships as any[]) || [];
+      const membership = organisationId
+        ? memberships.find(m => m.organisation_id === organisationId)
+        : memberships.find(m => m.role === role) || memberships[0];
+        
       return {
         ...p,
         role: membership?.role || role
@@ -184,7 +192,7 @@ export async function fetchParticipantsByRole(role: UserRole, organisationId?: s
 /**
  * Fetch a single participant by ID
  */
-export async function fetchParticipant(id: string): Promise<Participant | null> {
+export async function fetchParticipant(id: string, organisationId?: string): Promise<Participant | null> {
   const { data, error } = await supabase
     .from('mp_profiles')
     .select(`
@@ -192,18 +200,23 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
       memberships:mp_memberships(role, organisation_id)
     `)
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error fetching participant:', error);
     throw error;
   }
 
-  const role = (data.memberships as any[])?.[0]?.role || ROLES.PROGRAM_MEMBER;
+  if (!data) return null;
+
+  const memberships = (data.memberships as any[]) || [];
+  const membership = organisationId 
+    ? memberships.find(m => m.organisation_id === organisationId)
+    : memberships[0];
 
   return {
     ...data,
-    role
+    role: membership?.role || ROLES.PROGRAM_MEMBER
   } as any;
 }
 
@@ -212,7 +225,6 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
  */
 export async function fetchOrgSupervisors(organisationId: string) {
   // 1. Fetch memberships joined with profiles
-  // We already ensured this relationship exists in migration 056
   const { data: memberships, error: memberError } = await supabase
     .from('mp_memberships')
     .select(`
@@ -240,8 +252,6 @@ export async function fetchOrgSupervisors(organisationId: string) {
 
   if (assignError) {
     console.error('Error fetching supervisor program assignments:', assignError);
-    // We don't necessarily want to crash the whole list if just assignments fail, 
-    // but throwing maintains consistency with other API functions.
     throw assignError;
   }
 
@@ -352,6 +362,7 @@ export async function createParticipant(input: CreateParticipantInput & { avatar
   logDebug('Creating participant via RPC:', input.email);
   
   // Use the RPC function to create user without logging out the supervisor
+  // The RPC also creates the membership record (see migration 057)
   const { data: newUserId, error: rpcError } = await supabase.rpc('mp_admin_create_user', {
     email_input: input.email,
     password_input: input.password,
@@ -375,34 +386,8 @@ export async function createParticipant(input: CreateParticipantInput & { avatar
     throw new Error(rpcError.message || 'Failed to create user account.');
   }
 
-  // Create initial membership record
-  const { error: membershipError } = await supabase
-    .from('mp_memberships')
-    .insert({
-      user_id: newUserId,
-      organisation_id: input.organisation_id,
-      role: input.role as any,
-      status: 'active'
-    });
-
-  if (membershipError) {
-    console.error('Error creating membership for new user:', membershipError);
-    // We don't throw here as the profile already exists and is linked via organisation_id for now
-  }
-
-  // Fetch the newly created profile
-  const { data: profile, error: fetchError } = await supabase
-    .from('mp_profiles')
-    .select('*')
-    .eq('id', newUserId)
-    .single();
-
-  if (fetchError || !profile) {
-    console.error('Error fetching created profile:', fetchError);
-    throw new Error('User created but profile not found');
-  }
-
-  return profile;
+  // Fetch the newly created profile with its role
+  return fetchParticipant(newUserId, input.organisation_id) as Promise<Participant>;
 }
 
 /**
@@ -411,13 +396,11 @@ export async function createParticipant(input: CreateParticipantInput & { avatar
 export async function updateParticipant(id: string, input: UpdateParticipantInput): Promise<Participant> {
   const { role, organisation_id, ...profileData } = input;
 
-  // 1. Update profile (DO NOT send role here as it violates mp_profiles_role_check)
-  const { data, error } = await supabase
+  // 1. Update profile
+  const { error } = await supabase
     .from('mp_profiles')
     .update(profileData)
-    .eq('id', id)
-    .select()
-    .single();
+    .eq('id', id);
 
   if (error) {
     console.error('Error updating participant profile:', error);
@@ -434,11 +417,10 @@ export async function updateParticipant(id: string, input: UpdateParticipantInpu
 
     if (memberError) {
       console.error('Error updating participant membership role:', memberError);
-      // We don't throw here to avoid failing the whole update if membership sync fails
     }
   }
 
-  return data;
+  return fetchParticipant(id, organisation_id) as Promise<Participant>;
 }
 
 /**

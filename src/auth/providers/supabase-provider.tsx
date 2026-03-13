@@ -22,6 +22,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     m => m.organisation_id === (currentUser.selected_organisation_id || currentUser.organisation_id)
   ) || currentUser?.memberships?.[0];
 
+  console.log('AuthProvider: currentUser:', currentUser?.email, 'role:', currentUser?.role);
+  console.log('AuthProvider: activeMembership:', activeMembership);
+
   // Check roles and pairings based on active context
   useEffect(() => {
     // 1. System Owner (Global Admin)

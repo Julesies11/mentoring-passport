@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { Container } from '@/components/common/container';
-import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+} from '@/layouts/demo1/components/toolbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { KeenIcon } from '@/components/keenicons';
+import { KeenIcon } from '@/components/keenicons/keenicons';
 import { useMutation } from '@tanstack/react-query';
 import { updateOrganisation } from '@/lib/api/organisations';
 import { toast } from 'sonner';
@@ -14,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 const orgSchema = z.object({
   name: z.string().min(1, 'Organisation name is required'),
@@ -47,7 +52,7 @@ export function OrganisationSettingsPage() {
   const updateOrgMutation = useMutation({
     mutationFn: async (data: OrgFormData) => {
       if (!activeOrganisation) return;
-      
+
       setIsProcessingOrg(true);
       try {
         await updateOrganisation(activeOrganisation.id, {
@@ -72,8 +77,12 @@ export function OrganisationSettingsPage() {
             title="Organisation Settings" 
             description="Control your organisation profile and general configuration" 
           />
+          <ToolbarActions>
+            <ProgramSelector />
+          </ToolbarActions>
         </Toolbar>
       </Container>
+
 
       <Container className="flex flex-col gap-5 lg:gap-7.5 mt-5">
         <Card className="border-0 sm:border">

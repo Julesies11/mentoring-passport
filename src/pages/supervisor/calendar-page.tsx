@@ -114,7 +114,7 @@ export function SupervisorCalendarPage() {
             description="View and manage all meetings across all mentor-mentee pairs"
           />
           <ToolbarActions>
-            {isOrgAdmin && <ProgramSelector />}
+            <ProgramSelector />
             <SearchInput
               placeholder="Search meetings or tasks..."
               value={searchQuery}

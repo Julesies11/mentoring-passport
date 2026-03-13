@@ -418,7 +418,7 @@ export function SupervisorProgramTasksPage() {
               description="Manage task templates for the selected mentoring program"
             />
             <ToolbarActions>
-              {isOrgAdmin && <ProgramSelector />}
+              <ProgramSelector />
             </ToolbarActions>
           </div>
         </Toolbar>

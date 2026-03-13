@@ -8,6 +8,7 @@ import { PairsStats } from './pairs/PairsStats';
 import { PairsManagementTable } from './pairs/PairsManagementTable';
 import { UnpairedParticipantsTable } from './pairs/UnpairedParticipantsTable';
 import { MatchmakerDialog } from './pairs/MatchmakerDialog';
+import { KeenIcon } from '@/components/keenicons/keenicons';
 
 const EMPTY_ARRAY: any[] = [];
 
@@ -68,10 +69,19 @@ export function PairsContent() {
     }
   };
 
-  const handlePairNow = (participantId: string) => {
-    setSelectedInitialMentorId(participantId);
-    setMatchmakerOpen(true);
-  };
+  if (!activeProgram) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
+        <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mb-6 text-gray-200">
+          <KeenIcon icon="folder-error" className="text-5xl" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">No Program Selected</h3>
+        <p className="text-sm max-w-xs mx-auto mb-8">
+          Please select a program from the toolbar to manage its mentoring pairs and participants.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
@@ -93,14 +103,14 @@ export function PairsContent() {
           setSelectedInitialMentorId('');
           setMatchmakerOpen(true);
         }}
+        activeProgram={activeProgram}
       />
 
       <div id="unpaired-table">
         <UnpairedParticipantsTable 
           participants={participants}
           pairs={pairs}
-          onPairNow={handlePairNow}
-          programTitle={activeProgram?.title}
+          programTitle={activeProgram?.name}
         />
       </div>
 

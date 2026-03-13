@@ -50,8 +50,12 @@ export function TaskTemplatesLibraryPage() {
   const [editListName, setEditListName] = useState('');
 
   // Fetch task lists and programs
-  const { data: taskLists = [], isLoading: isLoadingLists } = useTaskLists(organisationId);
+  const { data: taskLists = [], isLoading: isLoadingLists, error: listsError } = useTaskLists(organisationId);
   const { data: programs = [] } = usePrograms();
+
+  if (listsError) {
+    console.error('TaskTemplatesLibraryPage: Error fetching task lists:', listsError);
+  }
 
   // Create task list mutation
   const createTaskListMutation = useMutation({

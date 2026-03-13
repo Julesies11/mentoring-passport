@@ -141,6 +141,12 @@ export interface EvidenceType {
  * Fetch all task lists for an organisation
  */
 export async function fetchTaskLists(organisationId: string): Promise<TaskListMaster[]> {
+  // Defensive check
+  if (!organisationId || typeof organisationId !== 'string' || organisationId === '[object Object]') {
+    console.warn('fetchTaskLists called with invalid organisationId:', organisationId);
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('mp_task_lists_master')
     .select(`

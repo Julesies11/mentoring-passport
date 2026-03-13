@@ -21,7 +21,7 @@ export function SupervisorDashboardPage() {
               description={`Welcome back, ${user?.full_name || user?.email}`}
             />
             <ToolbarActions>
-              {isOrgAdmin && <ProgramSelector />}
+              <ProgramSelector />
             </ToolbarActions>
           </Toolbar>
         </Container>

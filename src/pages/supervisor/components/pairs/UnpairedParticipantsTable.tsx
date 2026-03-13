@@ -14,7 +14,6 @@ import { DataTablePagination } from '@/components/common/data-table-pagination';
 interface UnpairedParticipantsTableProps {
   participants: any[];
   pairs: any[];
-  onPairNow: (participantId: string) => void;
   programTitle?: string;
 }
 
@@ -25,7 +24,7 @@ const SortIcon = ({ field, currentField, currentOrder }: { field: string, curren
     : <KeenIcon icon="arrow-down" className="text-[10px] text-primary ml-1" />;
 };
 
-export function UnpairedParticipantsTable({ participants, pairs, onPairNow, programTitle }: UnpairedParticipantsTableProps) {
+export function UnpairedParticipantsTable({ participants, pairs, programTitle }: UnpairedParticipantsTableProps) {
   const [sortField, setSortField] = useState<string>('full_name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
@@ -189,11 +188,11 @@ export function UnpairedParticipantsTable({ participants, pairs, onPairNow, prog
                         className="h-8 text-[10px] font-bold"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onPairNow(participant.id);
+                          handleOpenProfile(e, participant);
                         }}
                       >
-                        <KeenIcon icon="plus" />
-                        Pair
+                        <KeenIcon icon="eye" />
+                        View
                       </Button>
                     </TableCell>
                   </TableRow>

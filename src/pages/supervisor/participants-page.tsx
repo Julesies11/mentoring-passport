@@ -5,6 +5,7 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { ParticipantsContent } from './components/participants-content';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 interface ParticipantsPageProps {
   mode?: 'manage' | 'view';
@@ -21,7 +22,7 @@ export function ParticipantsPage({ mode = 'manage' }: ParticipantsPageProps) {
               description={mode === 'manage' ? "Manage mentors, mentees, and supervisors" : "Find and view program members for pairing"}
             />
             <ToolbarActions>
-              {/* Action buttons are handled inside ParticipantsContent or can be moved here */}
+              {/* No program selector needed for member management */}
             </ToolbarActions>
           </Toolbar>
         </Container>

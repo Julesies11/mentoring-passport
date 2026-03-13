@@ -79,7 +79,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
 
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'supervisor' | 'program-member'>(
+  const [roleFilter, setRoleFilter] = useState<'all' | 'org-admin' | 'supervisor' | 'program-member'>(
     mode === 'view' ? 'program-member' : 'all'
   );
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
@@ -337,6 +337,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="org-admin">Org Admins</SelectItem>
                     <SelectItem value="supervisor">Supervisors</SelectItem>
                     <SelectItem value="program-member">Program Members</SelectItem>
                   </SelectContent>
@@ -461,10 +462,14 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                               variant="outline" 
                               className={cn(
                                 "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                                p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                                p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : 
+                                p.role === 'org-admin' ? "bg-amber-100 text-amber-700" :
+                                "bg-blue-100 text-blue-700"
                               )}
                             >
-                              {p.role === 'supervisor' ? 'Supervisor' : 'Member'}
+                              {p.role === 'supervisor' ? 'Supervisor' : 
+                               p.role === 'org-admin' ? 'Org Admin' : 
+                               'Member'}
                             </Badge>
                           </TableCell>
                         <TableCell className="hidden md:table-cell px-6 py-4 text-center">

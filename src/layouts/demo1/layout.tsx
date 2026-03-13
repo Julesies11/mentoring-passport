@@ -71,7 +71,7 @@ export function Demo1Layout() {
         <MasqueradeBanner />
         <Header />
 
-        <main className={cn("grow", isMobile ? "pt-5 pb-20" : (isMasquerading ? "pt-[118px]" : "pt-[70px]"))} role="content">
+        <main className={cn("grow", isMobile ? "pt-5 pb-20" : (isMasquerading ? "pt-[48px]" : "pt-0"))} role="content">
           <Outlet />
         </main>
       </div>

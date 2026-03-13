@@ -1,9 +1,11 @@
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
+  ToolbarActions,
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { ManageSupervisorsContent } from './components/manage-supervisors-content';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function ManageSupervisorsPage() {
   return (
@@ -15,6 +17,9 @@ export function ManageSupervisorsPage() {
               title="Supervisor Directory"
               description="Manage all users with the supervisor role in the organisation"
             />
+            <ToolbarActions>
+              <ProgramSelector />
+            </ToolbarActions>
           </Toolbar>
         </Container>
       </div>

@@ -66,11 +66,13 @@ export function useParticipants() {
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['participants', orgId],
     queryFn: () => fetchParticipants(orgId),
+    enabled: !!orgId && typeof orgId === 'string' && orgId !== '[object Object]',
   });
 
   const { data: stats } = useQuery({
     queryKey: ['participants', 'stats', orgId],
     queryFn: () => fetchParticipantStats(orgId),
+    enabled: !!orgId && typeof orgId === 'string' && orgId !== '[object Object]',
   });
 
   const createMutation = useMutation({
@@ -135,9 +137,12 @@ export function useParticipants() {
 }
 
 export function useParticipant(id: string) {
+  const { activeOrganisation } = useOrganisation();
+  const orgId = activeOrganisation?.id;
+
   return useQuery({
-    queryKey: ['participants', id],
-    queryFn: () => fetchParticipant(id),
+    queryKey: ['participants', id, orgId],
+    queryFn: () => fetchParticipant(id, orgId),
     enabled: !!id,
   });
 }
@@ -156,5 +161,6 @@ export function useParticipantsByRole(role: 'supervisor' | 'program-member') {
   return useQuery({
     queryKey: ['participants', 'role', role, orgId],
     queryFn: () => fetchParticipantsByRole(role, orgId),
+    enabled: !!orgId && typeof orgId === 'string' && orgId !== '[object Object]',
   });
 }

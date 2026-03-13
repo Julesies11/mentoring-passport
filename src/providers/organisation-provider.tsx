@@ -13,6 +13,8 @@ interface OrganisationContextType {
   programs: Program[];
   isLoading: boolean;
   isMasquerading: boolean;
+  isOrgAdmin: boolean;
+  isSupervisor: boolean;
   membershipRole: string | null;
   refreshOrganisation: () => void;
   refreshPrograms: () => void;
@@ -21,10 +23,11 @@ interface OrganisationContextType {
   exitMasquerade: () => void;
 }
 
+console.log('OrganisationContext created');
 const OrganisationContext = createContext<OrganisationContextType | undefined>(undefined);
 
 export function OrganisationProvider({ children }: { children: React.ReactNode }) {
-  const { user, activeMembership } = useAuth();
+  const { user, activeMembership, isSupervisor: authIsSupervisor, isOrgAdmin: authIsOrgAdmin } = useAuth();
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   
   // Masquerade state for Administrators
@@ -46,8 +49,17 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     return user?.organisation_id;
   }, [user, masqueradedOrgId, activeMembership]);
 
+  console.log('OrganisationProvider: effectiveOrgId:', effectiveOrgId);
+  console.log('OrganisationProvider: activeMembership:', activeMembership);
+
   const isMasquerading = !!(user?.is_admin && masqueradedOrgId);
-  const baseMembershipRole = isMasquerading ? 'org-admin' : (activeMembership?.role || null);
+  
+  // Base roles from AuthContext or derived from active membership
+  const isOrgAdmin = isMasquerading || authIsOrgAdmin || activeMembership?.role === 'org-admin';
+  const isSupervisor = isMasquerading || authIsSupervisor || isOrgAdmin || activeMembership?.role === 'supervisor';
+  
+  console.log('OrganisationProvider: roles:', { isOrgAdmin, isSupervisor, isMasquerading });
+  const baseMembershipRole = isMasquerading ? 'org-admin' : (activeMembership?.role || (isOrgAdmin ? 'org-admin' : isSupervisor ? 'supervisor' : null));
 
   // Fetch organisation
   const { 
@@ -68,21 +80,21 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     isLoading: isProgramsLoading,
     refetch: refetchPrograms
   } = useQuery({
-    queryKey: ['programs', effectiveOrgId, user?.id, baseMembershipRole],
+    queryKey: ['programs', effectiveOrgId, user?.id, isOrgAdmin, isSupervisor],
     queryFn: () => {
       if (!effectiveOrgId || typeof effectiveOrgId !== 'string' || effectiveOrgId === '[object Object]') {
         return Promise.resolve([]);
       }
       
-      // Org Admins see ALL programs
-      if (isMasquerading || baseMembershipRole === 'org-admin') {
+      // Both Org Admins and Supervisors should see all programs in the org by default
+      // RLS will handle any finer-grained restrictions if they exist
+      if (isOrgAdmin || isSupervisor || isMasquerading) {
         return fetchPrograms(effectiveOrgId);
       }
 
-      // Regular supervisors see assigned programs
-      return fetchAssignedPrograms(effectiveOrgId);
+      return Promise.resolve([]);
     },
-    enabled: typeof effectiveOrgId === 'string' && effectiveOrgId !== '[object Object]',
+    enabled: (typeof effectiveOrgId === 'string' && effectiveOrgId !== '[object Object]') && (isSupervisor || isOrgAdmin || isMasquerading),
   });
 
   // Reset selected program when organisation changes
@@ -130,9 +142,10 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     activeOrganisation: organisation || null,
     activeProgram,
     programs: sortedPrograms,
-    isLoading: isOrgLoading || isProgramsLoading,
+    isLoading: (!!effectiveOrgId && isOrgLoading) || isProgramsLoading || (!!user && !effectiveOrgId),
     isMasquerading,
-    isOrgAdmin: baseMembershipRole === 'org-admin',
+    isOrgAdmin,
+    isSupervisor,
     membershipRole: baseMembershipRole,
     refreshOrganisation: refetchOrg,
     refreshPrograms: refetchPrograms,

@@ -16,35 +16,27 @@ export function ProgramSelector() {
   // Show for supervisors, org admins, or masquerading administrators
   if (!isSupervisor && !isMasquerading && !isOrgAdmin) return null;
 
-  // For Org Admins, only show if NOT on an administration page
-  const isAdministrationPage = pathname.startsWith('/org-admin/hub') || 
-                               pathname.startsWith('/org-admin/programs') || 
-                               pathname.startsWith('/org-admin/participants') ||
-                               pathname.startsWith('/org-admin/task-templates') ||
-                               pathname.startsWith('/org-admin/supervisors');
-
-  if (isOrgAdmin && isAdministrationPage) return null;
-  
   // Show skeleton during initial load
   if (isLoading) {
-    return <div className="h-8 w-[300px] animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
+    return <div className="h-8 w-[250px] sm:w-[300px] animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
   }
   
-  if (programs.length === 0) return null;
+  const hasPrograms = programs.length > 0;
 
   return (
     <div className="flex items-center gap-2">
       <Select
         value={activeProgram?.id || ''}
         onValueChange={(id) => setActiveProgram(id)}
+        disabled={!hasPrograms}
       >
         <SelectTrigger 
-          className="h-9 w-[300px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
+          className="h-9 w-[250px] sm:w-[300px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
         >
           <div className="flex items-center justify-center text-center min-w-0 flex-1">
-            <div className="flex-1 min-w-0 overflow-hidden leading-tight">
+            <div className="flex-1 min-w-0 overflow-hidden leading-tight text-center">
               <span className="text-xs font-black text-primary uppercase tracking-tight truncate block">
-                {activeProgram?.name || 'Select Program'}
+                {!hasPrograms ? 'No Programs Assigned' : (activeProgram?.name || 'Select Program')}
               </span>
             </div>
           </div>

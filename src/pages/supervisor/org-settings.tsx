@@ -5,6 +5,7 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { OrgSettingsContent } from './components/org-settings-content';
+import { ProgramSelector } from '@/components/common/program-selector';
 
 export function OrgSettingsPage() {
   return (
@@ -17,7 +18,7 @@ export function OrgSettingsPage() {
               description="Manage your hospital's profile and preferences"
             />
             <ToolbarActions>
-              {/* Actions could go here */}
+              <ProgramSelector />
             </ToolbarActions>
           </Toolbar>
         </Container>

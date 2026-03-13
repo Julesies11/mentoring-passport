@@ -33,6 +33,12 @@ export interface UpdateProgramInput {
  * Fetch all programs for an organisation
  */
 export async function fetchPrograms(organisationId: string): Promise<Program[]> {
+  // Defensive check: Ensure organisationId is a valid string and not an object
+  if (!organisationId || typeof organisationId !== 'string' || organisationId === '[object Object]') {
+    console.warn('fetchPrograms called with invalid organisationId:', organisationId);
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('mp_programs')
     .select('*')
@@ -51,42 +57,55 @@ export async function fetchPrograms(organisationId: string): Promise<Program[]> 
  * Fetch programs assigned to a supervisor
  */
 export async function fetchAssignedPrograms(organisationId: string): Promise<Program[]> {
+  // Defensive check
+  if (!organisationId || typeof organisationId !== 'string' || organisationId === '[object Object]') {
+    console.warn('fetchAssignedPrograms called with invalid organisationId:', organisationId);
+    return [];
+  }
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
   // Check if user is a global administrator (from metadata)
   const isGlobalAdmin = user.user_metadata?.role === 'administrator';
 
-  // Check if user is an org-admin for this specific organisation
+  // Check if user is an org-admin or supervisor for this specific organisation
   const { data: membership } = await supabase
     .from('mp_memberships')
     .select('role')
     .eq('user_id', user.id)
     .eq('organisation_id', organisationId)
-    .eq('role', 'org-admin')
+    .in('role', ['org-admin', 'supervisor'])
     .maybeSingle();
 
-  const isOrgAdmin = !!membership;
+  const isOrgAdmin = membership?.role === 'org-admin';
+  const isSupervisor = membership?.role === 'supervisor';
 
   // If System Owner or Org Admin, they see all programs in the org
   if (isGlobalAdmin || isOrgAdmin) {
     return fetchPrograms(organisationId);
   }
 
-  // Otherwise, only return assigned programs via the bridge table
-  const { data, error } = await supabase
-    .from('mp_programs')
-    .select('*, mp_supervisor_programs!inner(user_id)')
-    .eq('organisation_id', organisationId)
-    .eq('mp_supervisor_programs.user_id', user.id)
-    .order('name', { ascending: true });
+  // Regular supervisors only return assigned programs via the bridge table
+  if (isSupervisor) {
+    const { data, error } = await supabase
+      .from('mp_programs')
+      .select('*, mp_supervisor_programs!inner(user_id)')
+      .eq('organisation_id', organisationId)
+      .eq('mp_supervisor_programs.user_id', user.id)
+      .order('name', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching assigned programs:', error);
-    throw error;
+    if (error) {
+      console.error('Error fetching assigned programs:', error);
+      throw error;
+    }
+
+    return data || [];
   }
 
-  return data || [];
+  // Fallback for members: see all programs they are part of via memberships
+  // (Note: RLS member_view_org_programs should handle the actual filtering)
+  return fetchPrograms(organisationId);
 }
 /**
  * Fetch a single program by ID

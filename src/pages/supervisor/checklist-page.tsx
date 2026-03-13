@@ -376,7 +376,7 @@ export function SupervisorChecklistPage() {
             description={selectedPair ? `Managing progress and setup for ${selectedPair.mentor?.full_name} ↔ ${selectedPair.mentee?.full_name}` : "View and manage checklist progress for mentoring pairs"}
           />
           <ToolbarActions>
-            {isOrgAdmin && <ProgramSelector />}
+            <ProgramSelector />
           </ToolbarActions>
         </Toolbar>
       </Container>

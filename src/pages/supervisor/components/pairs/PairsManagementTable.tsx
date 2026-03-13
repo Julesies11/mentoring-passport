@@ -18,6 +18,7 @@ import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
 import { Participant } from '@/lib/api/participants';
+import { Program } from '@/lib/api/programs';
 
 const SortIcon = ({ field, currentField, currentOrder }: { field: string, currentField: string, currentOrder: 'asc' | 'desc' }) => {
   if (field !== currentField) return <KeenIcon icon="arrow-up-down" className="text-[10px] opacity-20 ml-1" />;
@@ -30,9 +31,10 @@ interface PairsTableProps {
   pairs: any[];
   isLoading: boolean;
   onShowMatchmaker: () => void;
+  activeProgram?: Program | null;
 }
 
-export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: PairsTableProps) {
+export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activeProgram }: PairsTableProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,7 +177,12 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker }: Pai
                 </SelectContent>
               </Select>
 
-              <Button size="sm" onClick={onShowMatchmaker} className="h-8 sm:h-9 shrink-0 text-[10px] sm:text-xs">
+              <Button 
+                size="sm" 
+                onClick={onShowMatchmaker} 
+                className="h-8 sm:h-9 shrink-0 text-[10px] sm:text-xs"
+                disabled={!activeProgram}
+              >
                 <KeenIcon icon="plus-squared" />
                 <span className="hidden sm:inline">Create Pair</span>
                 <span className="sm:hidden">Create</span>

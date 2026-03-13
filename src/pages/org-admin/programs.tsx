@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { Container } from '@/components/common/container';
-import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
+import { Toolbar, ToolbarHeading, ToolbarActions } from '@/layouts/demo1/components/toolbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { KeenIcon } from '@/components/keenicons';
+import { KeenIcon } from '@/components/keenicons/keenicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   createProgram, 
@@ -18,6 +18,7 @@ import {
 import { fetchTaskLists, fetchAllPairTaskStatuses } from '@/lib/api/tasks';
 import { fetchPairs } from '@/lib/api/pairs';
 import { fetchOrgSupervisors, syncProgramSupervisors } from '@/lib/api/participants';
+import { updateOrganisation } from '@/lib/api/organisations';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProgramDialog } from '../supervisor/components/program-dialog';
@@ -35,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export function OrgAdminProgramsPage() {
-  const { activeOrganisation } = useOrganisation();
+  const { activeOrganisation, refreshOrganisation, isLoading: isOrgLoadingContext } = useOrganisation();
   const organisationId = activeOrganisation?.id;
   const queryClient = useQueryClient();
 
@@ -48,8 +49,19 @@ export function OrgAdminProgramsPage() {
   const [duplicatingProgram, setDuplicatingProgram] = useState<Program | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
 
+  // Org Name Editing
+  const [isOrgNameDialogOpen, setIsOrgNameDialogOpen] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [isUpdatingOrg, setIsUpdatingOrg] = useState(false);
+
+  useEffect(() => {
+    if (activeOrganisation) {
+      setNewOrgName(activeOrganisation.name);
+    }
+  }, [activeOrganisation]);
+
   // Data fetching
-  const { data: programs = [], isLoading: isLoadingPrograms } = useQuery({
+  const { data: programs = [], isLoading: isLoadingPrograms, error: programsError } = useQuery({
     queryKey: ['programs', organisationId],
     queryFn: () => fetchPrograms(organisationId!),
     enabled: !!organisationId,
@@ -171,6 +183,22 @@ export function OrgAdminProgramsPage() {
     }
   };
 
+  const handleUpdateOrgName = async () => {
+    if (!organisationId || !newOrgName.trim()) return;
+    setIsUpdatingOrg(true);
+    try {
+      await updateOrganisation(organisationId, { name: newOrgName });
+      await refreshOrganisation();
+      toast.success('Organisation name updated');
+      setIsOrgNameDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to update org name:', error);
+      toast.error('Failed to update organisation name');
+    } finally {
+      setIsUpdatingOrg(false);
+    }
+  };
+
   const sortedPrograms = useMemo(() => {
     return [...programs].sort((a, b) => {
       if (a.status === 'active' && b.status !== 'active') return -1;
@@ -179,29 +207,49 @@ export function OrgAdminProgramsPage() {
     });
   }, [programs]);
 
+  if (isOrgLoadingContext) {
+    return (
+      <Container className="py-20 text-center">
+        <KeenIcon icon="loading" className="animate-spin text-3xl text-primary mb-2" />
+        <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Loading organisation data...</p>
+      </Container>
+    );
+  }
+
   return (
     <>
       <Container>
         <Toolbar>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between w-full gap-4">
-            <ToolbarHeading 
-              title="Mentoring Programs" 
-              description="Manage and monitor all mentoring initiatives within your organisation" 
-            />
-            <Button 
-              variant="primary"
-              size="sm" 
-              className="rounded-xl h-10 font-bold"
-              onClick={() => { setEditingProgram(undefined); setIsProgramDialogOpen(true); }}
-            >
-              <KeenIcon icon="plus" />
-              New Program
-            </Button>
-          </div>
+          <ToolbarHeading 
+            title={activeOrganisation?.name || "Mentoring Programs"} 
+            description="Manage and monitor all mentoring initiatives within your organisation" 
+          />
+          <ToolbarActions>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-xl h-10 font-bold"
+                onClick={() => setIsOrgNameDialogOpen(true)}
+              >
+                <KeenIcon icon="pencil" />
+                Edit Organisation
+              </Button>
+              <Button 
+                variant="primary"
+                size="sm" 
+                className="rounded-xl h-10 font-bold"
+                onClick={() => { setEditingProgram(undefined); setIsProgramDialogOpen(true); }}
+              >
+                <KeenIcon icon="plus" />
+                New Program
+              </Button>
+            </div>
+          </ToolbarActions>
         </Toolbar>
       </Container>
 
-      <Container className="mt-5">
+      <Container>
         <Card className="border-0 sm:border overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -414,6 +462,43 @@ export function OrgAdminProgramsPage() {
               disabled={!duplicateName.trim() || duplicateMutation.isPending}
             >
               {duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Org Name Dialog */}
+      <Dialog open={isOrgNameDialogOpen} onOpenChange={setIsOrgNameDialogOpen}>
+        <DialogContent className="max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Edit Organisation Name</DialogTitle>
+            <DialogDescription>
+              Update the official name of this mentoring organisation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Organisation Name</Label>
+              <Input
+                id="org-name"
+                value={newOrgName}
+                onChange={(e) => setNewOrgName(e.target.value)}
+                placeholder="e.g. Fiona Stanley Hospital"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOrgNameDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleUpdateOrgName}
+              disabled={!newOrgName.trim() || isUpdatingOrg || newOrgName === activeOrganisation?.name}
+            >
+              {isUpdatingOrg ? (
+                <>
+                  <KeenIcon icon="loading" className="animate-spin mr-2" />
+                  Updating...
+                </>
+              ) : 'Update Name'}
             </Button>
           </DialogFooter>
         </DialogContent>

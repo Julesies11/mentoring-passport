@@ -40,14 +40,18 @@ export async function fetchOrganisations(): Promise<Organisation[]> {
  * Fetch a single organisation by ID
  */
 export async function fetchOrganisation(id: string): Promise<Organisation | null> {
+  if (!id || typeof id !== 'string' || id === '[object Object]') {
+    console.warn('fetchOrganisation called with invalid id:', id);
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('mp_organisations')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') return null;
     await logError({
       message: `Failed to fetch organisation: ${error.message}`,
       componentName: 'organisations-api',

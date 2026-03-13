@@ -121,7 +121,7 @@ export function EvidenceReviewPage() {
           />
           <ToolbarActions>
             <div className="flex items-center gap-3">
-              {isOrgAdmin && <ProgramSelector />}
+              <ProgramSelector />
               {highlightPairId && (
                 <Button 
                   variant="outline" 

@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
-import { Toolbar, ToolbarHeading } from '@/layouts/demo1/components/toolbar';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+} from '@/layouts/demo1/components/toolbar';
+import { ProgramSelector } from '@/components/common/program-selector';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createMasterSubTask,
@@ -441,12 +446,12 @@ export function SupervisorMasterTasksPage() {
     <>
       <Container>
         <Toolbar>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between w-full gap-4">
-            <ToolbarHeading
-              title="Organisation Task Lists"
-              description="Manage master templates for mentoring programs"
-            />
-            
+          <ToolbarHeading
+            title="Organisation Task Lists"
+            description="Manage master templates for mentoring programs"
+          />
+          <ToolbarActions>
+            <ProgramSelector />
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 min-w-0">
               <div className="flex items-center gap-2 min-w-0 max-w-full">
                 <Label htmlFor="taskListSelect" className="shrink-0 text-sm font-medium hidden sm:block">List:</Label>
@@ -482,7 +487,7 @@ export function SupervisorMasterTasksPage() {
                 </Button>
               )}
             </div>
-          </div>
+          </ToolbarActions>
         </Toolbar>
       </Container>
 

@@ -60,13 +60,13 @@ export async function fetchPairs(programId?: string, organisationId?: string): P
       *,
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
       mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      program:mp_programs!inner(id, name, status, organisation_id)
+      program:mp_programs(id, name, status, organisation_id)
     `);
 
   if (programId) {
     query = query.eq('program_id', programId);
   } else if (organisationId) {
-    query = query.eq('program.organisation_id', organisationId);
+    query = query.eq('organisation_id', organisationId);
   }
 
   const { data, error } = await query
@@ -312,7 +312,7 @@ export async function fetchPairStats(programId?: string, organisationId?: string
   if (programId) {
     query = query.eq('program_id', programId);
   } else if (organisationId) {
-    query = query.eq('program.organisation_id', organisationId);
+    query = query.eq('organisation_id', organisationId);
   }
 
   const { data, error } = await query;
