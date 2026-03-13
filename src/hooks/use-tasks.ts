@@ -171,10 +171,10 @@ export function useProgramTasks(programId?: string) {
   };
 }
 
-export function useAllPairTaskStatuses() {
+export function useAllPairTaskStatuses(programId?: string) {
   return useQuery({
-    queryKey: ['pair-tasks', 'all-statuses'],
-    queryFn: fetchAllPairTaskStatuses,
+    queryKey: ['pair-tasks', 'all-statuses', programId],
+    queryFn: () => fetchAllPairTaskStatuses(programId),
   });
 }
 

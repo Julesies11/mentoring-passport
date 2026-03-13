@@ -13,12 +13,15 @@ export function ManageSupervisorsPage() {
       <div className="hidden sm:block">
         <Container>
           <Toolbar>
-            <ToolbarHeading
-              title="Supervisor Directory"
-              description="Manage all users with the supervisor role in the organisation"
-            />
-            <ToolbarActions>
+            <div className="flex items-center gap-5">
+              <ToolbarHeading
+                title="Supervisor Directory"
+                description="Manage all users with the supervisor role in the organisation"
+              />
               <ProgramSelector />
+            </div>
+            <ToolbarActions>
+              {/* Other directory actions if any */}
             </ToolbarActions>
           </Toolbar>
         </Container>

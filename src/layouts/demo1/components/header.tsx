@@ -16,7 +16,7 @@ export function Header() {
   const mobileMode = useIsMobile();
   const { unreadCount } = useNotifications();
   const { user } = useAuth();
-  const { isMasquerading, activeOrganisation } = useOrganisation();
+  const { isMasquerading } = useOrganisation();
 
   const scrollPosition = useScrollPosition();
   const headerSticky: boolean = scrollPosition > 0;

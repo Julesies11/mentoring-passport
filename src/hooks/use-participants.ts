@@ -54,20 +54,22 @@ export function useOrgSupervisors() {
   };
 }
 
-export function useParticipants() {
+export function useParticipants(programId?: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeOrganisation } = useOrganisation();
+  const orgId = activeOrganisation?.id;
 
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['participants'],
-    queryFn: () => fetchParticipants(),
-    enabled: true,
+    queryKey: ['participants', orgId, programId],
+    queryFn: () => fetchParticipants(orgId!, programId),
+    enabled: !!orgId,
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['participants', 'stats'],
-    queryFn: () => fetchParticipantStats(),
-    enabled: true,
+    queryKey: ['participants', 'stats', orgId, programId],
+    queryFn: () => fetchParticipantStats(orgId!, programId),
+    enabled: !!orgId,
   });
 
   const createMutation = useMutation({
@@ -143,10 +145,14 @@ export function useParticipant(id: string) {
   });
 }
 
-export function useAllParticipants() {
+export function useAllParticipants(programId?: string) {
+  const { activeOrganisation } = useOrganisation();
+  const orgId = activeOrganisation?.id;
+
   return useQuery({
-    queryKey: ['participants'],
-    queryFn: () => fetchParticipants(),
+    queryKey: ['participants', orgId, programId],
+    queryFn: () => fetchParticipants(orgId!, programId),
+    enabled: !!orgId,
   });
 }
 

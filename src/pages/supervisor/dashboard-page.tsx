@@ -16,12 +16,15 @@ export function SupervisorDashboardPage() {
       <div className="hidden sm:block" data-testid="dashboard-toolbar">
         <Container>
           <Toolbar>
-            <ToolbarHeading
-              title="Supervisor Hub"
-              description={`Welcome back, ${user?.full_name || user?.email}`}
-            />
-            <ToolbarActions>
+            <div className="flex items-center gap-5">
+              <ToolbarHeading
+                title="Supervisor Hub"
+                description={`Welcome back, ${user?.full_name || user?.email}`}
+              />
               <ProgramSelector />
+            </div>
+            <ToolbarActions>
+              {/* Other dashboard actions can go here */}
             </ToolbarActions>
           </Toolbar>
         </Container>

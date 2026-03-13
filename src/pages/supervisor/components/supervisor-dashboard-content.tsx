@@ -3,6 +3,7 @@ import { useAllParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 import { usePendingEvidence } from '@/hooks/use-evidence';
 import { useAllPairTaskStatuses } from '@/hooks/use-tasks';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KeenIcon } from '@/components/keenicons';
@@ -17,22 +18,33 @@ import { calculatePairProgress } from '@/lib/utils/progress';
 export function SupervisorDashboardContent() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { data: participants = [] } = useAllParticipants();
-  const { pairs = [] } = usePairs();
-  const { evidence: pendingEvidenceList = [] } = usePendingEvidence();
-  const { data: allStatuses = [] } = useAllPairTaskStatuses();
+  const { activeProgram, programs, isLoading: isContextLoading } = useOrganisation();
+  const programId = activeProgram?.id;
+
+  // Data fetching scoped to the active program
+  // Note: useAllParticipants takes programId but we want ALL org members for the "Unpaired" count
+  // however, useParticipants hook in Phase 1 was updated to take programId.
+  // To keep "Unpaired" as Org-wide, we'll fetch all participants without programId
+  const { data: allParticipants = [] } = useAllParticipants(); 
+  const { pairs = [] } = usePairs(); // usePairs uses context activeProgram automatically
+  const { evidence: pendingEvidenceList = [] } = usePendingEvidence(); // usePendingEvidence uses context activeProgram automatically
+  const { data: allStatuses = [] } = useAllPairTaskStatuses(programId);
 
   // Statistics
   const stats = useMemo(() => {
-    // 1. Active Relationships: Pairs with status 'active'
+    // If we have programs but no active one is selected yet (loading), or if there are NO programs
+    if (programs.length > 0 && !activeProgram) return { active: 0, pending: 0, unpaired: 0, avgProgress: 0 };
+    
+    // 1. Active Relationships: Pairs with status 'active' in the current program context
     const activePairs = pairs.filter(p => p.status === 'active');
     const active = activePairs.length;
     
-    // 2. Pending Reviews: Number of pending evidence items
+    // 2. Pending Reviews: Number of pending evidence items in current program
     const pending = pendingEvidenceList.length;
     
-    // 3. Unpaired Members: Active participants with role 'program-member' not in an active pair
-    const activeParticipants = participants.filter(p => p.status === 'active');
+    // 3. Unpaired Members: ALL active participants in the hospital with role 'program-member' not in an active pair
+    // (As requested: Supervisors see all Org participants for potential pairing)
+    const activeParticipants = allParticipants.filter(p => p.status === 'active');
     const unpaired = activeParticipants.filter(p => 
       p.role === 'program-member' && 
       !pairs.some(pair => (pair.mentor_id === p.id || pair.mentee_id === p.id) && pair.status === 'active')
@@ -46,7 +58,27 @@ export function SupervisorDashboardContent() {
       : 0;
 
     return { active, pending, unpaired, avgProgress };
-  }, [pairs, pendingEvidenceList, participants, allStatuses]);
+  }, [activeProgram, programs, pairs, pendingEvidenceList, allParticipants, allStatuses]);
+
+  // Handle No Programs Assigned state
+  if (!isContextLoading && programs.length === 0) {
+    return (
+      <Card className="border-dashed border-2 border-gray-200 shadow-none">
+        <CardContent className="py-20 flex flex-col items-center justify-center text-center px-6">
+          <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mb-6 text-gray-200">
+            <KeenIcon icon=" some-files-icon" className="text-5xl" />
+          </div>
+          <h3 className="text-xl font-black text-gray-900">No Programs Assigned</h3>
+          <p className="text-gray-500 max-w-sm mx-auto mt-2 mb-8">
+            You haven't been assigned to any mentoring programs yet. Please contact your Organisation Administrator to be assigned to a specialty or ward.
+          </p>
+          <Button variant="primary" onClick={() => navigate('/profile/edit')} className="rounded-xl font-bold">
+            View My Profile
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Stale Pairings (No activity in 14 days)
   const stalePairings = useMemo(() => {

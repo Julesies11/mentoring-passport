@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllEvidence, usePendingEvidence } from '@/hooks/use-evidence';
 import { useAuth } from '@/auth/context/auth-context';
+import { useOrganisation } from '@/providers/organisation-provider';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
@@ -36,6 +37,7 @@ import { ProgramSelector } from '@/components/common/program-selector';
 export function EvidenceReviewPage() {
   const navigate = useNavigate();
   const { isOrgAdmin } = useAuth();
+  const { activeProgram, isLoading: isContextLoading } = useOrganisation();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightPairId = searchParams.get('pairId');
   const { data: allEvidence = [], isLoading } = useAllEvidence();
@@ -111,30 +113,43 @@ export function EvidenceReviewPage() {
     }
   };
 
+  if (isContextLoading) {
+    return (
+      <Container>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
+          <KeenIcon icon="loading" className="animate-spin text-3xl mb-4" />
+          <p className="font-bold uppercase text-[10px] tracking-widest">Loading program data...</p>
+        </div>
+      </Container>
+    );
+  }
+
   return (
     <>
-      <Container>
-        <Toolbar>
-          <ToolbarHeading
-            title="Evidence Review"
-            description={highlightPairId ? "Reviewing evidence for selected pair" : "Manage and validate program item submissions"}
-          />
-          <ToolbarActions>
-            <div className="flex items-center gap-3">
+      <div className="hidden sm:block">
+        <Container>
+          <Toolbar>
+            <div className="flex items-center gap-5">
+              <ToolbarHeading
+                title="Evidence Review"
+                description={highlightPairId ? "Reviewing evidence for selected pair" : "Manage and validate program item submissions"}
+              />
               <ProgramSelector />
-              {highlightPairId && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={clearPairFilter}
-                  className="h-10 rounded-xl font-bold border-primary text-primary hover:bg-primary/5"
-                >
-                  <KeenIcon icon="cross" className="mr-2" />
-                  Clear Filter
-                </Button>
-              )}
+            </div>
+            <ToolbarActions>
+              {/* Toolbar Actions remain empty here as minor filters are in the content area */}
+            </ToolbarActions>
+          </Toolbar>
+        </Container>
+      </div>
+
+      <Container className="sm:mt-0">
+        <div className="flex flex-col gap-5 lg:gap-7.5">
+          {/* Content Filters Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-2 sm:p-3 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
               <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
-                <SelectTrigger className="w-[160px] h-10 rounded-xl font-bold bg-white border-gray-200">
+                <SelectTrigger className="w-[160px] h-9 rounded-lg font-bold bg-white border-gray-200 text-xs">
                   <div className="flex items-center gap-2">
                     <ListFilter size={14} className="text-gray-400" />
                     <SelectValue placeholder="Filter View" />
@@ -147,25 +162,34 @@ export function EvidenceReviewPage() {
                 </SelectContent>
               </Select>
 
-              {stats && (
-                <div className="hidden sm:flex items-center gap-4 bg-white px-4 py-2 h-10 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="flex flex-col items-center border-r border-gray-100 pr-4">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Pending</span>
-                    <span className="text-xs font-black text-danger leading-none">{stats.pending}</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Reviewed</span>
-                    <span className="text-xs font-black text-success leading-none">{stats.approved + stats.rejected}</span>
-                  </div>
-                </div>
+              {highlightPairId && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearPairFilter}
+                  className="h-9 rounded-lg font-bold border-primary text-primary hover:bg-primary/5 text-xs"
+                >
+                  <KeenIcon icon="cross" className="mr-1.5" />
+                  Clear Filter
+                </Button>
               )}
             </div>
-          </ToolbarActions>
-        </Toolbar>
-      </Container>
 
-      <Container>
-        {isLoading ? (
+            {stats && (
+              <div className="flex items-center gap-4 bg-white px-4 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex flex-col items-center border-r border-gray-100 pr-4">
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Pending</span>
+                  <span className="text-xs font-black text-danger leading-none">{stats.pending}</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Reviewed</span>
+                  <span className="text-xs font-black text-success leading-none">{stats.approved + stats.rejected}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
             <KeenIcon icon="loading" className="animate-spin text-3xl mb-3" />
             <span className="text-sm font-bold uppercase tracking-[0.2em]">Syncing Review Queue...</span>
@@ -398,6 +422,7 @@ export function EvidenceReviewPage() {
             </Card>
           </div>
         )}
+        </div>
       </Container>
 
       {/* Review Action Dialog */}

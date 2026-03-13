@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { fetchOrganisation, Organisation } from '@/lib/api/organisations';
-import { fetchPrograms, Program } from '@/lib/api/programs';
+import { fetchAssignedPrograms, Program } from '@/lib/api/programs';
 import { useQuery } from '@tanstack/react-query';
 
 interface OrganisationContextType {
@@ -56,7 +56,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     queryKey: ['programs', effectiveOrgId, user?.id, isSupervisor],
     queryFn: () => {
       if (!effectiveOrgId || !isSupervisor) return Promise.resolve([]);
-      return fetchPrograms(effectiveOrgId);
+      return fetchAssignedPrograms(effectiveOrgId);
     },
     enabled: !!effectiveOrgId && isSupervisor && !authLoading,
   });

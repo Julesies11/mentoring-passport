@@ -44,7 +44,7 @@ import { ProgramSelector } from '@/components/common/program-selector';
 
 export function SupervisorProgramTasksPage() {
   const { user, isOrgAdmin, role } = useAuth();
-  const { activeOrganisation, activeProgram } = useOrganisation();
+  const { activeOrganisation, activeProgram, isLoading: isContextLoading } = useOrganisation();
   const queryClient = useQueryClient();
   const organisationId = activeOrganisation?.id;
   const programId = activeProgram?.id;
@@ -390,6 +390,17 @@ export function SupervisorProgramTasksPage() {
     setIsEditDialogOpen(true);
   };
 
+  if (isContextLoading) {
+    return (
+      <Container>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
+          <KeenIcon icon="loading" className="animate-spin text-3xl mb-4" />
+          <p className="font-bold uppercase text-[10px] tracking-widest">Loading program data...</p>
+        </div>
+      </Container>
+    );
+  }
+
   if (!user || (role !== 'supervisor' && role !== 'administrator' && role !== 'org-admin')) {
     return (
       <Container>
@@ -410,44 +421,44 @@ export function SupervisorProgramTasksPage() {
 
   return (
     <>
-      <Container>
-        <Toolbar>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between w-full gap-4">
-            <ToolbarHeading
-              title="Program Tasks"
-              description="Manage task templates for the selected mentoring program"
-            />
-            <ToolbarActions>
+      <div className="hidden sm:block">
+        <Container>
+          <Toolbar>
+            <div className="flex items-center gap-5">
+              <ToolbarHeading
+                title="Program Tasks"
+                description="Manage task templates for the selected mentoring program"
+              />
               <ProgramSelector />
+            </div>
+            <ToolbarActions>
+              {/* Other tasks actions if any */}
             </ToolbarActions>
-          </div>
-        </Toolbar>
-      </Container>
+          </Toolbar>
+        </Container>
+      </div>
 
-      <Container>
+      <Container className="sm:mt-0">
         <div className="grid gap-5 lg:gap-7.5">
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                {/* Search */}
-                <div className="flex-1">
-                  <SearchInput
-                    placeholder="Search tasks by name or evidence type..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onClear={() => setSearchTerm('')}
-                  />
-                </div>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-2 sm:p-3 rounded-xl border border-gray-200">
+            {/* Search */}
+            <div className="flex-1 w-full md:max-w-[400px]">
+              <SearchInput
+                placeholder="Search tasks by name or evidence type..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => setSearchTerm('')}
+                className="h-9 bg-white text-xs"
+              />
+            </div>
 
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
-                  <KeenIcon icon="filter" className="text-gray-400" />
-                  <span>
-                    Showing {filteredTasks.length} of {tasks.length} tasks
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm shrink-0 uppercase tracking-widest">
+              <KeenIcon icon="filter" className="text-gray-400" />
+              <span>
+                Showing {filteredTasks.length} of {tasks.length} tasks
+              </span>
+            </div>
+          </div>
 
           <div className="border-0 sm:border sm:rounded-xl sm:bg-card sm:shadow-sm min-w-0 w-full">
             <CardHeader className="hidden sm:flex flex-row items-center justify-end py-4">

@@ -141,10 +141,10 @@ export function useActiveUserPairs(userId: string) {
   });
 }
 
-export function useAllPairs() {
+export function useAllPairs(programId?: string) {
   return useQuery({
-    queryKey: ['pairs'],
-    queryFn: () => fetchPairs(),
+    queryKey: ['pairs', programId],
+    queryFn: () => fetchPairs(programId),
   });
 }
 

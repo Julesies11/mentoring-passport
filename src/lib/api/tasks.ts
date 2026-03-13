@@ -725,12 +725,24 @@ export async function fetchPairTaskStats(pairId: string) {
 }
 
 /**
- * Fetch status of all tasks for all pairs
+ * Fetch status of all tasks for all pairs (optionally filtered by program)
  */
-export async function fetchAllPairTaskStatuses(): Promise<{ pair_id: string; status: string }[]> {
-  const { data, error } = await supabase
+export async function fetchAllPairTaskStatuses(programId?: string): Promise<{ pair_id: string; status: string }[]> {
+  // Defensive check
+  if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
+    console.warn('fetchAllPairTaskStatuses called with invalid programId:', programId);
+    return [];
+  }
+
+  let query = supabase
     .from('mp_pair_tasks')
     .select('pair_id, status');
+
+  if (programId) {
+    query = query.eq('program_id', programId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching all pair task statuses:', error);

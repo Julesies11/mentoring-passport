@@ -28,12 +28,15 @@ export function PairsPage() {
       <div className="hidden sm:block">
         <Container>
           <Toolbar>
-            <ToolbarHeading
-              title="Mentoring Pairs"
-              description="Manage mentor-mentee pairings and track their progress"
-            />
-            <ToolbarActions>
+            <div className="flex items-center gap-5">
+              <ToolbarHeading
+                title="Mentoring Pairs"
+                description="Manage mentor-mentee pairings and track their progress"
+              />
               <ProgramSelector />
+            </div>
+            <ToolbarActions>
+              {/* Toolbar Actions remain empty here */}
             </ToolbarActions>
           </Toolbar>
         </Container>

@@ -18,7 +18,7 @@ export function ProgramSelector() {
 
   // Show skeleton during initial load
   if (isLoading) {
-    return <div className="h-8 w-[250px] sm:w-[300px] animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
+    return <div className="h-8 w-[220px] sm:w-[400px] animate-pulse bg-gray-100 rounded-xl border border-gray-100" />;
   }
   
   const hasPrograms = programs.length > 0;
@@ -31,17 +31,17 @@ export function ProgramSelector() {
         disabled={!hasPrograms}
       >
         <SelectTrigger 
-          className="h-9 w-[250px] sm:w-[300px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
+          className="h-9 w-[220px] sm:w-[400px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
         >
-          <div className="flex items-center justify-center text-center min-w-0 flex-1">
-            <div className="flex-1 min-w-0 overflow-hidden leading-tight text-center">
-              <span className="text-xs font-black text-primary uppercase tracking-tight truncate block">
+          <div className="flex items-center justify-start text-left min-w-0 flex-1">
+            <div className="flex-1 min-w-0 overflow-hidden leading-tight text-left">
+              <span className="text-[10px] sm:text-xs font-black text-primary uppercase tracking-tight truncate block">
                 {!hasPrograms ? 'No Programs Assigned' : (activeProgram?.name || 'Select Program')}
               </span>
             </div>
           </div>
         </SelectTrigger>
-        <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[350px]">
+        <SelectContent className="rounded-xl shadow-2xl border-gray-100 max-w-[450px]">
           <div className="px-3 py-2 border-b border-gray-50 mb-1">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Switch View Context</span>
           </div>
