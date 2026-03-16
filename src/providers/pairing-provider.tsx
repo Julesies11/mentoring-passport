@@ -13,9 +13,11 @@ interface PairingContextType {
 const PairingContext = createContext<PairingContextType | undefined>(undefined);
 
 export function PairingProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const { data: rawPairings = [], isLoading } = useUserPairs(user?.id || '');
+  const { user, loading: authLoading, isAutoSelecting } = useAuth();
+  const { data: rawPairings = [], isLoading: queryLoading } = useUserPairs(user?.id || '');
   const [selectedPairingId, setSelectedPairingId] = useState<string | null>(null);
+
+  const isLoading = authLoading || isAutoSelecting || queryLoading;
 
   // Apply custom sorting: Active status > Latest Program > Name
   const pairings = React.useMemo(() => {

@@ -7,6 +7,7 @@ import { ErrorRouting } from '@/errors/error-routing';
 import { Demo1Layout } from '@/layouts/demo1/layout';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { ScreenLoader } from '@/components/common/screen-loader';
 
 // Lazy load pages
 const SupervisorDashboardPage = lazy(() => import('@/pages/supervisor').then(m => ({ default: m.SupervisorDashboardPage })));
@@ -39,7 +40,7 @@ const TaskTemplateEditorPage = lazy(() => import('@/pages/org-admin/task-templat
 const ManageSupervisorsPage = lazy(() => import('@/pages/org-admin/supervisors').then(m => ({ default: m.ManageSupervisorsPage })));
 
 // Loading component for suspense
-const PageLoading = () => null;
+const PageLoading = () => <ScreenLoader />;
 
 // Role-based redirect component
 function RoleBasedRedirect() {
@@ -56,7 +57,11 @@ function RoleBasedRedirect() {
 
   // 2. If user has exactly 1 membership but no active context yet, auto-select is running in AuthProvider
   if (memberships.length === 1 && !activeMembership) {
-    return <PageLoading />;
+    if (isAutoSelecting) {
+      return <PageLoading />;
+    }
+    // Fallback if auto-selection failed or didn't run
+    return <Navigate to="/auth/select-organisation" replace />;
   }
 
   // 3. If user has multiple memberships (or none) and no active context selected, send to selection screen

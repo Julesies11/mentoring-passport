@@ -23,7 +23,7 @@ interface OrganisationContextType {
 const OrganisationContext = createContext<OrganisationContextType | undefined>(undefined);
 
 export function OrganisationProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAutoSelecting } = useAuth();
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
 
   // The JWT is our Source of Truth. These values come from user_metadata.
@@ -44,7 +44,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     queryFn: () => (effectiveOrgId && typeof effectiveOrgId === 'string') 
       ? fetchOrganisation(effectiveOrgId) 
       : Promise.resolve(null),
-    enabled: !!effectiveOrgId && !authLoading,
+    enabled: !!effectiveOrgId && !authLoading && !isAutoSelecting,
   });
 
   // Fetch programs available to this active context
@@ -58,7 +58,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
       if (!effectiveOrgId || !isSupervisor) return Promise.resolve([]);
       return fetchAssignedPrograms(effectiveOrgId);
     },
-    enabled: !!effectiveOrgId && isSupervisor && !authLoading,
+    enabled: !!effectiveOrgId && isSupervisor && !authLoading && !isAutoSelecting,
   });
 
   // Reset selected program when organisation context changes
@@ -85,7 +85,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     activeOrganisation: organisation || null,
     activeProgram,
     programs: sortedPrograms,
-    isLoading: authLoading || isOrgLoading || isProgramsLoading,
+    isLoading: authLoading || isAutoSelecting || isOrgLoading || isProgramsLoading,
     isMasquerading,
     isOrgAdmin,
     isSupervisor,

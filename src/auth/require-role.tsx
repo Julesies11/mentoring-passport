@@ -1,6 +1,7 @@
 import { useAuth } from '@/auth/context/auth-context';
 import { UserRole } from '@/auth/lib/models';
 import { Navigate } from 'react-router-dom';
+import { ScreenLoader } from '@/components/common/screen-loader';
 
 interface RequireRoleProps {
   allowedRoles: UserRole[];
@@ -17,11 +18,11 @@ export function RequireRole({
   children,
   redirectTo = '/',
 }: RequireRoleProps) {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, isAutoSelecting } = useAuth();
 
-  // Wait for auth to load
-  if (loading) {
-    return null;
+  // Wait for auth to load or auto-selection to finish
+  if (loading || isAutoSelecting) {
+    return <ScreenLoader />;
   }
 
   // User must be authenticated

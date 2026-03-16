@@ -19,9 +19,9 @@ export const RequireOrganisation = () => {
     return <Outlet />;
   }
 
-  // 2. If the user has multiple memberships but hasn't selected one yet, 
+  // 2. If the user has memberships but hasn't selected one yet, 
   // force them to the selection screen.
-  if (memberships.length > 1 && !activeMembership) {
+  if (memberships.length > 0 && !activeMembership) {
     // Prevent infinite redirect if we are already on the selection page
     if (location.pathname.includes('/auth/select-organisation')) {
       return <Outlet />;

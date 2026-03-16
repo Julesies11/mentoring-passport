@@ -137,6 +137,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [currentUser, activeOrgId, loading]);
 
+  // Derive if we are about to auto-select to prevent layout flashes
+  const willAutoSelect = !!(currentUser && !activeOrgId && currentUser.memberships?.length === 1 && !hasAutoSelected.current);
+
   const switchOrganisation = async (orgId: string) => {
     setLoading(true);
     try {
@@ -155,6 +158,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const verify = async () => {
     if (auth) {
+      setLoading(true); // Ensure loading is true while verifying
       try {
         const user = await getUser();
         setCurrentUser(user || undefined);
@@ -279,7 +283,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         isSupervisor: currentIsSupervisor,
         isMentor,
         isMentee,
-        isAutoSelecting,
+        isAutoSelecting: isAutoSelecting || willAutoSelect,
         setIsMentor,
         setIsMentee,
         // Multi-tenant

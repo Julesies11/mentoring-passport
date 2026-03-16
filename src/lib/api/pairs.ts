@@ -115,16 +115,18 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   }
 
   // Step 1: Fetch program to get organisation_id
-  const { error: programError } = await supabase
+  const { data: program, error: programError } = await supabase
     .from('mp_programs')
     .select('organisation_id')
     .eq('id', input.program_id)
     .single();
 
-  if (programError) {
+  if (programError || !program) {
     console.error('Error fetching program:', programError);
     throw new Error('Could not find program for the new pair');
   }
+
+  const organisation_id = program.organisation_id;
 
   // Step 2: Fetch the "Not Applicable" evidence type to use as a fallback
   const { data: naEvidenceType } = await supabase
@@ -139,7 +141,10 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   // Step 3: Create the pair
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
-    .insert(input)
+    .insert({
+      ...input,
+      organisation_id
+    })
     .select(`
       *,
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
@@ -174,7 +179,9 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
       evidence_type_id: task.evidence_type_id || fallbackEvidenceTypeId,
       sort_order: task.sort_order,
       status: 'not_submitted' as const,
-      is_custom: false
+      is_custom: false,
+      organisation_id,
+      program_id: input.program_id
     }));
 
     // Filter out any tasks that still don't have an evidence_type_id if fallback failed

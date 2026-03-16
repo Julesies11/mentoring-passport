@@ -98,10 +98,13 @@ export function usePairs() {
 }
 
 export function useUserPairs(userId: string) {
+  const { user, loading: authLoading, isAutoSelecting } = useAuth();
+  const activeOrgId = user?.selected_organisation_id;
+
   return useQuery({
-    queryKey: ['pairs', 'user', userId],
+    queryKey: ['pairs', 'user', userId, activeOrgId],
     queryFn: () => fetchUserPairs(userId),
-    enabled: !!userId,
+    enabled: !!userId && !authLoading && !isAutoSelecting,
     select: (pairs) => {
       return [...pairs].sort((a, b) => {
         // 1. Active Pair + Active Program first
@@ -131,10 +134,13 @@ export function useUserPairs(userId: string) {
  * Specifically for the Dashboard: only show relationships where BOTH the pair and the program are active.
  */
 export function useActiveUserPairs(userId: string) {
+  const { user, loading: authLoading, isAutoSelecting } = useAuth();
+  const activeOrgId = user?.selected_organisation_id;
+
   return useQuery({
-    queryKey: ['pairs', 'user', userId, 'active-only'],
+    queryKey: ['pairs', 'user', userId, activeOrgId, 'active-only'],
     queryFn: () => fetchUserPairs(userId),
-    enabled: !!userId,
+    enabled: !!userId && !authLoading && !isAutoSelecting,
     select: (pairs) => {
       return pairs.filter(p => p.status === 'active' && p.program?.status === 'active');
     }
