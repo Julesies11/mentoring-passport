@@ -31,7 +31,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
   const membershipRole = user?.role; // This is the 'active_role' injected into the JWT
   const isMasquerading = !!user?.is_system_owner && !!user?.selected_organisation_id;
   
-  const isOrgAdmin = user?.is_org_admin || membershipRole === 'org-admin';
+  const isOrgAdmin = user?.is_admin || user?.role === 'administrator' || membershipRole === 'org-admin';
   const isSupervisor = user?.is_supervisor || isOrgAdmin || membershipRole === 'supervisor';
 
   // Fetch organisation details (for UI logos/names)

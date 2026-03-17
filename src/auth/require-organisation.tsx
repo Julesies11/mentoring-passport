@@ -7,11 +7,18 @@ import { ScreenLoader } from '@/components/common/screen-loader';
  * before allowing them to access protected application routes.
  */
 export const RequireOrganisation = () => {
-  const { memberships, activeMembership, isSystemOwner, loading, isAutoSelecting } = useAuth();
+  const { user, memberships, activeMembership, isSystemOwner, loading, isAutoSelecting } = useAuth();
   const location = useLocation();
 
-  if (loading || isAutoSelecting) {
+  // ONLY show the full-screen loader if we are in the middle of initial boot OR auto-selecting
+  // AND we don't have an active context yet.
+  if ((loading || isAutoSelecting) && !activeMembership && !isSystemOwner) {
     return <ScreenLoader />;
+  }
+
+  // If no user is present, we shouldn't even be here because of RequireAuth
+  if (!user) {
+    return null;
   }
 
   // 1. System Owners are global and don't require an active membership to enter the app

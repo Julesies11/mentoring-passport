@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useLocation } from 'react-router-dom';
 import { useLoadingBar } from 'react-top-loading-bar';
@@ -13,36 +13,30 @@ export function AppRouting() {
     height: 2,
   });
 
-  const { verify, setLoading } = useAuth();
+  const { verify, loading: authLoading } = useAuth();
   const [previousLocation, setPreviousLocation] = useState('');
-  const [firstLoad, setFirstLoad] = useState(true);
   const location = useLocation();
   const path = location.pathname.trim();
 
-  useEffect(() => {
-    if (firstLoad) {
-      verify().finally(() => {
-        setLoading(false);
-        setFirstLoad(false);
-      });
+  // Navigation listener for background verification
+  const handleNavigation = useCallback(async () => {
+    // Only run if we aren't already in an initial global loading state
+    if (!authLoading) {
+      start('static');
+      try {
+        // verify(false) is silent - it doesn't trigger the global ScreenLoader
+        await verify(false);
+      } catch (error) {
+        console.error('AppRouting: Background verification failed:', error);
+      } finally {
+        setPreviousLocation(path);
+        complete();
+      }
     }
-  }, [firstLoad, verify, setLoading]);
+  }, [authLoading, verify, path, start, complete]);
 
   useEffect(() => {
-    if (!firstLoad) {
-      start('static');
-      verify()
-        .catch(() => {
-          throw new Error('User verify request failed!');
-        })
-        .finally(() => {
-          setPreviousLocation(path);
-          complete();
-          if (path === previousLocation) {
-            setPreviousLocation('');
-          }
-        });
-    }
+    handleNavigation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 

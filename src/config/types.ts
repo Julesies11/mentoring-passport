@@ -12,6 +12,9 @@ export interface MenuItem {
   expandTitle?: string;
   badge?: string;
   separator?: boolean;
+  // Capability-based filtering
+  requiredRole?: string[];
+  requiredFlag?: string[];
 }
 
 export type MenuConfig = MenuItem[];

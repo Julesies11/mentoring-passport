@@ -10,28 +10,22 @@ export function ConnectivityListener() {
   const isOnlineRef = useRef(navigator.onLine);
   const dbErrorShownRef = useRef(false);
   const hasConnectedOnceRef = useRef(false);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleOnline = () => {
+      console.log('Connectivity: Internet connection restored');
       isOnlineRef.current = true;
       toast.dismiss('connectivity-error');
-      // Only show restored if we had previously shown an offline error
-      if (typeof toast.active === 'function' && !toast.active('connectivity-error')) {
-          // This is a bit tricky with sonner as it doesn't have a simple active(id) check
-          // but we can rely on our own ref tracking if we wanted to be more precise.
-      }
       
-      // We'll just show it if we are fairly sure we were offline
-      // To be safe and minimal, let's only show success if we're not on initial load
-      if (hasConnectedOnceRef.current) {
-        toast.success('Internet connection restored', { 
-          duration: 3000,
-          id: 'connectivity-restored'
-        });
-      }
+      toast.success('Internet connection restored', { 
+        duration: 3000,
+        id: 'connectivity-restored'
+      });
     };
 
     const handleOffline = () => {
+      console.warn('Connectivity: Internet connection lost');
       isOnlineRef.current = false;
       // Dismiss DB error as it's redundant if we're fully offline
       if (dbErrorShownRef.current) {
@@ -58,8 +52,26 @@ export function ConnectivityListener() {
      */
     const channel = supabase.channel('connectivity-status');
     
+    // Set a timeout to show an error if we can't connect within 5 seconds on initial load
+    connectionTimeoutRef.current = setTimeout(() => {
+      if (!hasConnectedOnceRef.current && isOnlineRef.current && !dbErrorShownRef.current) {
+        dbErrorShownRef.current = true;
+        toast.error('Initial connection to database failed. Retrying...', {
+          id: 'db-connection-error',
+          duration: Infinity,
+        });
+      }
+    }, 5000);
+
     channel.subscribe((status) => {
+      console.log(`Connectivity: Realtime status change: ${status}`);
+      
       if (status === 'SUBSCRIBED') {
+        if (connectionTimeoutRef.current) {
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
         if (dbErrorShownRef.current) {
           toast.dismiss('db-connection-error');
           dbErrorShownRef.current = false;
@@ -70,13 +82,10 @@ export function ConnectivityListener() {
         }
         hasConnectedOnceRef.current = true;
       } else if (status === 'CLOSED' || status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
-        // Only show DB error if:
-        // 1. We had successfully connected at least once (prevents errors during initial load handshake)
-        // 2. We are online (internet is up)
-        // 3. We haven't already shown the error
-        if (hasConnectedOnceRef.current && isOnlineRef.current && !dbErrorShownRef.current) {
+        // Show DB error if we are online (internet is up) but DB connection is down
+        if (isOnlineRef.current && !dbErrorShownRef.current) {
           dbErrorShownRef.current = true;
-          toast.error('Connection to database lost. Retrying...', {
+          toast.error(hasConnectedOnceRef.current ? 'Connection to database lost. Retrying...' : 'Could not connect to database. Retrying...', {
             id: 'db-connection-error',
             duration: Infinity,
           });
@@ -87,6 +96,7 @@ export function ConnectivityListener() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
       supabase.removeChannel(channel);
     };
   }, []);

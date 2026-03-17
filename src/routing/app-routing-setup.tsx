@@ -5,7 +5,7 @@ import { RequireOrganisation } from '@/auth/require-organisation';
 import { useAuth } from '@/auth/context/auth-context';
 import { ErrorRouting } from '@/errors/error-routing';
 import { Demo1Layout } from '@/layouts/demo1/layout';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { ScreenLoader } from '@/components/common/screen-loader';
 
@@ -41,6 +41,22 @@ const ManageSupervisorsPage = lazy(() => import('@/pages/org-admin/supervisors')
 
 // Loading component for suspense
 const PageLoading = () => <ScreenLoader />;
+
+// Inner page loading (just a spinner for content area)
+const ContentLoading = () => (
+  <div className="flex items-center justify-center min-h-[400px] w-full">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+  </div>
+);
+
+/**
+ * A wrapper that provides a Suspense boundary for inner routes
+ */
+const SuspenseLayout = () => (
+  <Suspense fallback={<ContentLoading />}>
+    <Outlet />
+  </Suspense>
+);
 
 // Role-based redirect component
 function RoleBasedRedirect() {
@@ -95,217 +111,219 @@ export function AppRoutingSetup() {
     <Suspense fallback={<PageLoading />}>
       <Routes>
         <Route element={<RequireAuth />}>
-          <Route element={<RequireOrganisation />}>
-            {/* Initial landing handles redirection/selection */}
-            <Route index element={<RoleBasedRedirect />} />
+          {/* Initial landing handles redirection/selection without Layout */}
+          <Route index element={<RoleBasedRedirect />} />
 
-            {/* Application routes protected by Demo1Layout */}
-            <Route element={<Demo1Layout />}>
-              {/* Administrator routes */}
-              <Route
-                path="/admin/dashboard"
-                element={
-                  <RequireRole allowedRoles={['administrator']}>
-                    <AdminDashboardPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/admin/organisations"
-                element={
-                  <RequireRole allowedRoles={['administrator']}>
-                    <AdminOrganisationsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <RequireRole allowedRoles={['administrator']}>
-                    <AdminUsersPage />
-                  </RequireRole>
-                }
-              />
+          {/* APPLICATION SHELL (Persistent Sidebar/Header) */}
+          <Route element={<Demo1Layout />}>
+            <Route element={<RequireOrganisation />}>
+              <Route element={<SuspenseLayout />}>
+                {/* Administrator routes */}
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <RequireRole allowedRoles={['administrator']}>
+                      <AdminDashboardPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/admin/organisations"
+                  element={
+                    <RequireRole allowedRoles={['administrator']}>
+                      <AdminOrganisationsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <RequireRole allowedRoles={['administrator']}>
+                      <AdminUsersPage />
+                    </RequireRole>
+                  }
+                />
 
-              {/* Supervisor routes */}
-              <Route
-                path="/supervisor/hub"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <SupervisorDashboardPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/dashboard"
-                element={<Navigate to="/supervisor/hub" replace />}
-              />
-              <Route
-                path="/supervisor/pairs"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <PairsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/program-tasks"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <SupervisorProgramTasksPage /> 
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/evidence-review"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <EvidenceReviewPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/calendar"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <SupervisorCalendarPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/checklist"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <SupervisorChecklistPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/error-logs"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <SupervisorErrorLogsPage />
-                  </RequireRole>
-                }
-              />
+                {/* Supervisor routes */}
+                <Route
+                  path="/supervisor/hub"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <SupervisorDashboardPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/dashboard"
+                  element={<Navigate to="/supervisor/hub" replace />}
+                />
+                <Route
+                  path="/supervisor/pairs"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <PairsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/program-tasks"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <SupervisorProgramTasksPage /> 
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/evidence-review"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <EvidenceReviewPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/calendar"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <SupervisorCalendarPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/checklist"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <SupervisorChecklistPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/error-logs"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <SupervisorErrorLogsPage />
+                    </RequireRole>
+                  }
+                />
 
-              {/* Org Admin Specific Routes */}
-              <Route
-                path="/org-admin/hub"
-                element={
-                  <RequireRole allowedRoles={['org-admin']}>
-                    <OrgAdminDashboardPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/org-admin/dashboard"
-                element={<Navigate to="/org-admin/hub" replace />}
-              />
-              <Route
-                path="/org-admin/programs"
-                element={
-                  <RequireRole allowedRoles={['org-admin']}>
-                    <OrgAdminProgramsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/org-admin/participants"
-                element={
-                  <RequireRole allowedRoles={['org-admin']}>
-                    <ParticipantsPage mode="manage" />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/supervisor/participants"
-                element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
-                    <ParticipantsPage mode="view" />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/org-admin/task-templates"
-                element={
-                  <RequireRole allowedRoles={['org-admin']}>
-                    <TaskTemplatesLibraryPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/org-admin/task-templates/:id"
-                element={
-                  <RequireRole allowedRoles={['org-admin']}>
-                    <TaskTemplateEditorPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/org-admin/supervisors"
-                element={
-                  <RequireRole allowedRoles={['org-admin']}>
-                    <ManageSupervisorsPage />
-                  </RequireRole>
-                }
-              />
+                {/* Org Admin Specific Routes */}
+                <Route
+                  path="/org-admin/hub"
+                  element={
+                    <RequireRole allowedRoles={['org-admin']}>
+                      <OrgAdminDashboardPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/org-admin/dashboard"
+                  element={<Navigate to="/org-admin/hub" replace />}
+                />
+                <Route
+                  path="/org-admin/programs"
+                  element={
+                    <RequireRole allowedRoles={['org-admin']}>
+                      <OrgAdminProgramsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/org-admin/participants"
+                  element={
+                    <RequireRole allowedRoles={['org-admin']}>
+                      <ParticipantsPage mode="manage" />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/supervisor/participants"
+                  element={
+                    <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                      <ParticipantsPage mode="view" />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/org-admin/task-templates"
+                  element={
+                    <RequireRole allowedRoles={['org-admin']}>
+                      <TaskTemplatesLibraryPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/org-admin/task-templates/:id"
+                  element={
+                    <RequireRole allowedRoles={['org-admin']}>
+                      <TaskTemplateEditorPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/org-admin/supervisors"
+                  element={
+                    <RequireRole allowedRoles={['org-admin']}>
+                      <ManageSupervisorsPage />
+                    </RequireRole>
+                  }
+                />
 
-              {/* Program Member Unified Routes */}
-              <Route
-                path="/program-member/dashboard"
-                element={
-                  <RequireRole allowedRoles={['program-member']}>
-                    <ProgramMemberDashboardPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/program-member/tasks"
-                element={
-                  <RequireRole allowedRoles={['program-member']}>
-                    <ProgramMemberTasksPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/program-member/mentees"
-                element={
-                  <RequireRole allowedRoles={['program-member']}>
-                    <RelationshipPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/program-member/mentor"
-                element={
-                  <RequireRole allowedRoles={['program-member']}>
-                    <RelationshipPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/program-member/checklist"
-                element={
-                  <RequireRole allowedRoles={['program-member']}>
-                    <Navigate to="/program-member/tasks" replace />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/program-member/meetings"
-                element={
-                  <RequireRole allowedRoles={['program-member']}>
-                    <ProgramMemberMeetingsPage />
-                  </RequireRole>
-                }
-              />
+                {/* Program Member Unified Routes */}
+                <Route
+                  path="/program-member/dashboard"
+                  element={
+                    <RequireRole allowedRoles={['program-member']}>
+                      <ProgramMemberDashboardPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/program-member/tasks"
+                  element={
+                    <RequireRole allowedRoles={['program-member']}>
+                      <ProgramMemberTasksPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/program-member/mentees"
+                  element={
+                    <RequireRole allowedRoles={['program-member']}>
+                      <RelationshipPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/program-member/mentor"
+                  element={
+                    <RequireRole allowedRoles={['program-member']}>
+                      <RelationshipPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/program-member/checklist"
+                  element={
+                    <RequireRole allowedRoles={['program-member']}>
+                      <Navigate to="/program-member/tasks" replace />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/program-member/meetings"
+                  element={
+                    <RequireRole allowedRoles={['program-member']}>
+                      <ProgramMemberMeetingsPage />
+                    </RequireRole>
+                  }
+                />
 
-              {/* Profile routes - available to all authenticated users */}
-              <Route
-                path="/profile/edit"
-                element={<EditProfilePage />}
-              />
+                {/* Profile routes - available to all authenticated users */}
+                <Route
+                  path="/profile/edit"
+                  element={<EditProfilePage />}
+                />
+              </Route>
             </Route>
           </Route>
         </Route>

@@ -11,7 +11,7 @@ export interface AuthModel {
 }
 
 // Role type for mentoring passport (Global/Legacy)
-export type UserRole = 'supervisor' | 'program-member' | 'administrator';
+export type UserRole = 'supervisor' | 'program-member' | 'administrator' | 'org-admin';
 
 // Specific roles within an organisation
 export type MembershipRole = 'org-admin' | 'supervisor' | 'program-member';

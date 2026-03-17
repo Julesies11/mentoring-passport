@@ -201,7 +201,7 @@ export const SupabaseAdapter = {
   /**
    * Get current user from the session
    */
-  async getCurrentUser(): Promise<UserModel | null> {
+  async getCurrentUser(isInitialBoot: boolean = false): Promise<UserModel | null> {
     // Check if there is a local session first to prevent unnecessary 403 network errors
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return null;
@@ -210,7 +210,7 @@ export const SupabaseAdapter = {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) return null;
 
-      return await this.getUserProfile(data.user);
+      return await this.getUserProfile(data.user, isInitialBoot);
     } catch (_e) {
       return null;
     }
@@ -219,7 +219,7 @@ export const SupabaseAdapter = {
   /**
    * Get user profile from mp_profiles table
    */
-  async getUserProfile(preFetchedUser?: any): Promise<UserModel> {
+  async getUserProfile(preFetchedUser?: any, isInitialBoot: boolean = false): Promise<UserModel> {
     let user = preFetchedUser;
 
     if (!user) {
@@ -253,10 +253,40 @@ export const SupabaseAdapter = {
       console.error('Error fetching memberships:', membershipsError);
     }
 
-    // Get user metadata for active context
     const metadata = user.user_metadata || {};
-    const selectedOrgId = metadata.selected_organisation_id || metadata.active_org_id;
-    const userRole = metadata.role || metadata.active_role;
+    let selectedOrgId = metadata.selected_organisation_id || metadata.active_org_id;
+    let userRole = metadata.role || metadata.active_role;
+
+    // STRICT CHECK: is_admin should ONLY be true for global system owners
+    const isAdmin = 
+      metadata.role === 'administrator' || 
+      metadata.active_role === 'administrator' || 
+      metadata.is_system_owner === true;
+    
+    // AUTO-PRIMING: ONLY perform this during initial boot to prevent refreshes during navigation
+    if (isInitialBoot && !selectedOrgId && memberships && memberships.length === 1) {
+      const onlyOrgId = memberships[0].organisation_id;
+      const defaultRole = memberships[0].role;
+      
+      logDebug('SupabaseAdapter: Auto-priming context via RPC (Initial Boot):', onlyOrgId);
+      
+      try {
+        // Official gateway to set organisation context in the JWT
+        await supabase.rpc('switch_active_org', { new_org_id: onlyOrgId });
+        
+        // Refresh the session to obtain a new JWT with the metadata just set on the server
+        await supabase.auth.refreshSession();
+        
+        selectedOrgId = onlyOrgId;
+        userRole = defaultRole;
+      } catch (error) {
+        console.error('SupabaseAdapter: Failed to auto-prime context:', error);
+      }
+    }
+    
+    // The active role is either the one explicitly in metadata (from switch_active_org)
+    // or 'administrator' if they are a system owner with no active org context yet.
+    const effectiveRole = userRole || (isAdmin ? 'administrator' : undefined);
 
     // Format data combining auth.users and mp_profiles
     return {
@@ -275,10 +305,10 @@ export const SupabaseAdapter = {
       roles: metadata.roles || [],
       pic: profile?.avatar_url || metadata.pic || '',
       language: metadata.language || 'en',
-      is_admin: userRole === 'administrator' || metadata.is_system_owner === true,
+      is_admin: isAdmin,
       
       // Mentoring Passport specific fields from mp_profiles
-      role: userRole as any, // System-wide role
+      role: effectiveRole as any, // System-wide role
       job_title: profile?.job_title || metadata.job_title || '',
       avatar_url: profile?.avatar_url,
       department: profile?.department,

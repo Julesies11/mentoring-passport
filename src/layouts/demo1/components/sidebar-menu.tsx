@@ -2,7 +2,7 @@
 
 import { JSX, useCallback, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MENU_SUPERVISOR, MENU_PROGRAM_MEMBER, MENU_ADMINISTRATOR, MENU_ORG_ADMIN } from '@/config/menu.config';
+import { SIDEBAR_MENU_CONFIG } from '@/config/menu.config';
 import { MenuConfig, MenuItem } from '@/config/types';
 import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
@@ -21,33 +21,68 @@ import { Badge } from '@/components/ui/badge';
 
 export function SidebarMenu() {
   const { pathname } = useLocation();
-  const { role } = useAuth();
-  const { isMasquerading } = useOrganisation();
+  const auth = useAuth();
+  const { role, isOrgAdmin, isSystemOwner, isSupervisor } = auth;
 
-  // Select menu based on user role or masquerade state
-  const menuConfig = useMemo(() => {
-    // If an Administrator is masquerading, show them the Org Admin menu
-    if (isMasquerading) {
-      return MENU_ORG_ADMIN;
-    }
+  /**
+   * Filter the master menu config based on current user capabilities
+   */
+  const filteredMenu = useMemo(() => {
+    const filterItems = (items: MenuConfig): MenuConfig => {
+      const result: MenuConfig = [];
 
-    switch (role) {
-      case 'administrator':
-        return MENU_ADMINISTRATOR;
-      case 'org-admin':
-        return MENU_ORG_ADMIN;
-      case 'supervisor':
-        return MENU_SUPERVISOR;
-      case 'program-member':
-        return MENU_PROGRAM_MEMBER;
-      default:
-        // Fallback for transition period if existing users have mentor/mentee roles
-        if (role === 'mentor' || role === 'mentee') {
-          return MENU_PROGRAM_MEMBER;
+      items.forEach((item) => {
+        let isVisible = true;
+
+        // 1. Check Role Requirement
+        if (item.requiredRole && !item.requiredRole.includes(role || '')) {
+          isVisible = false;
         }
-        return [];
-    }
-  }, [role, isMasquerading]);
+
+        // 2. Check Flag Requirement (OR logic - if any flag is true, it's visible)
+        if (item.requiredFlag) {
+          isVisible = item.requiredFlag.some(flag => !!(auth as any)[flag]);
+        }
+
+        // Special case: Headings should only show if they have following items that are visible
+        // We handle this by checking if the next item is a visible non-heading
+        
+        if (isVisible) {
+          // If it has children, filter them too
+          if (item.children) {
+            const filteredChildren = filterItems(item.children);
+            if (filteredChildren.length > 0) {
+              result.push({ ...item, children: filteredChildren });
+            }
+          } else {
+            result.push(item);
+          }
+        }
+      });
+
+      // Cleanup: Remove headings that have no visible items following them
+      const finalResult: MenuConfig = [];
+      for (let i = 0; i < result.length; i++) {
+        const item = result[i];
+        if (item.heading) {
+          // Check if there are any non-heading items before the next heading or end of list
+          let hasContent = false;
+          for (let j = i + 1; j < result.length; j++) {
+            if (result[j].heading) break;
+            hasContent = true;
+            break;
+          }
+          if (hasContent) finalResult.push(item);
+        } else {
+          finalResult.push(item);
+        }
+      }
+
+      return finalResult;
+    };
+
+    return filterItems(SIDEBAR_MENU_CONFIG);
+  }, [role, isOrgAdmin, isSystemOwner, isSupervisor]);
 
   // Memoize matchPath to prevent unnecessary re-renders
   const matchPath = useCallback(
@@ -289,7 +324,7 @@ export function SidebarMenu() {
         collapsible
         classNames={classNames}
       >
-        {buildMenu(menuConfig)}
+        {buildMenu(filteredMenu)}
       </AccordionMenu>
     </div>
   );
