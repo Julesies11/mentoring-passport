@@ -3,9 +3,9 @@
 # ===============================
 - **Database Schema:** See `docs/DATABASE_SCHEMA.md` for tables, fields, and relationships.
 - **Architecture Map:** See `docs/ARCHITECTURE.md` for data flow and directory structure.
-- **Multi-Tenant System:** See `docs/MULTI_TENANT_SYSTEM.md` for 4-tier hierarchy and security model. **MANDATORY REVIEW AT START OF EVERY SESSION.**
+- **Single Organisation Instance:** The system is now a single-organisation instance. Security is enforced via Role-Based Access Control (RBAC) using JWT metadata (`role`).
 - **Key Tables:** 
-    - `mp_profiles` (Users/Roles)
+    - `mp_profiles` (Users/Roles - Source of Truth for Role)
     - `mp_pairs` (Mentor/Mentee links)
     - `mp_tasks_master` / `mp_pair_tasks` (The Task System)
     - `mp_meetings` / `mp_evidence_uploads` (Engagement & Proof)
@@ -47,7 +47,7 @@ This project uses:
 **All business logic must live inside the React app for maximum testability.**
 
 Gemini must obey these rules:
-1. **Do NOT create Supabase SQL functions, triggers, stored procedures, RPC endpoints, or views.**
+1. **Do NOT create Supabase SQL functions, triggers, stored procedures, RPC endpoints, or views.** (Except for Auth-related triggers and RLS helpers already established in migrations).
 2. **Do NOT add database-side joins or transformations.**
 3. **Do NOT rely on Supabase server logic for app behaviour.**
 4. **Keep ALL non-auth logic inside TypeScript where it can be unit tested.**
@@ -58,7 +58,7 @@ Gemini must obey these rules:
 6. Only create Supabase server logic if absolutely unavoidable:
    - Authentication
    - Security policies (RLS)
-   - Required Supabase built-ins
+   - Required Supabase built-ins (e.g., Role Sync Trigger)
 
 Every other transformation (grouping, aggregating, merging, joining) must be done inside the app code:
 - In API utility functions
@@ -82,13 +82,13 @@ This ensures:
 - Use stable query keys.
 - Use optimistic updates where helpful.
 - Use `select`, `staleTime`, and `placeholderData` when appropriate.
-- Place all API requests in `/modules/{feature}/api/*`.
+- Place all API requests in `src/lib/api/*`.
 
 ## Supabase Conventions
 - Use the JS client only.
 - Type responses with Supabase-generated types.
 - All filtering, joins, mapping, and data shaping must occur in the app.
-- No custom SQL unless related to authentication.
+- No custom SQL unless related to authentication or RLS.
 
 ## Tailwind / Metronic Conventions
 - Use Tailwind classes from the Metronic config only.

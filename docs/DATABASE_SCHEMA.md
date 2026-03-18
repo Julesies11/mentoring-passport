@@ -1,6 +1,6 @@
 # Mentoring Passport Database Schema (Source of Truth)
 
-This document serves as the primary reference for all database tables, fields, and relationships in the Mentoring Passport application.
+This document serves as the primary reference for all database tables, fields, and relationships in the Mentoring Passport application. The system is a **Single Organisation Instance** with Role-Based Access Control (RBAC) enforced via JWT metadata.
 
 ## Core Tables
 
@@ -8,9 +8,8 @@ This document serves as the primary reference for all database tables, fields, a
 Stores user profile information, linked to `auth.users`.
 - `id` (UUID, PK): References `auth.users(id)`.
 - `email` (TEXT, UNIQUE)
-- `role` (TEXT): 'supervisor', 'mentor', 'mentee', 'program-member', or 'administrator'.
+- `role` (TEXT): 'administrator', 'org-admin', 'supervisor', or 'program-member'. **(Source of Truth for RBAC, synced to auth.users.app_metadata.role)**
 - `full_name` (TEXT)
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `department` (TEXT)
 - `job_title` (TEXT)
 - `bio` (TEXT)
@@ -20,34 +19,26 @@ Stores user profile information, linked to `auth.users`.
 - `must_change_password` (BOOLEAN)
 
 ### `mp_organisations`
-Stores organization details.
+Stores the single organization's details.
 - `id` (UUID, PK)
 - `name` (TEXT)
 - `logo_url` (TEXT)
 
-### `mp_memberships`
-Junction table linking users to multiple organisations with a specific role.
-- `id` (UUID, PK)
-- `user_id` (UUID): References `auth.users(id)`.
-- `organisation_id` (UUID): References `mp_organisations(id)`.
-- `role` (TEXT): 'org-admin', 'supervisor', 'program-member'.
-- `status` (TEXT): 'active', 'archived'.
-
 ### `mp_supervisor_programs`
-Junction table linking supervisors to specific programs within their organisation.
+Junction table linking supervisors to specific programs within the instance.
 - `id` (UUID, PK)
 - `user_id` (UUID): References `auth.users(id)`.
 - `program_id` (UUID): References `mp_programs(id)`.
 
 ### `mp_programs`
-Stores mentoring program details within an organization.
+Stores mentoring program details.
 - `id` (UUID, PK)
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `task_list_id` (UUID): References `mp_task_lists_master(id)`.
 - `name` (TEXT)
+- `description` (TEXT)
 - `start_date` (DATE)
 - `end_date` (DATE)
-- `status` (TEXT): 'active' or 'archived'.
+- `status` (TEXT): 'active', 'inactive', or 'archived'.
 
 ### `mp_pairs`
 Stores mentor-mentee pairings within a program.
@@ -55,7 +46,6 @@ Stores mentor-mentee pairings within a program.
 - `mentor_id` (UUID): References `mp_profiles(id)`.
 - `mentee_id` (UUID): References `mp_profiles(id)`.
 - `program_id` (UUID): References `mp_programs(id)`.
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `status` (TEXT): 'active', 'completed', or 'archived'.
 
 ---
@@ -63,9 +53,8 @@ Stores mentor-mentee pairings within a program.
 ## Tasks & Sub-tasks System
 
 ### `mp_task_lists_master`
-Master task lists created by Org Admins as templates for programs.
+Master task lists created by Admins as templates for programs.
 - `id` (UUID, PK)
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `name` (TEXT)
 - `description` (TEXT)
 - `is_active` (BOOLEAN)
@@ -73,7 +62,6 @@ Master task lists created by Org Admins as templates for programs.
 ### `mp_tasks_master`
 Template for tasks, linked to a task list.
 - `id` (UUID, PK)
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `task_list_id` (UUID): References `mp_task_lists_master(id)`.
 - `name` (TEXT)
 - `evidence_type_id` (UUID): References `mp_evidence_types(id)`.
@@ -85,14 +73,12 @@ Template for sub-tasks, linked to a master task.
 - `id` (UUID, PK)
 - `task_id` (UUID): References `mp_tasks_master(id)`.
 - `name` (TEXT)
-- `evidence_type_id` (UUID)
 - `sort_order` (INTEGER)
 
 ### `mp_program_tasks`
 Snapshot copies of master tasks for a specific program. Can be edited by supervisors without affecting the master list.
 - `id` (UUID, PK)
 - `program_id` (UUID): References `mp_programs(id)`.
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `master_task_id` (UUID): References `mp_tasks_master(id)`.
 - `name` (TEXT)
 - `evidence_type_id` (UUID)
@@ -111,10 +97,8 @@ Snapshot copies of master sub-tasks for a specific program task.
 Snapshot copies of program tasks or custom tasks for a specific pair.
 - `id` (UUID, PK)
 - `pair_id` (UUID): References `mp_pairs(id)`.
-- `master_task_id` (UUID): References `mp_tasks_master(id)`. (Legacy reference)
 - `program_task_id` (UUID): References `mp_program_tasks(id)`.
 - `program_id` (UUID): References `mp_programs(id)`.
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `name` (TEXT)
 - `evidence_type_id` (UUID)
 - `sort_order` (INTEGER)
@@ -144,7 +128,6 @@ Stores scheduled and completed meetings for a pair.
 - `id` (UUID, PK)
 - `pair_id` (UUID): References `mp_pairs(id)`.
 - `program_id` (UUID): References `mp_programs(id)`.
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `title` (TEXT)
 - `date_time` (TIMESTAMPTZ)
 - `location_type` (TEXT): 'in-person', 'video', 'phone', 'other'.
@@ -156,7 +139,6 @@ Stores files and text submitted as evidence for tasks or meetings.
 - `id` (UUID, PK)
 - `pair_id` (UUID): References `mp_pairs(id)`.
 - `program_id` (UUID): References `mp_programs(id)`.
-- `organisation_id` (UUID): References `mp_organisations(id)`.
 - `task_id` (UUID): References `mp_pair_tasks(id)`.
 - `sub_task_id` (UUID): References `mp_pair_subtasks(id)`.
 - `meeting_id` (UUID): References `mp_meetings(id)`.
