@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAuth } from '@/auth/context/auth-context';
@@ -11,6 +12,7 @@ import {
   restorePair,
   fetchPairStats,
   type UpdatePairInput,
+  type CreatePairInput,
 } from '@/lib/api/pairs';
 
 const EMPTY_ARRAY: any[] = [];
@@ -23,7 +25,6 @@ export function usePairs() {
   const { data: pairs = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['pairs', programId],
     queryFn: () => fetchPairs(programId),
-    // Always enabled as RLS will handle the filtering automatically
     enabled: true,
   });
 
@@ -40,16 +41,8 @@ export function usePairs() {
       }
       return createPair(input);
     },
-    onSuccess: async (newPair) => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['pairs'] });
-      
-      // Notify participants about new pairing
-      // We need names which might be in the returned newPair or fetched
-      const pair = newPair as any;
-      if (pair.mentor?.full_name && pair.mentee?.full_name) {
-        // Welcoming participants logic could be added to NotificationService
-        // For now, it's just helpful to know it's ready.
-      }
     },
   });
 
@@ -98,52 +91,50 @@ export function usePairs() {
 }
 
 export function useUserPairs(userId: string) {
-  const { user, loading: authLoading, isAutoSelecting } = useAuth();
-  const activeOrgId = user?.selected_organisation_id;
+  const { loading: authLoading } = useAuth();
+
+  const selectFn = useCallback((pairs: any[]) => {
+    return [...pairs].sort((a, b) => {
+      const aActive = a.status === 'active' && a.program?.status === 'active';
+      const bActive = b.status === 'active' && b.program?.status === 'active';
+      
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      const aDate = a.program?.start_date ? new Date(a.program.start_date).getTime() : 0;
+      const bDate = b.program?.start_date ? new Date(b.program.start_date).getTime() : 0;
+      
+      if (aDate !== bDate) return bDate - aDate;
+
+      const aName = (userId === a.mentor_id ? a.mentee?.full_name : a.mentor?.full_name) || '';
+      const bName = (userId === b.mentor_id ? b.mentee?.full_name : b.mentor?.full_name) || '';
+      
+      return aName.localeCompare(bName);
+    });
+  }, [userId]);
 
   return useQuery({
-    queryKey: ['pairs', 'user', userId, activeOrgId],
+    queryKey: ['pairs', 'user', userId],
     queryFn: () => fetchUserPairs(userId),
-    enabled: !!userId && !authLoading && !isAutoSelecting,
-    select: (pairs) => {
-      return [...pairs].sort((a, b) => {
-        // 1. Active Pair + Active Program first
-        const aActive = a.status === 'active' && a.program?.status === 'active';
-        const bActive = b.status === 'active' && b.program?.status === 'active';
-        
-        if (aActive && !bActive) return -1;
-        if (!aActive && bActive) return 1;
-
-        // 2. Program date (latest start_date at top)
-        const aDate = a.program?.start_date ? new Date(a.program.start_date).getTime() : 0;
-        const bDate = b.program?.start_date ? new Date(b.program.start_date).getTime() : 0;
-        
-        if (aDate !== bDate) return bDate - aDate;
-
-        // 3. Name alphabetical
-        const aName = (userId === a.mentor_id ? a.mentee?.full_name : a.mentor?.full_name) || '';
-        const bName = (userId === b.mentor_id ? b.mentee?.full_name : b.mentor?.full_name) || '';
-        
-        return aName.localeCompare(bName);
-      });
-    }
+    enabled: !!userId && !authLoading,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+    select: selectFn
   });
 }
 
-/**
- * Specifically for the Dashboard: only show relationships where BOTH the pair and the program are active.
- */
 export function useActiveUserPairs(userId: string) {
-  const { user, loading: authLoading, isAutoSelecting } = useAuth();
-  const activeOrgId = user?.selected_organisation_id;
+  const { loading: authLoading } = useAuth();
+
+  const selectFn = useCallback((pairs: any[]) => {
+    return pairs.filter(p => p.status === 'active' && p.program?.status === 'active');
+  }, []);
 
   return useQuery({
-    queryKey: ['pairs', 'user', userId, activeOrgId, 'active-only'],
+    queryKey: ['pairs', 'user', userId, 'active-only'],
     queryFn: () => fetchUserPairs(userId),
-    enabled: !!userId && !authLoading && !isAutoSelecting,
-    select: (pairs) => {
-      return pairs.filter(p => p.status === 'active' && p.program?.status === 'active');
-    }
+    enabled: !!userId && !authLoading,
+    select: selectFn
   });
 }
 

@@ -5,16 +5,13 @@ import { MENU_SIDEBAR } from '@/config/menu.config';
 import { useMenu } from '@/hooks/use-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSettings } from '@/providers/settings-provider';
-import { useOrganisation } from '@/providers/organisation-provider';
 import { Header } from './components/header';
 import { Sidebar } from './components/sidebar';
 import { BottomNavBar } from './components/bottom-nav-bar';
-import { MasqueradeBanner } from '@/components/common/masquerade-banner';
 
 export function Demo1Layout() {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const { isMasquerading } = useOrganisation();
   const { getCurrentItem } = useMenu(pathname);
   const item = getCurrentItem(MENU_SIDEBAR);
   const { settings, setOption } = useSettings();
@@ -68,10 +65,9 @@ export function Demo1Layout() {
       {!isMobile && <Sidebar />}
 
       <div className="wrapper flex grow flex-col">
-        <MasqueradeBanner />
         <Header />
 
-        <main className={cn("grow", isMobile ? "pt-5 pb-20" : (isMasquerading ? "pt-[48px]" : "pt-0"))} role="content">
+        <main className={cn("grow", isMobile ? "pt-5 pb-20" : "pt-0")} role="content">
           <Outlet />
         </main>
       </div>

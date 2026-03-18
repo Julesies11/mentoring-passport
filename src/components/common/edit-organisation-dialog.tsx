@@ -88,8 +88,8 @@ export function EditOrganisationDialog({
         logo_url: finalLogoUrl as string | null,
       });
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['organisation', organisation.id] });
+      // Invalidate all organisation-related queries to refresh data across the app
+      queryClient.invalidateQueries({ queryKey: ['organisation'] });
       queryClient.invalidateQueries({ queryKey: ['active-organisation'] });
       
       toast.success('Organisation updated successfully');

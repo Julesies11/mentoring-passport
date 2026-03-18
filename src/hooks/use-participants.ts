@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
-import { useOrganisation } from '@/providers/organisation-provider';
 import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchParticipants,
@@ -57,19 +56,17 @@ export function useOrgSupervisors() {
 export function useParticipants(programId?: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { activeOrganisation } = useOrganisation();
-  const orgId = activeOrganisation?.id;
 
   const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
-    queryKey: ['participants', orgId, programId],
-    queryFn: () => fetchParticipants(orgId!, programId),
-    enabled: !!orgId,
+    queryKey: ['participants', programId],
+    queryFn: () => fetchParticipants(programId),
+    enabled: true,
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['participants', 'stats', orgId, programId],
-    queryFn: () => fetchParticipantStats(orgId!, programId),
-    enabled: !!orgId,
+    queryKey: ['participants', 'stats', programId],
+    queryFn: () => fetchParticipantStats(programId),
+    enabled: true,
   });
 
   const createMutation = useMutation({
@@ -85,8 +82,6 @@ export function useParticipants(programId?: string) {
     onSuccess: async (updatedParticipant, variables) => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
       
-      // Check for profile completion notification
-      // A profile is "completed" for the first time when full_name and job_title are provided
       const oldParticipant = participants.find(p => p.id === variables.id);
       const isNewlyCompleted = (
         (!oldParticipant?.full_name || !oldParticipant?.job_title) &&
@@ -94,8 +89,7 @@ export function useParticipants(programId?: string) {
       );
 
       if (isNewlyCompleted && user?.id) {
-        const orgId = updatedParticipant.organisation_id;
-        await NotificationService.notifyProfileCompleted(updatedParticipant.id, updatedParticipant.full_name, user.id, orgId);
+        await NotificationService.notifyProfileCompleted(updatedParticipant.id, updatedParticipant.full_name, user.id);
       }
     },
   });
@@ -135,34 +129,25 @@ export function useParticipants(programId?: string) {
 }
 
 export function useParticipant(id: string) {
-  const { activeOrganisation } = useOrganisation();
-  const orgId = activeOrganisation?.id;
-
   return useQuery({
-    queryKey: ['participants', id, orgId],
-    queryFn: () => fetchParticipant(id, orgId),
+    queryKey: ['participants', id],
+    queryFn: () => fetchParticipant(id),
     enabled: !!id,
   });
 }
 
 export function useAllParticipants(programId?: string) {
-  const { activeOrganisation } = useOrganisation();
-  const orgId = activeOrganisation?.id;
-
   return useQuery({
-    queryKey: ['participants', orgId, programId],
-    queryFn: () => fetchParticipants(orgId!, programId),
-    enabled: !!orgId,
+    queryKey: ['participants', 'all', programId],
+    queryFn: () => fetchParticipants(programId),
+    enabled: true,
   });
 }
 
 export function useParticipantsByRole(role: 'supervisor' | 'program-member') {
-  const { activeOrganisation } = useOrganisation();
-  const orgId = activeOrganisation?.id;
-
   return useQuery({
-    queryKey: ['participants', 'role', role, orgId],
-    queryFn: () => fetchParticipantsByRole(role, orgId),
-    enabled: !!orgId && typeof orgId === 'string' && orgId !== '[object Object]',
+    queryKey: ['participants', 'role', role],
+    queryFn: () => fetchParticipantsByRole(role),
+    enabled: true,
   });
 }

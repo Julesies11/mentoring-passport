@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchParticipants, updateParticipant, archiveParticipant, restoreParticipant, Participant } from '@/lib/api/participants';
-import { fetchOrganisations } from '@/lib/api/organisations';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 import { KeenIcon } from '@/components/keenicons';
-import { Search, Mail, Building2 } from 'lucide-react';
+import { Search, Mail } from 'lucide-react';
 import { usePagination } from '@/hooks/use-pagination';
 import { DataTablePagination } from '@/components/common/data-table-pagination';
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
@@ -24,20 +23,8 @@ export function AdminUsersContent() {
     queryFn: () => fetchParticipants(), 
   });
 
-  const { data: organisations = [] } = useQuery({
-    queryKey: ['organisations'],
-    queryFn: fetchOrganisations,
-  });
-
-  const orgMap = useMemo(() => {
-    const map = new Map<string, string>();
-    organisations.forEach(org => map.set(org.id, org.name));
-    return map;
-  }, [organisations]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
-  const [orgFilter, setOrgFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -52,12 +39,11 @@ export function AdminUsersContent() {
         p.role.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-      const matchesOrg = orgFilter === 'all' || p.organisation_id === orgFilter;
       const matchesRole = roleFilter === 'all' || p.role === roleFilter;
       
-      return matchesSearch && matchesStatus && matchesOrg && matchesRole;
+      return matchesSearch && matchesStatus && matchesRole;
     });
-  }, [participants, searchTerm, statusFilter, orgFilter, roleFilter]);
+  }, [participants, searchTerm, statusFilter, roleFilter]);
 
   const {
     currentPage,
@@ -122,7 +108,7 @@ export function AdminUsersContent() {
     <div className="grid gap-5 lg:gap-7.5">
       <Card className="border-0 sm:border">
         <CardHeader className="flex-wrap gap-3 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-100 min-h-0">
-          <CardTitle className="text-sm sm:text-lg font-bold">Global User Directory</CardTitle>
+          <CardTitle className="text-sm sm:text-lg font-bold">Instance User Directory</CardTitle>
           <CardToolbar className="gap-2 sm:gap-2.5 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -135,25 +121,14 @@ export function AdminUsersContent() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Select value={orgFilter} onValueChange={setOrgFilter}>
-                <SelectTrigger className="h-9 sm:h-10 w-[140px] lg:w-[180px] rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
-                  <SelectValue placeholder="Organisation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Orgs</SelectItem>
-                  {organisations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="h-9 sm:h-10 w-[110px] rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-tight">
                   <SelectValue placeholder="Role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="administrator">Admin</SelectItem>
+                  <SelectItem value="administrator">Sys Admin</SelectItem>
+                  <SelectItem value="org-admin">Org Admin</SelectItem>
                   <SelectItem value="supervisor">Supervisor</SelectItem>
                   <SelectItem value="program-member">Member</SelectItem>
                 </SelectContent>
@@ -183,7 +158,6 @@ export function AdminUsersContent() {
                 <TableHeader className="bg-gray-50/50">
                   <TableRow>
                     <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">User</TableHead>
-                    <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Organisation</TableHead>
                     <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest">Role</TableHead>
                     <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-center">Status</TableHead>
                     <TableHead className="px-6 text-[10px] font-black uppercase text-gray-400 tracking-widest text-right">Actions</TableHead>
@@ -192,7 +166,7 @@ export function AdminUsersContent() {
                 <TableBody>
                   {paginatedUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-20 text-muted-foreground font-medium italic">
+                      <TableCell colSpan={4} className="text-center py-20 text-muted-foreground font-medium italic">
                         No users found matching your criteria.
                       </TableCell>
                     </TableRow>
@@ -219,19 +193,11 @@ export function AdminUsersContent() {
                           </div>
                         </TableCell>
                         <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-xs text-gray-700 font-bold">
-                            <Building2 size={12} className="text-primary opacity-50 shrink-0" />
-                            <span className="truncate max-w-[150px]">
-                              {u.organisation_id ? orgMap.get(u.organisation_id) || 'Unknown' : <span className="text-primary font-black uppercase text-[9px]">System Global</span>}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
                           <Badge 
                             variant="outline" 
                             className={cn(
                               "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                              u.role === 'administrator' ? "bg-zinc-900 text-white" : 
+                              (u.role === 'administrator' || u.role === 'org-admin') ? "bg-zinc-900 text-white" : 
                               u.role === 'supervisor' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
                             )}
                           >

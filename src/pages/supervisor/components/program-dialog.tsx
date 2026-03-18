@@ -234,38 +234,33 @@ export function ProgramDialog({
                 </Popover>
               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50/30 min-h-[54px]">
+              <div className="p-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50/30 min-h-[54px] flex flex-wrap gap-2">
                 {selectedSupervisors.length > 0 ? (
-                  <div className="flex items-center justify-between w-full">
-                    <AvatarGroup>
-                      {selectedSupervisors.slice(0, 5).map((s) => (
-                        <AvatarGroupItem key={s.id}>
-                          <Avatar className="size-8 border-2 border-white ring-0">
-                            <AvatarImage src={s.avatar_url || ''} />
-                            <AvatarFallback className="text-[10px] font-black">
-                              {s.full_name?.split(' ').map((n: string) => n[0]).join('') || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <AvatarGroupTooltip>
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-bold">{s.full_name}</span>
-                              <span className="text-[10px] opacity-80">{s.email}</span>
-                            </div>
-                          </AvatarGroupTooltip>
-                        </AvatarGroupItem>
-                      ))}
-                      {selectedSupervisors.length > 5 && (
-                        <div className="flex items-center justify-center size-8 rounded-full border-2 border-white bg-gray-100 text-[10px] font-black text-gray-500 z-10 -ml-2.5">
-                          +{selectedSupervisors.length - 5}
-                        </div>
-                      )}
-                    </AvatarGroup>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      {selectedSupervisors.length} Assigned
-                    </span>
-                  </div>
+                  selectedSupervisors.map((s) => (
+                    <div 
+                      key={s.id} 
+                      className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full bg-white border border-gray-100 shadow-sm"
+                    >
+                      <Avatar className="size-6">
+                        <AvatarImage src={s.avatar_url || ''} />
+                        <AvatarFallback className="text-[8px] font-black">
+                          {s.full_name?.split(' ').map((n: string) => n[0]).join('') || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-[10px] font-bold text-gray-900 truncate max-w-[120px]">
+                        {s.full_name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleSupervisor(s.id)}
+                        className="size-4 rounded-full flex items-center justify-center text-gray-400 hover:bg-danger-light hover:text-danger transition-colors ml-0.5"
+                      >
+                        <KeenIcon icon="cross" className="text-[8px]" />
+                      </button>
+                    </div>
+                  ))
                 ) : (
-                  <p className="text-[10px] text-muted-foreground italic pl-1">No supervisors assigned yet</p>
+                  <p className="text-[10px] text-muted-foreground italic pl-1 py-1">No supervisors assigned yet</p>
                 )}
               </div>
             </div>

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
 
-describe('Programs API', () => {
+describe('Programs API Single-Organisation', () => {
   beforeEach(() => {
     // Reset handlers
     server.use(
@@ -11,7 +11,6 @@ describe('Programs API', () => {
         return HttpResponse.json([
           { 
             id: 'prog1', 
-            organisation_id: 'org1',
             name: 'General Program', 
             status: 'active',
             created_at: '2024-03-01T10:00:00Z',
@@ -22,7 +21,6 @@ describe('Programs API', () => {
       http.post('*/rest/v1/mp_programs*', () => {
         return HttpResponse.json({ 
           id: 'prog2', 
-          organisation_id: 'org1',
           name: 'New Program', 
           status: 'active',
           created_at: '2024-03-01T10:05:00Z',
@@ -32,14 +30,14 @@ describe('Programs API', () => {
     );
   });
 
-  it('fetches programs for an organisation', async () => {
-    const programs = await fetchPrograms('org1');
+  it('fetches all programs in the instance', async () => {
+    const programs = await fetchPrograms();
     expect(programs).toHaveLength(1);
     expect(programs[0].name).toBe('General Program');
   });
 
-  it('creates a new program', async () => {
-    const program = await createProgram({ organisation_id: 'org1', name: 'New Program' });
+  it('creates a new program without organisation_id', async () => {
+    const program = await createProgram({ name: 'New Program', status: 'active' });
     expect(program).toBeDefined();
     expect(program.name).toBe('New Program');
   });

@@ -6,14 +6,13 @@ import { ROLES, STORAGE_BUCKETS, UserRole, EntityStatus } from '@/config/constan
 export interface Profile {
   id: string;
   email: string;
-  role: UserRole; // Inferred from memberships or global role
+  role: UserRole;
   full_name: string | null;
   job_title: string | null;
   bio: string | null;
   department: string | null;
   phone: string | null;
   avatar_url: string | null;
-  organisation_id: string | null;
   status: EntityStatus;
   created_at: string;
   updated_at: string;
@@ -26,19 +25,15 @@ export interface UpdateProfileInput {
   department?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
-  organisation_id?: string | null;
 }
 
 /**
- * Fetch all users across the entire system (Administrator only)
+ * Fetch all users across the entire instance (Administrator only)
  */
 export async function fetchAllUsers(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select(`
-      *,
-      memberships:mp_memberships(role, organisation_id)
-    `)
+    .select('*')
     .order('full_name', { ascending: true });
 
   if (error) {
@@ -49,27 +44,18 @@ export async function fetchAllUsers(): Promise<Profile[]> {
     throw error;
   }
 
-  // Derive role for each user (prefer non-program-member)
-  return (data || []).map(p => {
-    const role = (p.memberships as any[])?.find(m => m.role !== ROLES.PROGRAM_MEMBER)?.role 
-      || (p.memberships as any[])?.[0]?.role 
-      || ROLES.PROGRAM_MEMBER;
-    return { ...p, role };
-  }) as Profile[];
+  return data || [];
 }
 
 /**
- * Search for users across the entire system (Administrator only)
+ * Search for users across the entire instance (Administrator only)
  */
 export async function searchUsers(query: string): Promise<Profile[]> {
   if (!query) return fetchAllUsers();
   
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select(`
-      *,
-      memberships:mp_memberships(role, organisation_id)
-    `)
+    .select('*')
     .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
     .order('full_name', { ascending: true });
 
@@ -82,13 +68,7 @@ export async function searchUsers(query: string): Promise<Profile[]> {
     throw error;
   }
 
-  // Derive role for each user
-  return (data || []).map(p => {
-    const role = (p.memberships as any[])?.find(m => m.role !== ROLES.PROGRAM_MEMBER)?.role 
-      || (p.memberships as any[])?.[0]?.role 
-      || ROLES.PROGRAM_MEMBER;
-    return { ...p, role };
-  }) as Profile[];
+  return data || [];
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<Profile> {
@@ -119,10 +99,7 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data: profile, error } = await supabase
     .from('mp_profiles')
-    .select(`
-      *,
-      memberships:mp_memberships(role, organisation_id)
-    `)
+    .select('*')
     .eq('id', userId)
     .single();
 
@@ -130,15 +107,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     throw new Error(`Failed to get profile: ${error.message}`);
   }
 
-  if (!profile) return null;
-
-  // Derive role
-  const role = (profile.memberships as any[])?.[0]?.role || ROLES.PROGRAM_MEMBER;
-
-  return {
-    ...profile,
-    role
-  } as any;
+  return profile || null;
 }
 
 /**
@@ -175,4 +144,3 @@ export async function handleAvatarUpload(
 
   return currentAvatarUrl;
 }
-

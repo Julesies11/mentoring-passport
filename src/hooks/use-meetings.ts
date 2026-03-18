@@ -14,23 +14,24 @@ import {
   type UpdateMeetingInput,
 } from '@/lib/api/meetings';
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useAllMeetings() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { activeProgram, activeOrganisation } = useOrganisation();
+  const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
-  const orgId = activeOrganisation?.id;
 
-  const { data: meetings = [], isLoading, error } = useQuery({
-    queryKey: ['meetings', 'all', programId, orgId],
-    queryFn: () => fetchAllMeetings(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+  const { data: meetings = EMPTY_ARRAY, isLoading, error } = useQuery({
+    queryKey: ['meetings', 'all', programId],
+    queryFn: () => fetchAllMeetings(programId),
+    enabled: true,
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['meetings', 'stats', programId, orgId],
-    queryFn: () => fetchMeetingStats(programId, orgId),
-    enabled: !!(programId || orgId || user?.role === 'administrator'),
+    queryKey: ['meetings', 'stats', programId],
+    queryFn: () => fetchMeetingStats(programId),
+    enabled: true,
   });
 
   const createMutation = useMutation({
@@ -38,14 +39,11 @@ export function useAllMeetings() {
     onSuccess: async (newMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       
-      // Notify partner
       const meetingData = newMeeting as any;
       const pair = meetingData.mp_pairs;
       if (pair && user?.id) {
-        // Handle both old and new data structures
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
-        const orgId = pair.organisation_id || pair.program?.organisation_id;
 
         if (mentorId && menteeId) {
           await NotificationService.notifyMeetingChange(
@@ -55,8 +53,7 @@ export function useAllMeetings() {
             mentorId,
             menteeId,
             user.id,
-            true,
-            orgId
+            true
           );
         }
       }
@@ -69,13 +66,11 @@ export function useAllMeetings() {
     onSuccess: async (updatedMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       
-      // Notify partner
       const meetingData = updatedMeeting as any;
       const pair = meetingData.mp_pairs;
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
-        const orgId = pair.organisation_id || pair.program?.organisation_id;
 
         if (mentorId && menteeId) {
           await NotificationService.notifyMeetingChange(
@@ -85,8 +80,7 @@ export function useAllMeetings() {
             mentorId,
             menteeId,
             user.id,
-            false,
-            orgId
+            false
           );
         }
       }
@@ -98,13 +92,11 @@ export function useAllMeetings() {
     onSuccess: async (deletedMeeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
 
-      // Notify partner
       const meetingData = deletedMeeting as any;
       const pair = meetingData.mp_pairs;
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
-        const orgId = pair.organisation_id || pair.program?.organisation_id;
 
         if (mentorId && menteeId) {
           await NotificationService.notifyMeetingCancelled(
@@ -112,8 +104,7 @@ export function useAllMeetings() {
             meetingData.date_time,
             mentorId,
             menteeId,
-            user.id,
-            orgId
+            user.id
           );
         }
       }
@@ -139,7 +130,7 @@ export function usePairMeetings(pairId: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const { data: meetings = [], isLoading, error } = useQuery({
+  const { data: meetings = EMPTY_ARRAY, isLoading, error } = useQuery({
     queryKey: ['meetings', 'pair', pairId],
     queryFn: () => fetchPairMeetings(pairId),
     enabled: !!pairId,
@@ -151,13 +142,11 @@ export function usePairMeetings(pairId: string) {
       queryClient.invalidateQueries({ queryKey: ['meetings', 'pair', pairId] });
       queryClient.invalidateQueries({ queryKey: ['meetings', 'all'] });
       
-      // Notify partner
       const meetingData = newMeeting as any;
       const pair = meetingData.mp_pairs;
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
-        const orgId = pair.organisation_id || pair.program?.organisation_id;
 
         if (mentorId && menteeId) {
           await NotificationService.notifyMeetingChange(
@@ -167,8 +156,7 @@ export function usePairMeetings(pairId: string) {
             mentorId,
             menteeId,
             user.id,
-            true,
-            orgId
+            true
           );
         }
       }
@@ -182,13 +170,11 @@ export function usePairMeetings(pairId: string) {
       queryClient.invalidateQueries({ queryKey: ['meetings', 'pair', pairId] });
       queryClient.invalidateQueries({ queryKey: ['meetings', 'all'] });
       
-      // Notify partner
       const meetingData = updatedMeeting as any;
       const pair = meetingData.mp_pairs;
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
-        const orgId = pair.organisation_id || pair.program?.organisation_id;
 
         if (mentorId && menteeId) {
           await NotificationService.notifyMeetingChange(
@@ -198,8 +184,7 @@ export function usePairMeetings(pairId: string) {
             mentorId,
             menteeId,
             user.id,
-            false,
-            orgId
+            false
           );
         }
       }

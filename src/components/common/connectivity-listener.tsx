@@ -52,16 +52,16 @@ export function ConnectivityListener() {
      */
     const channel = supabase.channel('connectivity-status');
     
-    // Set a timeout to show an error if we can't connect within 5 seconds on initial load
+    // Set a timeout to show an error if we can't connect within 15 seconds on initial load
     connectionTimeoutRef.current = setTimeout(() => {
       if (!hasConnectedOnceRef.current && isOnlineRef.current && !dbErrorShownRef.current) {
         dbErrorShownRef.current = true;
-        toast.error('Initial connection to database failed. Retrying...', {
+        toast.error('Initial connection to database is slow. Still trying...', {
           id: 'db-connection-error',
           duration: Infinity,
         });
       }
-    }, 5000);
+    }, 15000);
 
     channel.subscribe((status) => {
       console.log(`Connectivity: Realtime status change: ${status}`);
@@ -75,10 +75,14 @@ export function ConnectivityListener() {
         if (dbErrorShownRef.current) {
           toast.dismiss('db-connection-error');
           dbErrorShownRef.current = false;
-          toast.success('Database connection restored', { 
-            duration: 3000,
-            id: 'db-connection-restored'
-          });
+          
+          // Only show "restored" if we had a successful connection before it dropped
+          if (hasConnectedOnceRef.current) {
+            toast.success('Database connection restored', { 
+              duration: 3000,
+              id: 'db-connection-restored'
+            });
+          }
         }
         hasConnectedOnceRef.current = true;
       } else if (status === 'CLOSED' || status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {

@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 import { useAuth } from '@/auth/context/auth-context';
-import { useOrganisation } from '@/providers/organisation-provider';
 import { Participant } from '@/lib/api/participants';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -42,9 +41,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id');
   const { role } = useAuth();
-  const { activeOrganisation } = useOrganisation();
-  const organisationId = activeOrganisation?.id;
-  const isOrgAdmin = role === 'org-admin';
+  const isOrgAdmin = role === 'org-admin' || role === 'administrator';
   const isManageMode = mode === 'manage' && isOrgAdmin;
 
   const { 
@@ -60,7 +57,6 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
   // Effect for highlighting deep-linked participant
   useEffect(() => {
     if (highlightId && !isLoading) {
-      // Small delay to ensure table is rendered
       const timer = setTimeout(() => {
         const element = document.getElementById(`participant-${highlightId}`);
         if (element) {
@@ -84,14 +80,12 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
   );
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
   
-  // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
   const [newCredentials, setNewCredentials] = useState({ email: '', password: '', name: '', role: '' as any });
 
-  // If we are on mobile and status is 'all', force it to 'active'
   useEffect(() => {
     if (isMobile && statusFilter === 'all') {
       setStatusFilter('active');
@@ -112,7 +106,6 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
     });
   }, [participants, searchTerm, roleFilter, statusFilter]);
 
-  // Use centralized pagination hook
   const {
     currentPage,
     itemsPerPage,
@@ -130,7 +123,6 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
     initialItemsPerPage: 10
   });
 
-  // Reset to page 1 when search or filters change
   useEffect(() => {
     goToPage(1);
   }, [searchTerm, roleFilter, statusFilter, goToPage]);
@@ -141,13 +133,9 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
     let newParticipantId = null;
     try {
       const { avatar_file, ...input } = data;
-      
-      // 1. Create the participant first to get the ID
       const newParticipant = await createParticipantAsync(input);
       newParticipantId = newParticipant.id;
       
-      // 2. If there's an avatar file, upload it in a separate try-catch
-      // to ensure we still show credentials even if upload fails
       if (newParticipantId && avatar_file) {
         try {
           const avatarUrl = await handleAvatarUpload(newParticipantId, avatar_file);
@@ -171,15 +159,12 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
       toast.success('Participant created successfully');
     } catch (err: any) {
       console.error('Error creating participant:', err);
-      
       await logError({
         message: `Member creation failed: ${err.message}`,
         stack: err.stack,
         componentName: 'participants-content',
         metadata: { email: data.email, role: data.role }
       });
-
-      // Re-throw so the dialog can catch it and display it in the error state
       throw err;
     } finally {
       setIsSubmitting(false);
@@ -199,32 +184,31 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
         editingParticipant.avatar_url
       );
 
-      await updateParticipantAsync(editingParticipant.id, {
-        full_name,
-        job_title,
-        department,
-        phone,
-        bio,
-        status,
-        role, // The API now handles syncing this to mp_memberships
-        avatar_url: finalAvatarUrl,
-        organisation_id: organisationId,
-      });
+      await updateParticipantAsync(
+        editingParticipant.id,
+        {
+          full_name,
+          job_title,
+          department,
+          phone,
+          bio,
+          status,
+          role,
+          avatar_url: finalAvatarUrl
+        }
+      );
 
       setIsDialogOpen(false);
       setEditingParticipant(null);
       toast.success('Participant updated successfully');
     } catch (err: any) {
       console.error('Error updating participant:', err);
-
       await logError({
         message: `Member update failed: ${err.message}`,
         stack: err.stack,
         componentName: 'participants-content',
         metadata: { participantId: editingParticipant.id }
       });
-
-      // Re-throw so the dialog can catch it and display it in the error state
       throw err;
     } finally {
       setIsSubmitting(false);
@@ -260,7 +244,6 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
 
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
-      {/* Stats Summary */}
       {stats && (
         <div className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
           <Card>
@@ -463,12 +446,12 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                               className={cn(
                                 "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
                                 p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : 
-                                p.role === 'org-admin' ? "bg-amber-100 text-amber-700" :
+                                (p.role === 'org-admin' || p.role === 'administrator') ? "bg-amber-100 text-amber-700" :
                                 "bg-blue-100 text-blue-700"
                               )}
                             >
                               {p.role === 'supervisor' ? 'Supervisor' : 
-                               p.role === 'org-admin' ? 'Org Admin' : 
+                               (p.role === 'org-admin' || p.role === 'administrator') ? 'Admin' : 
                                'Member'}
                             </Badge>
                           </TableCell>

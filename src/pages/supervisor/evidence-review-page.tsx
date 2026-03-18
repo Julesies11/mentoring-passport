@@ -34,7 +34,7 @@ import { DataTablePagination } from '@/components/common/data-table-pagination';
 import { FilePreviewCard } from '@/components/common/file-preview-card';
 import { ProgramSelector } from '@/components/common/program-selector';
 
-export function EvidenceReviewPage() {
+export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor' | 'org-admin' }) {
   const navigate = useNavigate();
   const { isOrgAdmin } = useAuth();
   const { activeProgram, isLoading: isContextLoading } = useOrganisation();
@@ -43,6 +43,9 @@ export function EvidenceReviewPage() {
   const { data: allEvidence = [], isLoading } = useAllEvidence();
   const { stats, reviewEvidence, isReviewing } = usePendingEvidence();
   const [statusFilter, setStatusFilter] = useState<'to_review' | 'reviewed' | 'all'>('to_review');
+  
+  // Determine base path for navigation
+  const basePath = mode === 'org-admin' ? '/admin' : '/supervisor';
   
   const filteredEvidence = useMemo(() => {
     let items = allEvidence;
@@ -131,8 +134,8 @@ export function EvidenceReviewPage() {
           <Toolbar>
             <div className="flex items-center gap-5">
               <ToolbarHeading
-                title="Evidence Review"
-                description={highlightPairId ? "Reviewing evidence for selected pair" : "Manage and validate program item submissions"}
+                title={mode === 'org-admin' ? "Audit Evidence" : "Evidence Review"}
+                description={mode === 'org-admin' ? "Quality assurance and oversight of program submissions" : (highlightPairId ? "Reviewing evidence for selected pair" : "Manage and validate program item submissions")}
               />
               <ProgramSelector />
             </div>
@@ -272,7 +275,7 @@ export function EvidenceReviewPage() {
                                 <span className="hidden sm:inline text-gray-300">•</span>
                                 <span className="sm:hidden text-[10px] text-gray-400 font-bold uppercase">{format(new Date(item.created_at), 'MMM d, yyyy')}</span>
                                 <button 
-                                  onClick={() => navigate(`/supervisor/checklist?pair=${item.pair_id}&taskId=${item.pair_task_id}`)}
+                                  onClick={() => navigate(`${basePath}/checklist?pair=${item.pair_id}&taskId=${item.pair_task_id}`)}
                                   className="text-[10px] font-black uppercase text-primary hover:underline flex items-center gap-1 bg-primary/5 px-2 py-0.5 rounded shrink-0"
                                 >
                                   <KeenIcon icon="exit-right-corner" className="text-[10px]" />
@@ -314,7 +317,7 @@ export function EvidenceReviewPage() {
                         </div>
                       )}
 
-                      {item.status !== 'approved' && (
+                      {item.status !== 'approved' && mode === 'supervisor' && (
                         <div className="flex flex-wrap gap-3 pt-2">
                           <Button 
                             onClick={() => handleOpenReview(item, 'approve')}
@@ -332,6 +335,13 @@ export function EvidenceReviewPage() {
                             Request Revision
                           </Button>
                         </div>
+                      )}
+
+                      {mode === 'org-admin' && item.status !== 'approved' && (
+                         <div className="flex items-center gap-2 px-1 text-amber-600 italic">
+                            <Clock size={16} />
+                            <span className="text-xs font-bold uppercase tracking-widest">Awaiting Supervisor Validation</span>
+                          </div>
                       )}
 
                       {item.status === 'approved' && (

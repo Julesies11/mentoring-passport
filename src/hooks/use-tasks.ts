@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
-import { useOrganisation } from '@/providers/organisation-provider';
 import { toast } from 'sonner';
 import { NotificationService } from '@/lib/api/notifications-service';
 import {
@@ -34,11 +33,13 @@ import {
   type ProgramSubTask
 } from '@/lib/api/tasks';
 
+const EMPTY_ARRAY: any[] = [];
+
 export function useTasks() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const { data: tasks = [], isLoading, error } = useQuery<Task[]>({
+  const { data: tasks = EMPTY_ARRAY, isLoading, error } = useQuery<Task[]>({
     queryKey: ['tasks'],
     queryFn: () => fetchTasks(),
     enabled: true,
@@ -198,21 +199,17 @@ export function usePairTasks(pairId: string) {
     mutationFn: ({ taskId, status, evidenceNotes }: { taskId: string; status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required'; evidenceNotes?: string }) =>
       updatePairTaskStatus(taskId, status, user?.id, evidenceNotes),
     onSuccess: async (updatedTask) => {
-      // Refresh cache
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] }),
         queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] })
       ]);
 
-      // Get pair info from our current list
       const currentTask = tasks.find(t => t.id === updatedTask.id);
       const mentorId = currentTask?.pair?.mentor_id;
       const menteeId = currentTask?.pair?.mentee_id;
       const mentorName = currentTask?.pair?.mentor?.full_name || 'Mentor';
       const menteeName = currentTask?.pair?.mentee?.full_name || 'Mentee';
-      const orgId = currentTask?.pair?.organisation_id;
 
-      // 1. Handle Task Submission (Notify Supervisors AND Partner)
       if (updatedTask.status === 'awaiting_review' && user?.id && mentorId && menteeId) {
         const actorName = user.full_name || user.email || 'Participant';
         await NotificationService.notifyTaskSubmitted(
@@ -223,18 +220,16 @@ export function usePairTasks(pairId: string) {
           mentorName, 
           menteeName, 
           user.id,
-          actorName,
-          orgId
+          actorName
         );
       }
 
-      // 2. Check for Milestones (50% / 100%)
       const freshStats = await fetchPairTaskStats(pairId);
       const actorName = user.full_name || user.email || 'Participant';
       if (freshStats.completed === freshStats.total) {
-        await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName, orgId);
+        await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName);
       } else if (freshStats.completed >= freshStats.total / 2 && (freshStats.completed - 1) < freshStats.total / 2) {
-        await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName, orgId);
+        await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName);
       }
     },
   });
@@ -245,7 +240,6 @@ export function usePairTasks(pairId: string) {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
       
-      // Notify pair about the new task if pair is already active
       const currentTasks = tasks;
       const hasStarted = currentTasks.some(t => t.status !== 'not_submitted');
       
@@ -253,9 +247,8 @@ export function usePairTasks(pairId: string) {
         const firstTask = currentTasks[0];
         const mentorId = firstTask?.pair?.mentor_id;
         const menteeId = firstTask?.pair?.mentee_id;
-        const orgId = firstTask?.pair?.organisation_id;
         if (mentorId && menteeId && user?.id) {
-          await NotificationService.notifyTaskAdded(newTask.id, newTask.name, mentorId, menteeId, user.id, orgId);
+          await NotificationService.notifyTaskAdded(newTask.id, newTask.name, mentorId, menteeId, user.id);
         }
       }
     },
@@ -273,7 +266,7 @@ export function usePairTasks(pairId: string) {
           const updated = old?.map(task => 
             task.id === taskId ? { ...task, ...updates } : task
           );
-          return updated; // Sorting is handled by the server and initial fetch
+          return updated;
         });
       }
       

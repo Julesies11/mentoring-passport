@@ -55,7 +55,6 @@ export function TaskTemplateEditorPage() {
   const navigate = useNavigate();
   const { activeOrganisation } = useOrganisation();
   const queryClient = useQueryClient();
-  const organisationId = activeOrganisation?.id;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -75,9 +74,8 @@ export function TaskTemplateEditorPage() {
 
   // Fetch current task list details
   const { data: taskLists = [] } = useQuery({
-    queryKey: ['task-lists', organisationId],
-    queryFn: () => fetchTaskLists(organisationId!),
-    enabled: !!organisationId,
+    queryKey: ['task-lists'],
+    queryFn: () => fetchTaskLists(),
   });
   
   const currentList = taskLists.find(l => l.id === taskListId);
@@ -109,12 +107,11 @@ export function TaskTemplateEditorPage() {
     }
   }, [tasks]);
 
-  // Mutations (copied and adapted from original page)
+  // Mutations
   const createTaskMutation = useMutation({
     mutationFn: async (data: { task: Omit<Task, 'id' | 'created_at' | 'updated_at'>, subtasks: any[] }) => {
       const newTask = await createTask({
         ...data.task,
-        organisation_id: organisationId!,
         task_list_id: taskListId!
       });
       
@@ -292,7 +289,7 @@ export function TaskTemplateEditorPage() {
 
   const filteredTasks = tasks.filter(t => 
     t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.evidence_type?.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (t.evidence_type?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -300,7 +297,7 @@ export function TaskTemplateEditorPage() {
       <Container>
         <Toolbar>
           <div className="flex items-center gap-4 w-full">
-            <Button variant="ghost" size="sm" mode="icon" onClick={() => navigate('/org-admin/task-templates')}>
+            <Button variant="ghost" size="sm" mode="icon" onClick={() => navigate('/admin/task-templates')}>
               <KeenIcon icon="arrow-left" className="text-xl" />
             </Button>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between flex-1 gap-4">
@@ -396,7 +393,6 @@ export function TaskTemplateEditorPage() {
         </div>
       </Container>
 
-      {/* Task Edit Dialog (Copied from original) */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent 
           className="max-w-[600px] h-[85dvh] w-[calc(100%-32px)] sm:w-full p-0 overflow-hidden flex flex-col border-none shadow-2xl rounded-2xl"

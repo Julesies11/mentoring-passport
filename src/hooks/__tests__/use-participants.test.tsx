@@ -7,6 +7,7 @@ import * as participantsApi from '@/lib/api/participants';
 // Mock useOrganisation
 vi.mock('@/providers/organisation-provider', () => ({
   useOrganisation: vi.fn(() => ({
+    activeOrganisation: { id: 'singleton-org' },
     activeProgram: { id: 'prog1' },
     isLoading: false
   })),
@@ -15,7 +16,6 @@ vi.mock('@/providers/organisation-provider', () => ({
 // Mock the API layer
 vi.mock('@/lib/api/participants', () => ({
   fetchParticipants: vi.fn(),
-  fetchParticipantStats: vi.fn(),
   createParticipant: vi.fn(),
   updateParticipant: vi.fn(),
   archiveParticipant: vi.fn(),
@@ -35,15 +35,14 @@ const createWrapper = () => {
   );
 };
 
-describe('useParticipants', () => {
+describe('useParticipants Single-Organisation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches participants correctly', async () => {
+  it('fetches participants correctly without organisation filters', async () => {
     const mockParticipants = [{ id: 'u1', full_name: 'Test' }];
     vi.mocked(participantsApi.fetchParticipants).mockResolvedValue(mockParticipants as any);
-    vi.mocked(participantsApi.fetchParticipantStats).mockResolvedValue({ total: 1 } as any);
 
     const { result } = renderHook(() => useParticipants(), { wrapper: createWrapper() });
 
@@ -52,7 +51,7 @@ describe('useParticipants', () => {
     });
 
     expect(result.current.participants).toEqual(mockParticipants);
-    expect(result.current.stats).toEqual({ total: 1 });
+    expect(participantsApi.fetchParticipants).toHaveBeenCalled();
   });
 
   it('handles update participant mutation', async () => {

@@ -77,7 +77,7 @@ export function getMeetingStatus(dateTime: string): 'upcoming' | 'past' {
 /**
  * Fetch all meetings (supervisor only)
  */
-export async function fetchAllMeetings(programId?: string, organisationId?: string): Promise<Meeting[]> {
+export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
   let query = supabase
     .from('mp_meetings')
     .select(`
@@ -86,16 +86,13 @@ export async function fetchAllMeetings(programId?: string, organisationId?: stri
         id,
         program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
-        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url),
-        program:mp_programs!inner(organisation_id)
+        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
     `);
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('mp_pairs.program_id', programId);
-  } else if (organisationId) {
-    query = query.eq('mp_pairs.program.organisation_id', organisationId);
   }
 
   const { data, error } = await query.order('date_time', { ascending: false });
@@ -166,10 +163,10 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
  * Create a new meeting
  */
 export async function createMeeting(input: CreateMeetingInput): Promise<Meeting> {
-  // 1. Fetch pair details to get organisation and program context
+  // 1. Fetch pair details to get program context
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
-    .select('organisation_id, program_id')
+    .select('program_id')
     .eq('id', input.pair_id)
     .single();
 
@@ -177,13 +174,12 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     throw new Error('Could not verify pairing context for meeting creation.');
   }
 
-  // 2. Insert the meeting with full isolation context
+  // 2. Insert the meeting
   const { data, error } = await supabase
     .from('mp_meetings')
     .insert({
       pair_id: input.pair_id,
       pair_task_id: input.pair_task_id,
-      organisation_id: pair.organisation_id,
       program_id: pair.program_id,
       title: input.title,
       notes: input.notes,
@@ -271,15 +267,13 @@ export async function deleteMeeting(meetingId: string): Promise<Meeting> {
 /**
  * Get meeting statistics
  */
-export async function fetchMeetingStats(programId?: string, organisationId?: string) {
+export async function fetchMeetingStats(programId?: string) {
   let query = supabase
     .from('mp_meetings')
-    .select('date_time, mp_pairs!inner(program_id, program:mp_programs!inner(organisation_id))');
+    .select('date_time, mp_pairs!inner(program_id)');
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('mp_pairs.program_id', programId);
-  } else if (organisationId) {
-    query = query.eq('mp_pairs.program.organisation_id', organisationId);
   }
 
   const { data: meetingsData, error: meetingsError } = await query;
@@ -297,4 +291,3 @@ export async function fetchMeetingStats(programId?: string, organisationId?: str
 
   return stats;
 }
-

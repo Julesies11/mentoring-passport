@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchGlobalStats } from '@/lib/api/organisations';
+import { fetchInstanceStats } from '@/lib/api/organisations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KeenIcon } from '@/components/keenicons';
@@ -7,29 +7,14 @@ import { Link } from 'react-router-dom';
 
 export function AdminDashboardContent() {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-global-stats'],
-    queryFn: fetchGlobalStats
+    queryKey: ['admin-instance-stats'],
+    queryFn: fetchInstanceStats
   });
 
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
-      {/* 1. Global Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7.5">
-        <Card className="border-none shadow-sm bg-primary text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="size-10 rounded-lg bg-white/20 flex items-center justify-center">
-                <KeenIcon icon="bank" className="text-xl text-white" />
-              </div>
-              <Badge className="bg-white/20 text-white border-none font-bold uppercase tracking-widest text-[10px]">Total</Badge>
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-3xl font-black">{isLoading ? '...' : stats?.organisations}</h3>
-              <p className="text-xs font-medium text-white/70 uppercase tracking-widest">Organisations</p>
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* 1. Instance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-7.5">
         <Card className="border-none shadow-sm bg-success text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -115,35 +100,35 @@ export function AdminDashboardContent() {
           </CardHeader>
           <CardContent className="p-6">
              <div className="grid gap-3">
-               <Link to="/admin/organisations" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
+               <Link to="/admin/programs" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
                  <div className="size-10 rounded-lg bg-primary-light flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                   <KeenIcon icon="plus" />
+                   <KeenIcon icon="layers" />
                  </div>
                  <div className="flex flex-col">
-                   <span className="font-bold text-gray-800 text-sm">Add Organisation</span>
-                   <span className="text-[10px] text-gray-500 font-medium">Create a new tenant</span>
+                   <span className="font-bold text-gray-800 text-sm">Programs</span>
+                   <span className="text-[10px] text-gray-500 font-medium">Manage cohorts</span>
                  </div>
                </Link>
 
-               <Link to="/admin/users" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
+               <Link to="/admin/participants" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
                  <div className="size-10 rounded-lg bg-success-light flex items-center justify-center text-success group-hover:scale-110 transition-transform">
                    <KeenIcon icon="users" />
                  </div>
                  <div className="flex flex-col">
-                   <span className="font-bold text-gray-800 text-sm">Global Users</span>
+                   <span className="font-bold text-gray-800 text-sm">Members</span>
                    <span className="text-[10px] text-gray-500 font-medium">Manage all profiles</span>
                  </div>
                </Link>
 
-               <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group cursor-not-allowed opacity-50">
+               <Link to="/admin/task-templates" className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group">
                  <div className="size-10 rounded-lg bg-info-light flex items-center justify-center text-info group-hover:scale-110 transition-transform">
-                   <KeenIcon icon="setting-2" />
+                   <KeenIcon icon="check-squared" />
                  </div>
                  <div className="flex flex-col">
-                   <span className="font-bold text-gray-800 text-sm">System Settings</span>
-                   <span className="text-[10px] text-gray-500 font-medium">Global configuration</span>
+                   <span className="font-bold text-gray-800 text-sm">Curriculum</span>
+                   <span className="text-[10px] text-gray-500 font-medium">Master task lists</span>
                  </div>
-               </div>
+               </Link>
              </div>
           </CardContent>
         </Card>

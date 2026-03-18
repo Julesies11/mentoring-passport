@@ -205,16 +205,19 @@ export function TaskSetupGrid({
               {expandedTasks.has(task.id) &&
                 task.subtasks &&
                 task.subtasks.length > 0 && (
-                  <div className="bg-gray-50/30 border-t border-gray-100/50">
+                  <div className="bg-gray-50/30 border-t border-gray-100/50 pb-1">
                     {task.subtasks.map((subtask: any) => (
                       <div
                         key={subtask.id}
-                        className="flex flex-col lg:grid lg:grid-cols-[40px_minmax(200px,2fr)_minmax(140px,1fr)_100px] gap-2 lg:gap-4 py-3 px-4 hover:bg-gray-50 transition-colors border-t border-gray-50/50 first:border-t-0"
+                        className="flex flex-col lg:grid lg:grid-cols-[40px_minmax(200px,2fr)_minmax(140px,1fr)_100px] gap-2 lg:gap-4 py-3 px-4 hover:bg-gray-50 transition-colors border-t border-gray-50/50 first:border-t-0 group/subtask"
                       >
-                        <div className="hidden lg:block w-10"></div>
+                        <div className="hidden lg:flex items-center justify-center w-10 relative">
+                          <div className="absolute top-0 bottom-0 left-1/2 w-px bg-gray-200 -z-1"></div>
+                          {/* If it's the last subtask, we might want a shorter line, but let's keep it simple for now */}
+                        </div>
                         <div className="lg:pl-8 flex items-start lg:items-center gap-3 min-w-0">
-                          <div className="w-1.5 h-1.5 bg-gray-300 rounded-full flex-shrink-0 mt-1.5 lg:mt-0"></div>
-                          <span className="text-xs text-gray-700 font-medium break-words min-w-0 flex-1">
+                          <div className="w-1.5 h-1.5 bg-primary/40 rounded-full flex-shrink-0 mt-1.5 lg:mt-0"></div>
+                          <span className="text-xs text-gray-700 font-semibold break-words min-w-0 flex-1">
                             {subtask.name}
                           </span>
                         </div>
@@ -225,7 +228,7 @@ export function TaskSetupGrid({
                                 variant="destructive"
                                 appearance="light"
                                 size="xs"
-                                className="gap-1.5 px-1.5"
+                                className="gap-1.5 px-1.5 h-5"
                               >
                                 <KeenIcon
                                   icon="cloud-upload"
@@ -234,18 +237,20 @@ export function TaskSetupGrid({
                                 {subtask.evidence_type.name}
                               </Badge>
                             ) : (
-                              <span className="text-[10px] lg:text-[11px] text-gray-600 font-medium flex items-center gap-1.5">
+                              <span className="text-[10px] lg:text-[11px] text-gray-500 font-medium flex items-center gap-1.5">
                                 <KeenIcon icon="file" className="text-[10px] text-gray-400" />
                                 {subtask.evidence_type.name}
                               </span>
                             )
                           ) : (
                             <span className="text-[10px] lg:text-[11px] text-gray-400 italic px-1.5">
-                              None
+                              -
                             </span>
                           )}
                         </div>
-                        <div className="hidden lg:block w-10"></div>
+                        <div className="hidden lg:block w-10">
+                          {/* Empty spacer to align with task actions column */}
+                        </div>
                       </div>
                     ))}
                   </div>

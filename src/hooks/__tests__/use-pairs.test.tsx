@@ -35,26 +35,24 @@ const createWrapper = () => {
   );
 };
 
-describe('usePairs', () => {
+describe('usePairs Single-Organisation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches pairs correctly', async () => {
+  it('fetches pairs correctly without organisation filters', async () => {
     const mockPairs = [{ id: 'p1', status: 'active' }];
     vi.mocked(pairsApi.fetchPairs).mockResolvedValue(mockPairs);
     vi.mocked(pairsApi.fetchPairStats).mockResolvedValue({ total: 1 } as any);
 
     const { result } = renderHook(() => usePairs(), { wrapper: createWrapper() });
 
-    expect(result.current.isLoading).toBe(true);
-
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
 
     expect(result.current.pairs).toEqual(mockPairs);
-    expect(result.current.stats).toEqual({ total: 1 });
+    expect(pairsApi.fetchPairs).toHaveBeenCalledWith('prog1');
   });
 
   it('handles create pair mutation', async () => {

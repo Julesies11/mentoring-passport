@@ -45,9 +45,9 @@ export interface UpdatePairInput {
 }
 
 /**
- * Fetch all pairs for a specific program or organisation
+ * Fetch all pairs for a specific program in the instance
  */
-export async function fetchPairs(programId?: string, organisationId?: string): Promise<Pair[]> {
+export async function fetchPairs(programId?: string): Promise<Pair[]> {
   // Defensive check: Ensure programId is a string and not an object
   if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
     console.warn('fetchPairs called with invalid programId:', programId);
@@ -60,13 +60,11 @@ export async function fetchPairs(programId?: string, organisationId?: string): P
       *,
       mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
       mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      program:mp_programs(id, name, status, organisation_id)
+      program:mp_programs(id, name, status)
     `);
 
   if (programId) {
     query = query.eq('program_id', programId);
-  } else if (organisationId) {
-    query = query.eq('organisation_id', organisationId);
   }
 
   const { data, error } = await query
@@ -114,20 +112,6 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw new Error('Invalid program selection. Please ensure a program is selected.');
   }
 
-  // Step 1: Fetch program to get organisation_id
-  const { data: program, error: programError } = await supabase
-    .from('mp_programs')
-    .select('organisation_id')
-    .eq('id', input.program_id)
-    .single();
-
-  if (programError || !program) {
-    console.error('Error fetching program:', programError);
-    throw new Error('Could not find program for the new pair');
-  }
-
-  const organisation_id = program.organisation_id;
-
   // Step 2: Fetch the "Not Applicable" evidence type to use as a fallback
   const { data: naEvidenceType } = await supabase
     .from('mp_evidence_types')
@@ -142,8 +126,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
     .insert({
-      ...input,
-      organisation_id
+      ...input
     })
     .select(`
       *,
@@ -180,7 +163,6 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
       sort_order: task.sort_order,
       status: 'not_submitted' as const,
       is_custom: false,
-      organisation_id,
       program_id: input.program_id
     }));
 
@@ -305,7 +287,7 @@ export async function restorePair(id: string): Promise<void> {
 /**
  * Get pair statistics
  */
-export async function fetchPairStats(programId?: string, organisationId?: string) {
+export async function fetchPairStats(programId?: string) {
   // Defensive check: Ensure programId is a string and not an object
   if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
     console.warn('fetchPairStats called with invalid programId:', programId);
@@ -314,12 +296,10 @@ export async function fetchPairStats(programId?: string, organisationId?: string
 
   let query = supabase
     .from('mp_pairs')
-    .select('status'); // organisation isolation handled by RLS
+    .select('status'); 
 
   if (programId) {
     query = query.eq('program_id', programId);
-  } else if (organisationId) {
-    query = query.eq('organisation_id', organisationId);
   }
 
   const { data, error } = await query;

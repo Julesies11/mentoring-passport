@@ -1,9 +1,9 @@
-import { fetchOrganisation, updateOrganisation } from '../organisations';
+import { fetchSingletonOrganisation, updateOrganisation } from '../organisations';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
 
-describe('Organisations API', () => {
+describe('Organisations API Single-Organisation', () => {
   beforeEach(() => {
     // Reset handlers
     server.use(
@@ -30,14 +30,14 @@ describe('Organisations API', () => {
     );
   });
 
-  it('fetches an organisation by ID', async () => {
-    const org = await fetchOrganisation('org1');
+  it('fetches the singleton organisation', async () => {
+    const org = await fetchSingletonOrganisation();
     expect(org).toBeDefined();
     expect(org?.id).toBe('org1');
     expect(org?.name).toBe('Fiona Stanley Hospital');
   });
 
-  it('updates an organisation', async () => {
+  it('updates the singleton organisation', async () => {
     const org = await updateOrganisation('org1', { name: 'New Name' });
     expect(org).toBeDefined();
     expect(org?.name).toBe('New Name');

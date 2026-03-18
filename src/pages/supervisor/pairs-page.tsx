@@ -9,7 +9,7 @@ import { ProgramSelector } from '@/components/common/program-selector';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { KeenIcon } from '@/components/keenicons/keenicons';
 
-export function PairsPage() {
+export function PairsPage({ mode = 'supervisor' }: { mode?: 'supervisor' | 'org-admin' }) {
   const { isLoading } = useOrganisation();
 
   if (isLoading) {
@@ -30,8 +30,8 @@ export function PairsPage() {
           <Toolbar>
             <div className="flex items-center gap-5">
               <ToolbarHeading
-                title="Mentoring Pairs"
-                description="Manage mentor-mentee pairings and track their progress"
+                title={mode === 'org-admin' ? "Organisation Pairs" : "Mentoring Pairs"}
+                description={mode === 'org-admin' ? "Overview of all mentoring pairings across the organisation" : "Manage mentor-mentee pairings and track their progress"}
               />
               <ProgramSelector />
             </div>
@@ -42,7 +42,7 @@ export function PairsPage() {
         </Container>
       </div>
       <Container className="sm:mt-0">
-        <PairsContent />
+        <PairsContent mode={mode} />
       </Container>
     </>
   );

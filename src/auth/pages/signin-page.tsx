@@ -35,21 +35,12 @@ export function SignInPage() {
     try {
       setIsProcessing(true);
       setError(null);
-      await login(email, password);
+      const user = await login(email, password);
       
-      // Check if user needs to change password
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data: profile } = await supabase
-          .from('mp_profiles')
-          .select('must_change_password')
-          .eq('id', authUser.id)
-          .single();
-        
-        if (profile?.must_change_password) {
-          navigate('/auth/change-password');
-          return;
-        }
+      // Check if user needs to change password from the returned user object
+      if (user?.must_change_password) {
+        navigate('/auth/change-password');
+        return;
       }
       
       const nextPath = searchParams.get('next') || '/';
@@ -129,21 +120,12 @@ export function SignInPage() {
       }
 
       // Sign in using the auth context
-      await login(values.email, values.password);
+      const user = await login(values.email, values.password);
 
       // Check if user needs to change password
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data: profile } = await supabase
-          .from('mp_profiles')
-          .select('must_change_password')
-          .eq('id', authUser.id)
-          .single();
-        
-        if (profile?.must_change_password) {
-          navigate('/auth/change-password');
-          return;
-        }
+      if (user?.must_change_password) {
+        navigate('/auth/change-password');
+        return;
       }
 
       // Get the 'next' parameter from URL if it exists

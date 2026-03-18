@@ -1,70 +1,63 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { fetchOrganisation, Organisation } from '@/lib/api/organisations';
+import { Organisation } from '@/lib/api/organisations';
 import { fetchAssignedPrograms, Program } from '@/lib/api/programs';
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 
 interface OrganisationContextType {
   activeOrganisation: Organisation | null;
   activeProgram: Program | null;
   programs: Program[];
   isLoading: boolean;
-  isMasquerading: boolean;
   isOrgAdmin: boolean;
   isSupervisor: boolean;
   membershipRole: string | null;
   refreshOrganisation: () => void;
   refreshPrograms: () => void;
   setActiveProgram: (programId: string) => void;
-  enterMasquerade: (orgId: string) => void;
-  exitMasquerade: () => void;
 }
 
 const OrganisationContext = createContext<OrganisationContextType | undefined>(undefined);
 
 export function OrganisationProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading, isAutoSelecting } = useAuth();
+  const { user, loading: authLoading, isSupervisor, isOrgAdmin, isSysAdmin } = useAuth();
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
 
-  // The JWT is our Source of Truth. These values come from user_metadata.
-  const effectiveOrgId = user?.selected_organisation_id || user?.organisation_id;
-  const membershipRole = user?.role; // This is the 'active_role' injected into the JWT
-  const isMasquerading = !!user?.is_system_owner && !!user?.selected_organisation_id;
-  
-  const isOrgAdmin = user?.is_admin || user?.role === 'administrator' || membershipRole === 'org-admin';
-  const isSupervisor = user?.is_supervisor || isOrgAdmin || membershipRole === 'supervisor';
+  const isPrivileged = isSupervisor || isOrgAdmin || isSysAdmin;
 
-  // Fetch organisation details (for UI logos/names)
+  // Fetch singleton organisation (branding/name)
   const { 
     data: organisation, 
     isLoading: isOrgLoading, 
     refetch: refetchOrg 
   } = useQuery({
-    queryKey: ['organisation', effectiveOrgId],
-    queryFn: () => (effectiveOrgId && typeof effectiveOrgId === 'string') 
-      ? fetchOrganisation(effectiveOrgId) 
-      : Promise.resolve(null),
-    enabled: !!effectiveOrgId && !authLoading && !isAutoSelecting,
+    queryKey: ['organisation', 'singleton'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('mp_organisations').select('*').limit(1).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !authLoading && !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
-  // Fetch programs available to this active context
+  // Fetch programs available in this instance
   const { 
     data: rawPrograms = [], 
     isLoading: isProgramsLoading,
     refetch: refetchPrograms
   } = useQuery({
-    queryKey: ['programs', effectiveOrgId, user?.id, isSupervisor],
+    queryKey: ['programs', user?.id, isPrivileged],
     queryFn: () => {
-      if (!effectiveOrgId || !isSupervisor) return Promise.resolve([]);
-      return fetchAssignedPrograms(effectiveOrgId);
+      if (!isPrivileged) return Promise.resolve([]);
+      return fetchAssignedPrograms();
     },
-    enabled: !!effectiveOrgId && isSupervisor && !authLoading && !isAutoSelecting,
+    enabled: isPrivileged && !authLoading && !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
-
-  // Reset selected program when organisation context changes
-  useEffect(() => {
-    setSelectedProgramId(null);
-  }, [effectiveOrgId]);
 
   const sortedPrograms = useMemo(() => {
     return [...rawPrograms].sort((a, b) => {
@@ -75,27 +68,43 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
   }, [rawPrograms]);
 
   const activeProgram = useMemo(() => {
+    if (selectedProgramId === 'all') return null;
     if (selectedProgramId) {
       return sortedPrograms.find(p => p.id === selectedProgramId) || null;
     }
-    return sortedPrograms[0] || null;
-  }, [selectedProgramId, sortedPrograms]);
+    
+    // For supervisors, default to the first program if one exists
+    if (isSupervisor && !isOrgAdmin && !isSysAdmin) {
+      return sortedPrograms[0] || null;
+    }
+    
+    // For admins, default to 'all' (null) context for a global overview
+    return null;
+  }, [selectedProgramId, sortedPrograms, isSupervisor, isOrgAdmin, isSysAdmin]);
 
-  const value = {
+  const value = useMemo(() => ({
     activeOrganisation: organisation || null,
     activeProgram,
     programs: sortedPrograms,
-    isLoading: authLoading || isAutoSelecting || isOrgLoading || isProgramsLoading,
-    isMasquerading,
-    isOrgAdmin,
-    isSupervisor,
-    membershipRole: membershipRole || null,
+    isLoading: authLoading || isOrgLoading || isProgramsLoading,
+    isOrgAdmin: user?.role === 'administrator' || user?.role === 'org-admin',
+    isSupervisor: isSupervisor,
+    membershipRole: user?.role || null,
     refreshOrganisation: refetchOrg,
     refreshPrograms: refetchPrograms,
-    setActiveProgram: setSelectedProgramId,
-    enterMasquerade: () => {}, // Handled by switchOrganisation in AuthContext
-    exitMasquerade: () => {}   // Handled by switchOrganisation in AuthContext
-  };
+    setActiveProgram: setSelectedProgramId
+  }), [
+    organisation, 
+    activeProgram, 
+    sortedPrograms, 
+    authLoading, 
+    isOrgLoading, 
+    isProgramsLoading, 
+    user?.role, 
+    isSupervisor, 
+    refetchOrg, 
+    refetchPrograms
+  ]);
 
   return (
     <OrganisationContext.Provider value={value}>

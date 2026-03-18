@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useUserPairs } from '@/hooks/use-pairs';
 
@@ -13,14 +13,14 @@ interface PairingContextType {
 const PairingContext = createContext<PairingContextType | undefined>(undefined);
 
 export function PairingProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading, isAutoSelecting } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { data: rawPairings = [], isLoading: queryLoading } = useUserPairs(user?.id || '');
   const [selectedPairingId, setSelectedPairingId] = useState<string | null>(null);
 
-  const isLoading = authLoading || isAutoSelecting || queryLoading;
+  const isLoading = authLoading || queryLoading;
 
   // Apply custom sorting: Active status > Latest Program > Name
-  const pairings = React.useMemo(() => {
+  const sortedPairings = useMemo(() => {
     return [...rawPairings].sort((a, b) => {
       // 1. Sort by Status (Active Pair AND Active Program first)
       const aActive = a.status === 'active' && a.program?.status === 'active';
@@ -44,9 +44,9 @@ export function PairingProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize selected pairing
   useEffect(() => {
-    if (!isLoading && pairings.length > 0) {
+    if (!isLoading && sortedPairings.length > 0) {
       const savedId = localStorage.getItem(`selected_pairing_${user?.id}`);
-      const stillExists = pairings.find(p => p.id === savedId);
+      const stillExists = sortedPairings.find(p => p.id === savedId);
       
       if (stillExists) {
         if (selectedPairingId !== savedId) {
@@ -54,38 +54,41 @@ export function PairingProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         // Default to the first pairing in the list (which is now sorted by "Double-Active" first)
-        const defaultId = pairings[0].id;
+        const defaultId = sortedPairings[0].id;
         if (selectedPairingId !== defaultId) {
           setSelectedPairingId(defaultId);
         }
       }
-    } else if (!isLoading && pairings.length === 0) {
+    } else if (!isLoading && sortedPairings.length === 0) {
       if (selectedPairingId !== null) {
         setSelectedPairingId(null);
       }
     }
-  }, [pairings, isLoading, user?.id, selectedPairingId]);
+  }, [sortedPairings, isLoading, user?.id, selectedPairingId]);
 
   // Persist selection
-  const handleSetSelectedPairingId = (id: string | null) => {
+  const handleSetSelectedPairingId = useCallback((id: string | null) => {
     setSelectedPairingId(id);
     if (id && user?.id) {
       localStorage.setItem(`selected_pairing_${user?.id}`, id);
     }
-  };
+  }, [user?.id]);
 
-  const selectedPairing = pairings.find(p => p.id === selectedPairingId) || null;
+  const selectedPairing = useMemo(() => 
+    sortedPairings.find(p => p.id === selectedPairingId) || null,
+    [sortedPairings, selectedPairingId]
+  );
+
+  const contextValue = useMemo(() => ({
+    selectedPairingId,
+    setSelectedPairingId: handleSetSelectedPairingId,
+    selectedPairing,
+    pairings: sortedPairings,
+    isLoading,
+  }), [selectedPairingId, selectedPairing, sortedPairings, isLoading, handleSetSelectedPairingId]);
 
   return (
-    <PairingContext.Provider
-      value={{
-        selectedPairingId,
-        setSelectedPairingId: handleSetSelectedPairingId,
-        selectedPairing,
-        pairings,
-        isLoading,
-      }}
-    >
+    <PairingContext.Provider value={contextValue}>
       {children}
     </PairingContext.Provider>
   );

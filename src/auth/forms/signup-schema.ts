@@ -21,7 +21,6 @@ export const getSignupSchema = () => {
         .min(1, { message: 'Please confirm your password.' }),
       firstName: z.string().min(1, { message: 'First name is required.' }),
       lastName: z.string().min(1, { message: 'Last name is required.' }),
-      organisation_id: z.string().min(1, { message: 'Organisation is required.' }),
       terms: z.boolean().refine((val) => val === true, {
         message: 'You must agree to the terms and conditions.',
       }),

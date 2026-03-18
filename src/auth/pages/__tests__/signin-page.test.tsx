@@ -104,13 +104,9 @@ describe('SignInPage', () => {
     });
   });
   it('navigates to change-password if must_change_password is true', async () => {
-    // Override the supabase mock for this test
-    vi.mocked(supabase.from('mp_profiles').select('must_change_password').eq('id', 'u1').single).mockResolvedValue({
-      data: { must_change_password: true },
-      error: null,
-    } as any);
-
-    render(<SignInPage />, { authValue: { login: mockLogin } });
+    const mustChangeLogin = vi.fn().mockResolvedValue({ id: 'u1', must_change_password: true });
+    
+    render(<SignInPage />, { authValue: { login: mustChangeLogin } });
     
     const emailInput = screen.getByPlaceholderText(/your email/i);
     const passwordInput = screen.getByPlaceholderText(/your password/i);

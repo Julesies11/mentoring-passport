@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/auth/context/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,7 +38,7 @@ import { validateImage } from '@/lib/utils/image';
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['supervisor', 'program-member']),
+  role: z.enum(['administrator', 'org-admin', 'supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
   job_title: z.string().optional(),
   department: z.string().optional(),
@@ -45,7 +46,7 @@ const createParticipantSchema = z.object({
 });
 
 const updateParticipantSchema = z.object({
-  role: z.enum(['supervisor', 'program-member']),
+  role: z.enum(['administrator', 'org-admin', 'supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
   job_title: z.string().optional(),
   department: z.string().optional(),
@@ -71,11 +72,14 @@ export function ParticipantDialog({
   isLoading,
   readOnly = false,
 }: ParticipantDialogProps) {
+  const { role: currentUserRole } = useAuth();
   const isEdit = !!participant;
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [avatar, setAvatar] = useState<ImageInputFile[]>([]);
   const [deleteAvatar, setDeleteAvatar] = useState(false);
+
+  const isSysAdmin = currentUserRole === 'administrator';
 
   const {
     register,
@@ -165,14 +169,14 @@ export function ParticipantDialog({
       >
         <DialogHeader className="p-4 sm:p-6 pb-2 shrink-0 border-b border-gray-100">
           <DialogTitle className="text-lg sm:text-xl font-bold">
-            {readOnly ? 'Participant Profile' : isEdit ? 'Edit Participant' : 'Add New Participant'}
+            {readOnly ? 'User Profile' : isEdit ? 'Edit User' : 'Add New User'}
           </DialogTitle>
           <DialogDescription className="text-[10px] sm:text-xs uppercase font-bold text-gray-400 tracking-wider">
             {readOnly 
-              ? 'Viewing participant details'
+              ? 'Viewing user details'
               : isEdit
-                ? 'Update participant information'
-                : 'Create a new participant account'}
+                ? 'Update user information'
+                : 'Create a new user account'}
           </DialogDescription>
         </DialogHeader>
 
@@ -317,6 +321,8 @@ export function ParticipantDialog({
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
+                    {isSysAdmin && <SelectItem value="administrator">System Admin</SelectItem>}
+                    {isSysAdmin && <SelectItem value="org-admin">Organisation Admin</SelectItem>}
                     <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="program-member">Program Member</SelectItem>
                   </SelectContent>
@@ -508,7 +514,7 @@ function PairingHistory({ userId }: { userId: string }) {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium">
-                  <span className="truncate">{pair.program?.title || 'Unknown Program'}</span>
+                  <span className="truncate">{pair.program?.name || 'Unknown Program'}</span>
                   <span className="shrink-0 size-1 bg-gray-300 rounded-full" />
                   <span className="shrink-0">{isMentor ? 'Mentor' : 'Mentee'}</span>
                 </div>

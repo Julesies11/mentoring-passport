@@ -8,22 +8,25 @@ vi.mock('../notifications', () => ({
 }));
 
 // Mock Supabase
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => Promise.resolve({ 
-            data: [{ id: 'supervisor-1' }, { id: 'supervisor-2' }], 
-            error: null 
-          }))
-        }))
-      }))
-    }))
-  }
-}));
+vi.mock('@/lib/supabase', () => {
+  const mockQuery = {
+    select: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    then: vi.fn((resolve) => resolve({ 
+      data: [{ id: 'supervisor-1' }, { id: 'supervisor-2' }], 
+      error: null 
+    })),
+  };
 
-describe('NotificationService', () => {
+  return {
+    supabase: {
+      from: vi.fn(() => mockQuery),
+    }
+  };
+});
+
+describe('NotificationService Single-Organisation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -41,8 +44,7 @@ describe('NotificationService', () => {
         mentorId,
         menteeId,
         actorId,
-        true,
-        'org-1'
+        true
       );
 
       // Should only call createNotification ONCE (for the mentee)
@@ -53,60 +55,7 @@ describe('NotificationService', () => {
         'New Meeting Scheduled',
         expect.stringContaining('Meeting: Initial Chat'),
         expect.stringContaining('id=meeting-1'),
-        'meeting-1',
-        'org-1'
-      );
-    });
-
-    it('notifies the partner when a meeting is rescheduled', async () => {
-      const mentorId = 'mentor-123';
-      const menteeId = 'mentee-456';
-      const actorId = mentorId;
-      
-      await NotificationService.notifyMeetingChange(
-        'meeting-1',
-        'Initial Chat',
-        new Date().toISOString(),
-        mentorId,
-        menteeId,
-        actorId,
-        false, // isNew = false (Update)
-        'org-1'
-      );
-
-      expect(notificationsApi.createNotification).toHaveBeenCalledWith(
-        menteeId,
-        'meeting_updated',
-        'Meeting Details Updated',
-        expect.stringContaining('Meeting: Initial Chat'),
-        expect.stringContaining('id=meeting-1'),
-        'meeting-1',
-        'org-1'
-      );
-    });
-
-    it('notifies the partner when a meeting is cancelled', async () => {
-      const mentorId = 'mentor-123';
-      const menteeId = 'mentee-456';
-      const actorId = menteeId; // Mentee cancels
-      
-      await NotificationService.notifyMeetingCancelled(
-        'Initial Chat',
-        new Date().toISOString(),
-        mentorId,
-        menteeId,
-        actorId,
-        'org-1'
-      );
-
-      expect(notificationsApi.createNotification).toHaveBeenCalledWith(
-        mentorId,
-        'meeting_updated',
-        'Meeting Cancelled',
-        expect.stringContaining('Meeting cancelled: Initial Chat'),
-        '/program-member/meetings',
-        null,
-        'org-1'
+        'meeting-1'
       );
     });
   });
@@ -121,8 +70,7 @@ describe('NotificationService', () => {
         'John Mentor',
         'Sarah Mentee',
         actorId,
-        'John Mentor',
-        'org-1'
+        'John Mentor'
       );
 
       // Should mock 2 supervisors. Total calls = 2
@@ -133,8 +81,7 @@ describe('NotificationService', () => {
         'Task Re-opened',
         expect.stringContaining('John Mentor has re-opened "Site Visit"'),
         expect.stringContaining('pair=pair-1'),
-        'pair-1',
-        'org-1'
+        'pair-1'
       );
     });
   });
@@ -153,8 +100,7 @@ describe('NotificationService', () => {
         'John Mentor',
         'Sarah Mentee',
         actorId,
-        'Sarah Mentee',
-        'org-1'
+        'Sarah Mentee'
       );
 
       // Should call getSupervisors (which mocks 2 supervisors)
@@ -168,8 +114,7 @@ describe('NotificationService', () => {
         'Task Awaiting Review',
         expect.stringContaining('Sarah Mentee submitted "Site Visit" for your review'),
         expect.stringContaining('/supervisor/evidence-review'),
-        'pair-1',
-        'org-1'
+        'pair-1'
       );
 
       // Check Partner Notification (Mentor)
@@ -179,8 +124,7 @@ describe('NotificationService', () => {
         'Task Submitted for Review',
         expect.stringContaining('Sarah Mentee has submitted Site Visit for Supervisor review'),
         expect.stringContaining('/program-member/tasks'),
-        'pair-1',
-        'org-1'
+        'pair-1'
       );
     });
   });

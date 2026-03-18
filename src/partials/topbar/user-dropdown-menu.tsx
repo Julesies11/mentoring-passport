@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
-import { useOrganisation } from '@/providers/organisation-provider';
 import {
   UserCircle,
 } from 'lucide-react';
@@ -13,24 +12,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
 import { 
   Avatar, 
   AvatarFallback, 
   AvatarImage 
 } from '@/components/ui/avatar';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
-import { Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { OrganisationLogo } from '@/components/common/organisation-logo';
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { 
     logout, 
-    user, 
-    memberships, 
-    activeMembership, 
-    switchOrganisation 
+    user
   } = useAuth();
   const navigate = useNavigate();
 
@@ -42,18 +34,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const handleLogout = () => {
     logout();
     navigate('/auth/signin', { replace: true });
-  };
-
-  const handleSwitch = async (orgId: string) => {
-    if (orgId === activeMembership?.organisation_id) return;
-    try {
-      await switchOrganisation(orgId);
-      toast.success('Switched organisation context');
-      navigate('/');
-    } catch (error) {
-      console.error('Failed to switch organisation:', error);
-      toast.error('Failed to switch organisation');
-    }
   };
 
   return (
@@ -91,47 +71,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           </Link>
         </DropdownMenuItem>
 
-        {memberships.length > 1 && (
-          <>
-            <DropdownMenuSeparator />
-            <div className="px-3 py-2">
-              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Switch Organisation</span>
-            </div>
-            <div className="max-h-[160px] overflow-y-auto px-1">
-              {memberships.map((m) => (
-                <DropdownMenuItem 
-                  key={m.organisation_id}
-                  onClick={() => handleSwitch(m.organisation_id)}
-                  className="flex items-center justify-between gap-2 cursor-pointer py-2"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <OrganisationLogo 
-                      orgId={m.organisation_id}
-                      logoPath={m.organisation?.logo_url}
-                      name={m.organisation?.name}
-                      size="xs"
-                      className="shrink-0 rounded-md shadow-sm border border-gray-100"
-                    />
-                    <div className="flex flex-col min-w-0">
-                      <span className={cn("truncate text-xs font-bold leading-none mb-1", m.organisation_id === activeMembership?.organisation_id ? "text-primary" : "text-gray-700")}>
-                        {m.organisation?.name}
-                      </span>
-                      <span className="text-[9px] uppercase font-black text-gray-400 leading-none">
-                        Role: {m.role}
-                      </span>
-                    </div>
-                  </div>
-                  {m.organisation_id === activeMembership?.organisation_id && (
-                    <Check className="size-3.5 text-primary shrink-0" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </div>
-          </>
-        )}
-
         <DropdownMenuSeparator />
-
 
         {/* Footer */}
         <div className="p-2 mt-1">

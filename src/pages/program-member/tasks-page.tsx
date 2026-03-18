@@ -22,6 +22,7 @@ import { fetchEvidenceTypes, type PairTask } from '@/lib/api/tasks';
 import { toast } from 'sonner';
 import { usePairing } from '@/providers/pairing-provider';
 import { Button } from '@/components/ui/button';
+import { NotificationService } from '@/lib/api/notifications-service';
 
 export function ProgramMemberTasksPage() {
   const { user } = useAuth();
@@ -130,7 +131,6 @@ export function ProgramMemberTasksPage() {
 
   // Handle task scrolling (Deep Linking)
   useEffect(() => {
-    // If we have an evidenceId, find the associated task first
     let scrollId = taskIdFromUrl;
     if (evidenceIdFromUrl && pairEvidence.length > 0) {
       const evidence = pairEvidence.find(e => e.id === evidenceIdFromUrl);
@@ -139,11 +139,9 @@ export function ProgramMemberTasksPage() {
       }
     }
 
-    // Only scroll if we haven't scrolled to THIS specific combination of IDs yet
     if (scrollId && enrichedTasks.length > 0 && !tasksLoading && 
         (hasInitialScrolled.current.taskId !== taskIdFromUrl || hasInitialScrolled.current.evidenceId !== evidenceIdFromUrl)) {
       
-      // Update the ref IMMEDIATELY to prevent multiple triggers while timer is running
       hasInitialScrolled.current = { taskId: taskIdFromUrl, evidenceId: evidenceIdFromUrl };
 
       const timer = setTimeout(() => {
@@ -164,7 +162,6 @@ export function ProgramMemberTasksPage() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [lastAutoExpandedPairId, setLastAutoExpandedPairId] = useState<string | null>(null);
 
-  // Automatically expand all tasks by default only when the selected pair changes
   useEffect(() => {
     if (selectedPair?.id && tasks.length > 0 && selectedPair.id !== lastAutoExpandedPairId) {
       setExpandedTasks(new Set(tasks.map(task => task.id)));
@@ -207,14 +204,12 @@ export function ProgramMemberTasksPage() {
     
     setIsEvidenceSubmitting(true);
     try {
-      // 1. Upload each file
       const uploadPromises = evidence.files.map(file => 
         uploadEvidenceFile(file, selectedPair.id)
       );
       
       const fileUrls = await Promise.all(uploadPromises);
 
-      // 2. Create evidence record(s) for files
       if (evidence.files.length > 0) {
         for (let i = 0; i < fileUrls.length; i++) {
           const file = evidence.files[i];
@@ -231,14 +226,11 @@ export function ProgramMemberTasksPage() {
         }
       }
 
-      // 3. Update task status if submitting for review or marking as completed
       if (submitForReview) {
         const requiresReview = selectedTask?.evidence_type?.requires_submission;
         const hasFiles = evidence.files.length > 0;
-        // If it strictly requires review OR they uploaded files, it must go to awaiting_review
         const nextStatus = (requiresReview || hasFiles) ? 'awaiting_review' : 'completed';
         
-        // Save notes directly to the task's evidence_notes field
         await updateStatus(taskId, nextStatus, evidence.description);
         
         if (nextStatus === 'awaiting_review') {
@@ -247,7 +239,6 @@ export function ProgramMemberTasksPage() {
           toast.success('Task marked as completed');
         }
       } else {
-        // Just save notes/draft
         if (evidence.description.trim()) {
           await updateStatus(taskId, selectedTask?.status || 'not_submitted', evidence.description);
         }
@@ -298,7 +289,7 @@ export function ProgramMemberTasksPage() {
       setIsMeetingDialogOpen(false);
       toast.success('Meeting deleted successfully');
     } catch (_error) {
-      error('Failed to delete meeting');
+      console.error('Failed to delete meeting');
     }
   };
 
@@ -323,23 +314,19 @@ export function ProgramMemberTasksPage() {
     const task = enrichedTasks.find(t => t.id === taskId);
     const requiresSubmission = task?.evidence_type?.requires_submission;
 
-    // Logic: If NOT not_submitted, we are "un-checking" or resetting
     const isUnchecking = currentStatus !== 'not_submitted';
 
     if (!forceToggle && !isUnchecking && requiresSubmission) {
-      // If task requires evidence, open the dialog instead of just marking as completed
       setSelectedTaskId(taskId);
       setIsTaskDialogOpen(true);
       return;
     }
 
-    // If unchecking, reset to not_submitted. If checking, set to completed.
     const newStatus = isUnchecking ? 'not_submitted' : 'completed';
     
     try {
       await updateStatus(taskId, newStatus);
       
-      // If we just re-opened a completed task, notify the supervisor
       if (currentStatus === 'completed' && newStatus === 'not_submitted' && user?.id) {
         const mentorName = task?.pair?.mentor?.full_name || 'Mentor';
         const menteeName = task?.pair?.mentee?.full_name || 'Mentee';
@@ -351,8 +338,7 @@ export function ProgramMemberTasksPage() {
           mentorName,
           menteeName,
           user.id,
-          actorName,
-          task?.pair?.organisation_id
+          actorName
         );
       }
 
@@ -526,7 +512,6 @@ export function ProgramMemberTasksPage() {
         )}
         
         <div className="grid gap-2 sm:gap-5 lg:gap-7.5 min-w-0">
-          {/* Progress Card */}
           {stats && (
             <Card className="border-0 sm:border shadow-none sm:shadow-sm">
               <CardContent className="p-4 sm:p-6">
@@ -546,7 +531,6 @@ export function ProgramMemberTasksPage() {
             </Card>
           )}
 
-          {/* Tasks List */}
           <div className="border-0 sm:border sm:rounded-xl sm:bg-card sm:shadow-sm min-w-0 w-full">
             <CardHeader className="hidden sm:flex">
               <CardTitle>Mentoring Tasks</CardTitle>
@@ -567,7 +551,6 @@ export function ProgramMemberTasksPage() {
         </div>
       </Container>
 
-      {/* Task Dialog */}
       {selectedTask && (
         <TaskDialog
           open={isTaskDialogOpen}
@@ -592,7 +575,6 @@ export function ProgramMemberTasksPage() {
         />
       )}
 
-      {/* Meeting Dialog */}
       <MeetingDialog
         open={isMeetingDialogOpen}
         onOpenChange={setIsMeetingDialogOpen}
@@ -604,7 +586,6 @@ export function ProgramMemberTasksPage() {
         isSubmitting={selectedMeeting ? isUpdatingMeeting : isCreatingMeeting}
       />
 
-      {/* Task Edit Dialog for Custom Tasks */}
       <PairTaskEditDialog
         open={isEditTaskOpen}
         onOpenChange={setIsEditTaskOpen}

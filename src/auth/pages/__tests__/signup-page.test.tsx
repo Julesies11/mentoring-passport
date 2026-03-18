@@ -34,23 +34,11 @@ describe('SignUpPage', () => {
     const user = userEvent.setup();
     render(<SignUpPage />, { authValue: { register: mockRegister } });
     
-    // 1. Wait for organisations to finish loading (Select becomes enabled)
-    await waitFor(() => {
-      expect(screen.queryByText(/Loading organisations.../i)).not.toBeInTheDocument();
-    }, { timeout: 5000 });
-
     await user.type(screen.getByPlaceholderText(/^First Name$/i), 'John');
     await user.type(screen.getByPlaceholderText(/^Last Name$/i), 'Doe');
     await user.type(screen.getByPlaceholderText(/your email address/i), 'john@example.com');
-    
-    // 2. Select organisation
-    const selectTrigger = screen.getByRole('combobox', { name: /organisation/i });
-    await user.click(selectTrigger);
-    const option = await screen.findByRole('option', { name: 'Fiona Stanley Hospital' });
-    await user.click(option);
-
     await user.type(screen.getByPlaceholderText(/create a password/i), 'Password123!');
-    await user.type(screen.getByPlaceholderText(/confirm your password/i), 'Password123!');
+    await user.type(screen.getByPlaceholderText(/verify your password/i), 'Password123!');
     
     const termsCheckbox = screen.getByRole('checkbox');
     await user.click(termsCheckbox);
@@ -64,8 +52,7 @@ describe('SignUpPage', () => {
         'Password123!',
         'Password123!',
         'John',
-        'Doe',
-        'org1'
+        'Doe'
       );
     }, { timeout: 10000 });
     
@@ -78,22 +65,12 @@ describe('SignUpPage', () => {
     const failingRegister = vi.fn().mockRejectedValue(new Error(errorMsg));
     
     render(<SignUpPage />, { authValue: { register: failingRegister } });
-    
-    // Wait for organisations to load
-    await waitFor(() => {
-      expect(screen.queryByText(/Loading organisations.../i)).not.toBeInTheDocument();
-    });
 
     await user.type(screen.getByPlaceholderText(/^First Name$/i), 'John');
     await user.type(screen.getByPlaceholderText(/^Last Name$/i), 'Doe');
     await user.type(screen.getByPlaceholderText(/your email address/i), 'existing@example.com');
-    
-    // Select organisation
-    await user.click(screen.getByRole('combobox', { name: /organisation/i }));
-    await user.click(await screen.findByRole('option', { name: 'Fiona Stanley Hospital' }));
-
     await user.type(screen.getByPlaceholderText(/create a password/i), 'Password123!');
-    await user.type(screen.getByPlaceholderText(/confirm your password/i), 'Password123!');
+    await user.type(screen.getByPlaceholderText(/verify your password/i), 'Password123!');
     await user.click(screen.getByRole('checkbox'));
     
     await user.click(screen.getByRole('button', { name: /create account/i }));
@@ -106,14 +83,9 @@ describe('SignUpPage', () => {
   it('shows validation error if passwords do not match', async () => {
     const user = userEvent.setup();
     render(<SignUpPage />, { authValue: { register: mockRegister } });
-    
-    // Wait for organisations to load to ensure UI is ready
-    await waitFor(() => {
-      expect(screen.queryByText(/Loading organisations.../i)).not.toBeInTheDocument();
-    });
 
     await user.type(screen.getByPlaceholderText(/create a password/i), 'Password123!');
-    await user.type(screen.getByPlaceholderText(/confirm your password/i), 'WrongPassword!');
+    await user.type(screen.getByPlaceholderText(/verify your password/i), 'WrongPassword!');
     await user.click(screen.getByRole('checkbox'));
     
     await user.click(screen.getByRole('button', { name: /create account/i }));

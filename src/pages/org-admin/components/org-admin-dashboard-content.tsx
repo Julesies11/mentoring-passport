@@ -225,7 +225,7 @@ export function OrgAdminDashboardContent() {
               <CardTitle className="text-lg font-bold text-gray-900">Program Engagement</CardTitle>
               <CardDescription>Performance oversight across active cohorts</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/org-admin/programs')} className="rounded-xl font-bold text-xs">
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/programs')} className="rounded-xl font-bold text-xs">
               Manage All
             </Button>
           </CardHeader>
@@ -289,7 +289,7 @@ export function OrgAdminDashboardContent() {
               <CardTitle className="text-lg font-bold text-gray-900">Supervisor Workload</CardTitle>
               <CardDescription>Capacity & assignment tracking</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/org-admin/supervisors')} className="rounded-xl font-bold text-xs">
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/supervisors')} className="rounded-xl font-bold text-xs">
               Manage
             </Button>
           </CardHeader>
@@ -332,7 +332,7 @@ export function OrgAdminDashboardContent() {
 
       {/* 4. Strategic Governance Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Card className="hover:border-primary transition-colors cursor-pointer border border-gray-200" onClick={() => navigate('/org-admin/programs')}>
+        <Card className="hover:border-primary transition-colors cursor-pointer border border-gray-200" onClick={() => navigate('/admin/programs')}>
           <CardContent className="p-6 flex items-center gap-4">
             <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
               <KeenIcon icon="rocket" className="text-2xl text-primary" />
@@ -344,7 +344,7 @@ export function OrgAdminDashboardContent() {
           </CardContent>
         </Card>
 
-        <Card className="hover:border-success transition-colors cursor-pointer border border-gray-200" onClick={() => navigate('/org-admin/task-templates')}>
+        <Card className="hover:border-success transition-colors cursor-pointer border border-gray-200" onClick={() => navigate('/admin/task-templates')}>
           <CardContent className="p-6 flex items-center gap-4">
             <div className="size-12 rounded-2xl bg-success/10 flex items-center justify-center shrink-0">
               <KeenIcon icon="book-open" className="text-2xl text-success" />
@@ -356,7 +356,7 @@ export function OrgAdminDashboardContent() {
           </CardContent>
         </Card>
 
-        <Card className="hover:border-info transition-colors cursor-pointer border border-gray-200" onClick={() => navigate('/org-admin/supervisors')}>
+        <Card className="hover:border-info transition-colors cursor-pointer border border-gray-200" onClick={() => navigate('/admin/supervisors')}>
           <CardContent className="p-6 flex items-center gap-4">
             <div className="size-12 rounded-2xl bg-info/10 flex items-center justify-center shrink-0">
               <KeenIcon icon="user-tick" className="text-2xl text-info" />

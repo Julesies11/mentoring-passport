@@ -6,7 +6,6 @@ import {
   ClipboardList, 
   Calendar,
   GitBranch,
-  ShieldCheck,
   Layers,
   Menu
 } from 'lucide-react';
@@ -31,7 +30,7 @@ interface NavItem {
 
 export function BottomNavBar() {
   const { pathname } = useLocation();
-  const { isOrgAdmin, isSupervisor, isAdmin } = useAuth();
+  const { isSupervisor, isAdmin } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Close menu when path changes
@@ -41,28 +40,18 @@ export function BottomNavBar() {
   
   // Role-based navigation items
   const getNavItems = (): NavItem[] => {
-    // 1. System Owner
+    // 1. Admin (Unified)
     if (isAdmin) {
       return [
-        { icon: LayoutDashboard, label: 'Admin', path: '/admin/dashboard' },
-        { icon: Users, label: 'Orgs', path: '/admin/organisations' },
-        { icon: ShieldCheck, label: 'Users', path: '/admin/users' },
+        { icon: LayoutDashboard, label: 'Admin Hub', path: '/admin/dashboard' },
+        { icon: Layers, label: 'Programs', path: '/admin/programs' },
+        { icon: Users, label: 'Members', path: '/admin/participants' },
+        { icon: ClipboardList, label: 'Templates', path: '/admin/task-templates' },
         { icon: Menu, label: 'Menu', path: '#', isMenu: true },
       ];
     }
 
-    // 2. Org Admin (Fixed Navigation)
-    if (isOrgAdmin) {
-      return [
-        { icon: LayoutDashboard, label: 'Org Hub', path: '/org-admin/hub' },
-        { icon: Layers, label: 'Programs', path: '/org-admin/programs' },
-        { icon: Users, label: 'Members', path: '/org-admin/participants' },
-        { icon: ClipboardList, label: 'Templates', path: '/org-admin/task-templates' },
-        { icon: Menu, label: 'Menu', path: '#', isMenu: true },
-      ];
-    }
-
-    // 3. Supervisor (Direct)
+    // 2. Supervisor (Direct)
     if (isSupervisor) {
       return [
         { icon: LayoutDashboard, label: 'Hub', path: '/supervisor/hub' },
@@ -72,11 +61,12 @@ export function BottomNavBar() {
       ];
     }
 
-    // 4. Program Members (Mentors/Mentees)
+    // 3. Program Members (Mentors/Mentees)
     return [
       { icon: LayoutDashboard, label: 'Hub', path: '/program-member/dashboard' },
       { icon: ClipboardList, label: 'Tasks', path: '/program-member/tasks' },
       { icon: Calendar, label: 'Meetings', path: '/program-member/meetings' },
+      { icon: Menu, label: 'Menu', path: '#', isMenu: true },
     ];
   };
 

@@ -3,14 +3,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { server } from '@/test/mocks/server';
 import { http, HttpResponse } from 'msw';
 
-describe('Pairs API - createPair logic', () => {
+describe('Pairs API Single-Organisation', () => {
   beforeEach(() => {
     // Reset handlers to simulate the multi-step creation process
     server.use(
       // 1. Get program
       http.get('*/rest/v1/mp_programs*', () => {
         return HttpResponse.json([
-          { id: '00000000-0000-0000-0000-000000000001', organisation_id: 'org1' }
+          { id: '00000000-0000-0000-0000-000000000001', name: 'Test Program' }
         ]);
       }),
       // 2. Fallback evidence type
@@ -57,17 +57,6 @@ describe('Pairs API - createPair logic', () => {
     const pair = await createPair({ mentor_id: 'm1', mentee_id: 'm2', program_id: '00000000-0000-0000-0000-000000000001' });
     
     expect(pair).toBeDefined();
-    expect(pair.id).toBe('new-pair-id');
-  });
-
-  it('verifies that tasks are mapped correctly from master', async () => {
-    // This is tested implicitly by the API calls triggered in createPair
-    const pair = await createPair({ mentor_id: 'm1', mentee_id: 'm2', program_id: '00000000-0000-0000-0000-000000000001' });
-    expect(pair.id).toBe('new-pair-id');
-  });
-
-  it('verifies that subtasks are mapped correctly from master', async () => {
-    const pair = await createPair({ mentor_id: 'm1', mentee_id: 'm2', program_id: '00000000-0000-0000-0000-000000000001' });
     expect(pair.id).toBe('new-pair-id');
   });
 });

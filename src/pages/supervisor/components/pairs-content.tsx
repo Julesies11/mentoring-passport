@@ -12,7 +12,7 @@ import { KeenIcon } from '@/components/keenicons/keenicons';
 
 const EMPTY_ARRAY: any[] = [];
 
-export function PairsContent() {
+export function PairsContent({ mode = 'supervisor' }: { mode?: 'supervisor' | 'org-admin' }) {
   const [searchParams] = useSearchParams();
   const highlightPairId = searchParams.get('pairId');
   const { pairs = EMPTY_ARRAY, stats, isLoading, createPairAsync, isCreating } = usePairs();
@@ -69,7 +69,9 @@ export function PairsContent() {
     }
   };
 
-  if (!activeProgram) {
+  // For supervisors, we require an active program to be selected.
+  // For org-admins, we allow a "Global View" (no active program selected).
+  if (!activeProgram && mode === 'supervisor') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 bg-white rounded-2xl border border-gray-100 p-8 text-center shadow-sm">
         <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mb-6 text-gray-200">
@@ -104,6 +106,7 @@ export function PairsContent() {
           setMatchmakerOpen(true);
         }}
         activeProgram={activeProgram}
+        mode={mode}
       />
 
       <div id="unpaired-table">

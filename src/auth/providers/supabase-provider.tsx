@@ -1,10 +1,10 @@
-import { PropsWithChildren, useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { PropsWithChildren, useEffect, useState, useCallback, useMemo } from 'react';
 import { SupabaseAdapter } from '@/auth/adapters/supabase-adapter';
 import { AuthContext } from '@/auth/context/auth-context';
 import { supabase } from '@/lib/supabase';
-import { logDebug } from '@/lib/logger';
-import * as authHelper from '@/auth/lib/helpers';
 import { AuthModel, UserModel } from '@/auth/lib/models';
+import * as authHelper from '@/auth/lib/helpers';
+import { logDebug } from '@/lib/logger';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
@@ -12,23 +12,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [currentUser, setCurrentUser] = useState<UserModel | undefined>();
   const [isMentor, setIsMentor] = useState(false);
   const [isMentee, setIsMentee] = useState(false);
-  const [isAutoSelecting, setIsAutoSelecting] = useState(false);
-  const hasAutoSelected = useRef(false);
 
-  // 1. Derive active context STRICTLY from JWT metadata
-  const activeOrgId = currentUser?.selected_organisation_id;
-  
-  // Find the membership matching the ACTIVE context
-  const activeMembership = useMemo(() => 
-    currentUser?.memberships?.find(m => m.organisation_id === activeOrgId),
-    [currentUser?.memberships, activeOrgId]
-  );
-
-  // 2. Derive roles synchronously
-  const currentIsSystemOwner = !!currentUser?.is_admin || currentUser?.role === 'administrator';
-  const effectiveRole = currentUser?.role || activeMembership?.role || (currentIsSystemOwner ? 'administrator' : undefined);
-  const currentIsOrgAdmin = currentIsSystemOwner || activeMembership?.role === 'org-admin';
-  const currentIsSupervisor = currentIsOrgAdmin || activeMembership?.role === 'supervisor';
+  const effectiveRole = currentUser?.role;
+  const isSysAdmin = effectiveRole === 'administrator';
+  const isOrgAdmin = effectiveRole === 'org-admin';
+  const isSupervisor = effectiveRole === 'supervisor';
+  const isProgramMember = effectiveRole === 'program-member';
 
   const saveAuth = useCallback((newAuth: AuthModel | undefined) => {
     setAuth(newAuth);
@@ -39,182 +28,129 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const getUser = useCallback(async (isInitialBoot: boolean = false) => {
-    return await SupabaseAdapter.getCurrentUser(isInitialBoot);
-  }, []);
+  useEffect(() => {
+    let mounted = true;
 
-  const verify = useCallback(async (isInitialBoot: boolean = false) => {
-    if (isInitialBoot) {
-      setLoading(true);
-    }
+    // We rely entirely on the onAuthStateChange listener to get the initial session
+    // This prevents the dreaded getSession() lock/deadlock in React Strict Mode.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('AuthProvider: onAuthStateChange event:', event, 'Session exists:', !!session);
+      logDebug('AuthProvider: onAuthStateChange event:', event);
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = await getUser(isInitialBoot);
-      
-      if (!user || !session) {
-        saveAuth(undefined);
-        setCurrentUser(undefined);
-      } else {
-        if (!auth || auth.access_token !== session.access_token) {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session && mounted) {
           saveAuth({
             access_token: session.access_token,
             refresh_token: session.refresh_token || '',
           });
-        }
-        setCurrentUser(user);
-      }
-    } catch (err) {
-      console.error('AuthProvider: Verification failed:', err);
-      saveAuth(undefined);
-      setCurrentUser(undefined);
-    } finally {
-      if (isInitialBoot) {
-        setLoading(false);
-      }
-    }
-  }, [auth, getUser, saveAuth]);
-
-  // Initial session verification
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await verify(true); 
-      } else {
-        saveAuth(undefined);
-        setCurrentUser(undefined);
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-  }, [verify, saveAuth]);
-
-  // Sync mentor/mentee status
-  useEffect(() => {
-    const checkPairings = async () => {
-      if (currentUser?.id && activeOrgId) {
-        try {
-          const { count: mentorCount } = await supabase
-            .from('mp_pairs')
-            .select('*', { count: 'exact', head: true })
-            .eq('mentor_id', currentUser.id)
-            .eq('organisation_id', activeOrgId)
-            .eq('status', 'active');
           
-          const { count: menteeCount } = await supabase
-            .from('mp_pairs')
-            .select('*', { count: 'exact', head: true })
-            .eq('mentee_id', currentUser.id)
-            .eq('organisation_id', activeOrgId)
-            .eq('status', 'active');
-
-          setIsMentor((mentorCount || 0) > 0);
-          setIsMentee((menteeCount || 0) > 0);
-        } catch (error) {
-          console.error('Error checking pairings:', error);
+          try {
+             // We pass the user object directly from the session to avoid another network call
+             const user = await SupabaseAdapter.getUserProfile(session.user);
+             if (mounted) setCurrentUser(user || undefined);
+          } catch (err) {
+             console.error('AuthProvider: Failed to fetch profile on auth event', err);
+             if (mounted) setCurrentUser(undefined);
+          }
+        } else if (!session && mounted) {
+          saveAuth(undefined);
+          setCurrentUser(undefined);
+        }
+        
+        // Once we get our first event (even if session is null), we are no longer loading
+        if (mounted) {
+          setLoading(false);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        if (mounted) {
+          saveAuth(undefined);
+          setCurrentUser(undefined);
+          setLoading(false);
         }
       }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
     };
+  }, [saveAuth]);
 
-    if (currentUser?.id && activeOrgId) {
-      checkPairings();
-    }
-  }, [currentUser?.id, activeOrgId]);
-
-  const switchOrganisation = useCallback(async (orgId: string) => {
-    setLoading(true);
-    try {
-      const updatedUser = await SupabaseAdapter.switchOrganisation(orgId);
-      setCurrentUser(updatedUser);
-      setIsMentor(false);
-      setIsMentee(false);
-    } catch (error) {
-      console.error('Failed to switch organisation:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+  const verify = useCallback(async (isInitialBoot: boolean = false) => {
+    // This function is now mostly a no-op because the reactivity handles it.
+    // We keep it for interface compatibility.
+    logDebug('AuthProvider: verify called (now handled by reactivity)');
   }, []);
 
-  // AUTO-SELECTION LOGIC
   useEffect(() => {
-    const autoSelect = async () => {
-      if (currentUser && !activeOrgId && currentUser.memberships?.length === 1 && !hasAutoSelected.current) {
-        hasAutoSelected.current = true;
-        setIsAutoSelecting(true);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const onlyOrgId = currentUser.memberships[0].organisation_id;
+    const checkPairings = async () => {
+      console.log('AuthProvider: checkPairings started');
+      if (currentUser?.id) {
         try {
-          await switchOrganisation(onlyOrgId);
+          console.log('AuthProvider: Fetching pairings for user:', currentUser.id);
+          
+          const fetchPromise = Promise.all([
+            supabase
+              .from('mp_pairs')
+              .select('*', { count: 'exact', head: true })
+              .eq('mentor_id', currentUser.id)
+              .eq('status', 'active'),
+            supabase
+              .from('mp_pairs')
+              .select('*', { count: 'exact', head: true })
+              .eq('mentee_id', currentUser.id)
+              .eq('status', 'active')
+          ]);
+
+          const timeoutPromise = new Promise<any[]>((resolve) => 
+            setTimeout(() => {
+              console.warn('AuthProvider: Pairings fetch timed out after 15s');
+              resolve([{ count: 0 }, { count: 0 }]); // Fallback to 0 counts
+            }, 15000)
+          );
+
+          const [mentorRes, menteeRes] = await Promise.race([fetchPromise, timeoutPromise]);
+
+          console.log('AuthProvider: checkPairings completed');
+          setIsMentor((mentorRes.count || 0) > 0);
+          setIsMentee((menteeRes.count || 0) > 0);
         } catch (error) {
-          console.error('AuthProvider: Auto-selection failed:', error);
-        } finally {
-          setIsAutoSelecting(false);
+          console.error('AuthProvider: Error checking pairings:', error);
+          setIsMentor(false);
+          setIsMentee(false);
         }
+      } else {
+         console.log('AuthProvider: checkPairings skipped (no user)');
+         setIsMentor(false);
+         setIsMentee(false);
       }
     };
-    
-    if (!loading) {
-      autoSelect();
-    }
-  }, [currentUser, activeOrgId, loading, switchOrganisation]);
 
-  const login = useCallback(async (email: string, password: string) => {
+    checkPairings();
+  }, [currentUser?.id]);
+
+  const login = useCallback(async (email: string, password: string): Promise<UserModel | undefined> => {
     setLoading(true);
     try {
       const auth = await SupabaseAdapter.login(email, password);
       saveAuth(auth);
-      const user = await getUser(true);
-      setCurrentUser(user || undefined);
+      // We don't manually fetch user here anymore, onAuthStateChange handles it
+      return undefined;
     } catch (error) {
       saveAuth(undefined);
       throw error;
     } finally {
-      setLoading(false);
+      // Don't set loading to false here, onAuthStateChange will do it when profile is ready
     }
-  }, [getUser, saveAuth]);
-
-  const register = useCallback(async (
-    email: string,
-    password: string,
-    password_confirmation: string,
-    firstName?: string,
-    lastName?: string,
-  ) => {
-    setLoading(true);
-    try {
-      const auth = await SupabaseAdapter.register(
-        email,
-        password,
-        password_confirmation,
-        firstName,
-        lastName,
-      );
-      saveAuth(auth);
-      const user = await getUser(true);
-      setCurrentUser(user || undefined);
-    } catch (error) {
-      saveAuth(undefined);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [getUser, saveAuth]);
-
-  const logout = useCallback(() => {
-    SupabaseAdapter.logout();
-    saveAuth(undefined);
-    setCurrentUser(undefined);
   }, [saveAuth]);
 
-  const updateProfile = useCallback(async (userData: Partial<UserModel>) => {
-    const updatedUser = await SupabaseAdapter.updateUserProfile(userData);
-    setCurrentUser(updatedUser);
-    return updatedUser;
-  }, []);
+  const logout = useCallback(async () => {
+    setLoading(true);
+    await SupabaseAdapter.logout();
+    saveAuth(undefined);
+    setCurrentUser(undefined);
+    setLoading(false);
+  }, [saveAuth]);
 
   const contextValue = useMemo(() => ({
     loading,
@@ -224,33 +160,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
     user: currentUser,
     setUser: setCurrentUser,
     login,
-    register,
+    register: SupabaseAdapter.register,
     requestPasswordReset: SupabaseAdapter.requestPasswordReset,
     resetPassword: SupabaseAdapter.resetPassword,
     resendVerificationEmail: SupabaseAdapter.resendVerificationEmail,
-    getUser,
-    updateProfile,
+    getUser: SupabaseAdapter.getCurrentUser,
+    updateProfile: SupabaseAdapter.updateUserProfile,
     logout,
     verify,
-    isAdmin: currentIsSystemOwner,
     role: effectiveRole,
-    profileId: currentUser?.profile_id,
-    isSystemOwner: currentIsSystemOwner,
-    isOrgAdmin: currentIsOrgAdmin,
-    isSupervisor: currentIsSupervisor,
+    profileId: currentUser?.id,
+    isSysAdmin,
+    isOrgAdmin,
+    isSupervisor,
+    isProgramMember,
     isMentor,
     isMentee,
-    isAutoSelecting: isAutoSelecting,
     setIsMentor,
     setIsMentee,
-    memberships: currentUser?.memberships || [],
-    activeMembership,
-    switchOrganisation,
   }), [
-    loading, auth, currentUser, isMentor, isMentee, isAutoSelecting, 
-    activeMembership, currentIsSystemOwner, effectiveRole, currentIsOrgAdmin, 
-    currentIsSupervisor, login, register, getUser, updateProfile, logout, 
-    verify, saveAuth, switchOrganisation
+    loading, auth, currentUser, isMentor, isMentee, 
+    effectiveRole, isSupervisor, isSysAdmin, isOrgAdmin, isProgramMember, login, logout, verify, saveAuth
   ]);
 
   return (

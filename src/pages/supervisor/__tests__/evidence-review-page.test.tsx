@@ -10,10 +10,18 @@ vi.mock('@/hooks/use-evidence', () => ({
   useEvidenceStats: vi.fn(() => ({ data: { pending: 2, reviewed: 0 } })),
 }));
 
-// Mock organisation hook to avoid DB calls
-vi.mock('@/hooks/use-organisation', () => ({
-  useOrganisation: vi.fn(() => ({ data: { name: 'Test Org' }, isLoading: false })),
-}));
+// Mock organisation provider to avoid DB calls
+vi.mock('@/providers/organisation-provider', async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    useOrganisation: vi.fn(() => ({ 
+      activeProgram: { id: 'p1', name: 'Test Program' }, 
+      programs: [],
+      isLoading: false 
+    })),
+  };
+});
 
 const mockEvidence = [
   {

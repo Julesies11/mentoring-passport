@@ -100,7 +100,7 @@ export function StoreClientProvider({
   const handleAddToCart = ({ productId }: { productId: string }) =>
     dispatch({ type: 'ADD_TO_CART', productId });
 
-  const value: StoreClientContextValue = {
+  const value: StoreClientContextValue = React.useMemo(() => ({
     state,
     showWishlistSheet,
     closeWishlistSheet,
@@ -109,7 +109,7 @@ export function StoreClientProvider({
     showProductDetailsSheet,
     closeProductDetailsSheet,
     handleAddToCart,
-  };
+  }), [state]);
 
   return (
     <StoreClientContext.Provider value={value}>

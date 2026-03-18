@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 export interface Task {
   id: string;
   name: string;
-  organisation_id: string;
   task_list_id: string | null;
   evidence_type_id: string | null;
   sort_order: number;
@@ -20,7 +19,6 @@ export interface Task {
 
 export interface TaskListMaster {
   id: string;
-  organisation_id: string;
   name: string;
   description: string | null;
   is_active: boolean;
@@ -32,7 +30,6 @@ export interface TaskListMaster {
 export interface ProgramTask {
   id: string;
   program_id: string;
-  organisation_id: string;
   name: string;
   evidence_type_id: string | null;
   sort_order: number;
@@ -138,10 +135,10 @@ export interface EvidenceType {
 }
 
 /**
- * Fetch all task lists for an organisation
+ * Fetch all task lists in the instance
  */
-export async function fetchTaskLists(organisationId?: string): Promise<TaskListMaster[]> {
-  let query = supabase
+export async function fetchTaskLists(): Promise<TaskListMaster[]> {
+  const { data, error } = await supabase
     .from('mp_task_lists_master')
     .select(`
       *,
@@ -153,13 +150,10 @@ export async function fetchTaskLists(organisationId?: string): Promise<TaskListM
           evidence_type:mp_evidence_types(id, name, requires_submission)
         )
       )
-    `);
-
-  if (organisationId && typeof organisationId === 'string' && organisationId !== '[object Object]') {
-    query = query.eq('organisation_id', organisationId);
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false });
+    `)
+    .order('created_at', { ascending: false })
+    .order('sort_order', { foreignTable: 'tasks', ascending: true })
+    .order('sort_order', { foreignTable: 'tasks.subtasks', ascending: true });
 
   if (error) {
     console.error('Error fetching task lists:', error);
@@ -184,7 +178,8 @@ export async function fetchTaskListTasks(taskListId: string): Promise<Task[]> {
       )
     `)
     .eq('task_list_id', taskListId)
-    .order('sort_order', { ascending: true });
+    .order('sort_order', { ascending: true })
+    .order('sort_order', { foreignTable: 'subtasks', ascending: true });
 
   if (error) {
     console.error('Error fetching task list tasks:', error);
@@ -208,7 +203,8 @@ export async function fetchProgramTasks(programId: string): Promise<ProgramTask[
       )
     `)
     .eq('program_id', programId)
-    .order('sort_order', { ascending: true });
+    .order('sort_order', { ascending: true })
+    .order('sort_order', { foreignTable: 'subtasks', ascending: true });
 
   if (error) {
     console.error('Error fetching program tasks:', error);
@@ -240,8 +236,7 @@ export async function createTaskList(taskList: Omit<TaskListMaster, 'id' | 'crea
  * Update a task list
  */
 export async function updateTaskList(taskListId: string, updates: Partial<TaskListMaster>): Promise<TaskListMaster> {
-  // Clean up updates to avoid updating protected fields
-  const { id: _id, organisation_id: _org_id, created_at: _ca, updated_at: _ua, ...cleanUpdates } = updates as any;
+  const { id: _id, created_at: _ca, updated_at: _ua, ...cleanUpdates } = updates as any;
 
   const { data, error } = await supabase
     .from('mp_task_lists_master')
@@ -276,8 +271,7 @@ export async function deleteTaskList(taskListId: string): Promise<void> {
 /**
  * Duplicate a task list and all its tasks/subtasks
  */
-export async function duplicateTaskList(sourceId: string, newName: string, organisationId: string): Promise<TaskListMaster> {
-  // 1. Fetch source list with tasks and subtasks
+export async function duplicateTaskList(sourceId: string, newName: string): Promise<TaskListMaster> {
   const { data: sourceList, error: fetchError } = await supabase
     .from('mp_task_lists_master')
     .select(`
@@ -292,29 +286,23 @@ export async function duplicateTaskList(sourceId: string, newName: string, organ
 
   if (fetchError) throw fetchError;
 
-  // 2. Create new list
   const newList = await createTaskList({
     name: newName,
-    organisation_id: organisationId,
     description: sourceList.description,
     is_active: sourceList.is_active
   });
 
-  // 3. Create tasks and subtasks
   if (sourceList.tasks && sourceList.tasks.length > 0) {
-    // Sort tasks by sort_order to maintain sequence
     const sortedTasks = [...sourceList.tasks].sort((a, b) => a.sort_order - b.sort_order);
     
     for (const task of sortedTasks) {
       const { id: _, created_at: _ca, updated_at: _ua, subtasks, evidence_type: _et, ...taskData } = task;
       const newTask = await createTask({
         ...taskData,
-        task_list_id: newList.id,
-        organisation_id: organisationId
+        task_list_id: newList.id
       });
 
       if (subtasks && subtasks.length > 0) {
-        // Sort subtasks by sort_order
         const sortedSubtasks = [...subtasks].sort((a, b) => a.sort_order - b.sort_order);
         
         for (const subtask of sortedSubtasks) {
@@ -464,9 +452,9 @@ export async function fetchEvidenceTypes(): Promise<EvidenceType[]> {
 }
 
 /**
- * Fetch all tasks
+ * Fetch all tasks in the instance
  */
-export async function fetchTasks(organisationId?: string, includeInactive: boolean = false): Promise<Task[]> {
+export async function fetchTasks(includeInactive: boolean = false): Promise<Task[]> {
   const query = supabase
     .from('mp_tasks_master')
     .select(`
@@ -478,11 +466,6 @@ export async function fetchTasks(organisationId?: string, includeInactive: boole
       )
     `);
 
-  if (organisationId && typeof organisationId === 'string' && organisationId !== '[object Object]') {
-    query.eq('organisation_id', organisationId);
-  }
-
-  // Only filter for active tasks unless explicitly requested
   if (!includeInactive) {
     query.eq('is_active', true);
   }
@@ -660,7 +643,6 @@ export async function updatePairTaskStatus(
     throw updateError;
   }
 
-  // Fetch updated data with joins
   const { data, error: fetchError } = await supabase
     .from('mp_pair_tasks')
     .select(`
@@ -728,7 +710,6 @@ export async function fetchPairTaskStats(pairId: string) {
  * Fetch status of all tasks for all pairs (optionally filtered by program)
  */
 export async function fetchAllPairTaskStatuses(programId?: string): Promise<{ pair_id: string; status: string }[]> {
-  // Defensive check
   if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
     console.warn('fetchAllPairTaskStatuses called with invalid programId:', programId);
     return [];
@@ -915,10 +896,9 @@ export async function deleteMasterSubTask(subtaskId: string): Promise<void> {
  * Create a new task for a pair
  */
 export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 'updated_at' | 'task' | 'subtasks' | 'evidence_type'>): Promise<PairTask> {
-  // 1. Fetch pair details to get organisation and program context
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
-    .select('organisation_id, program_id')
+    .select('program_id')
     .eq('id', task.pair_id)
     .single();
 
@@ -926,12 +906,10 @@ export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 
     throw new Error('Could not verify pairing context for task creation.');
   }
 
-  // 2. Insert the task with full isolation context
   const { data, error } = await supabase
     .from('mp_pair_tasks')
     .insert({
       ...task,
-      organisation_id: pair.organisation_id,
       program_id: pair.program_id
     })
     .select(`

@@ -33,12 +33,26 @@ vi.mock('@/hooks/use-tasks', async (importOriginal) => {
   };
 });
 
+// Mock organisation provider
+vi.mock('@/providers/organisation-provider', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    useOrganisation: vi.fn(() => ({ 
+      activeProgram: { id: 'p1', name: 'Test Program' }, 
+      programs: [{ id: 'p1', name: 'Test Program' }],
+      isLoading: false 
+    })),
+  };
+});
+
 // We need to mock useIsMobile to return true for mobile tests
 vi.mock('@/hooks/use-mobile', () => ({
   useIsMobile: vi.fn(),
 }));
 
 import { useIsMobile } from '@/hooks/use-mobile';
+
 
 describe('Mobile UI Standards', () => {
   const mockUser = { id: 's1', email: 'supervisor@test.com', role: 'supervisor' };
@@ -101,13 +115,13 @@ describe('Mobile UI Standards', () => {
       const orgAdminAuth = { 
         isOrgAdmin: true, 
         isSupervisor: true, 
-        isAdmin: false,
+        isAdmin: true,
         role: 'org-admin'
       };
 
       const { unmount } = renderBottomNav('/org-admin/hub', orgAdminAuth);
 
-      expect(screen.getByText('Org Hub')).toBeInTheDocument();
+      expect(screen.getByText('Admin Hub')).toBeInTheDocument();
       expect(screen.getByText('Programs')).toBeInTheDocument();
       expect(screen.getByText('Members')).toBeInTheDocument();
       expect(screen.getByText('Templates')).toBeInTheDocument();
@@ -116,7 +130,7 @@ describe('Mobile UI Standards', () => {
 
       // Check different path
       renderBottomNav('/supervisor/hub', orgAdminAuth);
-      expect(screen.getByText('Org Hub')).toBeInTheDocument();
+      expect(screen.getByText('Admin Hub')).toBeInTheDocument();
       expect(screen.getByText('Programs')).toBeInTheDocument();
       expect(screen.getByText('Members')).toBeInTheDocument();
       expect(screen.getByText('Templates')).toBeInTheDocument();

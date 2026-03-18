@@ -5,7 +5,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { SIDEBAR_MENU_CONFIG } from '@/config/menu.config';
 import { MenuConfig, MenuItem } from '@/config/types';
 import { useAuth } from '@/auth/context/auth-context';
-import { useOrganisation } from '@/providers/organisation-provider';
 import { cn } from '@/lib/utils';
 import {
   AccordionMenu,
@@ -22,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 export function SidebarMenu() {
   const { pathname } = useLocation();
   const auth = useAuth();
-  const { role, isOrgAdmin, isSystemOwner, isSupervisor } = auth;
+  const { role, isSysAdmin, isOrgAdmin, isSupervisor, isProgramMember } = auth;
 
   /**
    * Filter the master menu config based on current user capabilities
@@ -34,7 +33,7 @@ export function SidebarMenu() {
       items.forEach((item) => {
         let isVisible = true;
 
-        // 1. Check Role Requirement
+        // 1. Check Role Requirement (Exact match since user only has one role)
         if (item.requiredRole && !item.requiredRole.includes(role || '')) {
           isVisible = false;
         }
@@ -45,7 +44,6 @@ export function SidebarMenu() {
         }
 
         // Special case: Headings should only show if they have following items that are visible
-        // We handle this by checking if the next item is a visible non-heading
         
         if (isVisible) {
           // If it has children, filter them too
@@ -82,7 +80,7 @@ export function SidebarMenu() {
     };
 
     return filterItems(SIDEBAR_MENU_CONFIG);
-  }, [role, isOrgAdmin, isSystemOwner, isSupervisor]);
+  }, [role, isSysAdmin, isOrgAdmin, isSupervisor, isProgramMember]);
 
   // Memoize matchPath to prevent unnecessary re-renders
   const matchPath = useCallback(

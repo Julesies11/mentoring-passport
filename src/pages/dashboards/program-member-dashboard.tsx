@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import { useTasks } from '@/hooks/use-tasks';
 import { useAllMeetings } from '@/hooks/use-meetings';
@@ -20,17 +20,21 @@ import {
 } from '@/layouts/demo1/components/toolbar';
 
 import { getMeetingStatus } from '@/lib/api/meetings';
-import { OrganisationLogo } from '@/components/common/organisation-logo';
+
+const EMPTY_ARRAY: any[] = [];
 
 export function ProgramMemberDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { pairings = [], isLoading: pairingsLoading, setSelectedPairingId } = usePairing();
+  const { pairings = EMPTY_ARRAY, isLoading: pairingsLoading, setSelectedPairingId } = usePairing();
   const { fetchPairTasks } = useTasks();
-  const { meetings = [] } = useAllMeetings();
+  const { meetings = EMPTY_ARRAY } = useAllMeetings();
 
   const [pairStats, setPairStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Use a ref to track what we've already processed to break infinite loops
+  const lastProcessedRef = useRef<string>('');
 
   // Group pairings by role for the user (only active ones for dashboard)
   const mentorPairings = useMemo(() => 
@@ -43,65 +47,102 @@ export function ProgramMemberDashboardPage() {
     [pairings, user?.id]
   );
 
+  const allActivePairings = useMemo(() => 
+    [...mentorPairings, ...menteePairings],
+    [mentorPairings, menteePairings]
+  );
+
   useEffect(() => {
+    let isMounted = true;
+
+    // Create a stable key for current dependencies
+    const dependencyKey = JSON.stringify({
+      pairIds: allActivePairings.map(p => p.id).sort(),
+      meetingIds: meetings.map(m => m.id).sort(),
+      meetingUpdates: meetings.map(m => m.updated_at || m.created_at).sort()
+    });
+
+    if (dependencyKey === lastProcessedRef.current) {
+      return;
+    }
+
     const fetchAllData = async () => {
-      if (pairings.length === 0) {
-        setLoading(false);
+      if (allActivePairings.length === 0) {
+        if (isMounted) {
+          setLoading(false);
+          setPairStats(EMPTY_ARRAY);
+          lastProcessedRef.current = dependencyKey;
+        }
         return;
       }
 
       try {
-        const stats = await Promise.all(pairings.map(async (pair) => {
-          const tasks = await fetchPairTasks(pair.id);
-          const pairMeetings = meetings.filter(m => m.pair_id === pair.id);
-          
-          const sortedTasks = [...tasks].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-          
-          const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
-          const awaitingReviewTasks = tasks.filter((t: any) => t.status === 'awaiting_review').length;
-          const totalTasks = tasks.length;
-          const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-          
-          const upcomingPairMeetings = pairMeetings
-            .filter(m => getMeetingStatus(m.date_time) === 'upcoming')
-            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
+        const stats = await Promise.all(allActivePairings.map(async (pair) => {
+          try {
+            const tasks = await fetchPairTasks(pair.id);
+            const pairMeetings = meetings.filter(m => m.pair_id === pair.id);
+            
+            const sortedTasks = [...tasks].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            
+            const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+            const awaitingReviewTasks = tasks.filter((t: any) => t.status === 'awaiting_review').length;
+            const totalTasks = tasks.length;
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            
+            const upcomingPairMeetings = pairMeetings
+              .filter(m => getMeetingStatus(m.date_time) === 'upcoming')
+              .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
 
-          // Logic for "What to do next" - Prioritize revisions over new tasks
-          const nextTask = sortedTasks.find((t: any) => t.status === 'revision_required') || 
-                           sortedTasks.find((t: any) => t.status === 'not_submitted');
-          
-          // Logic for "Recent Activity"
-          const recentActivity = sortedTasks
-            .filter((t: any) => t.status === 'completed' || t.status === 'awaiting_review' || t.status === 'revision_required')
-            .sort((a, b) => {
-                const dateA = new Date(a.updated_at || a.created_at).getTime();
-                const dateB = new Date(b.updated_at || b.created_at).getTime();
-                return dateB - dateA;
-            })
-            .slice(0, 2);
+            // Logic for "What to do next" - Prioritize revisions over new tasks
+            const nextTask = sortedTasks.find((t: any) => t.status === 'revision_required') || 
+                             sortedTasks.find((t: any) => t.status === 'not_submitted');
+            
+            // Logic for "Recent Activity"
+            const recentActivity = sortedTasks
+              .filter((t: any) => t.status === 'completed' || t.status === 'awaiting_review' || t.status === 'revision_required')
+              .sort((a, b) => {
+                  const dateA = new Date(a.updated_at || a.created_at).getTime();
+                  const dateB = new Date(b.updated_at || b.created_at).getTime();
+                  return dateB - dateA;
+              })
+              .slice(0, 2);
 
-          return {
-            pair,
-            completedTasks,
-            awaitingReviewTasks,
-            totalTasks,
-            progress,
-            upcomingPairMeetings,
-            nextTask,
-            recentActivity
-          };
+            return {
+              pair,
+              completedTasks,
+              awaitingReviewTasks,
+              totalTasks,
+              progress,
+              upcomingPairMeetings,
+              nextTask,
+              recentActivity
+            };
+          } catch (err) {
+            console.error(`Error fetching data for pair ${pair.id}:`, err);
+            return null;
+          }
         }));
         
-        setPairStats(stats);
+        if (isMounted) {
+          const validStats = stats.filter(s => s !== null);
+          setPairStats(validStats);
+          lastProcessedRef.current = dependencyKey;
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchAllData();
-  }, [pairings, fetchPairTasks, meetings]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [allActivePairings, meetings]); // fetchPairTasks is stable, removed from deps
 
   if (loading || pairingsLoading) {
     return (
@@ -129,15 +170,6 @@ export function ProgramMemberDashboardPage() {
       <div key={stat.pair.id} className="mb-8 sm:mb-12 last:mb-0">
         {/* Program Header */}
         <div className="flex items-center gap-3 mb-4 px-1">
-          {stat.pair.organisation && (
-            <OrganisationLogo 
-              orgId={stat.pair.organisation_id} 
-              logoPath={stat.pair.organisation.logo_url} 
-              name={stat.pair.organisation.name} 
-              size="sm"
-              className="rounded-lg shrink-0"
-            />
-          )}
           <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full border border-gray-200 shadow-sm">
             <KeenIcon icon="abstract-24" className="text-primary text-[10px]" />
             <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">
@@ -439,7 +471,7 @@ export function ProgramMemberDashboardPage() {
                     <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">No sessions scheduled</p>
                     <Button 
                       variant="ghost" 
-                      mode="link"
+                      mode="link" 
                       size="sm" 
                       className="mt-2 text-primary font-black uppercase text-[9px] sm:text-[10px]"
                       onClick={() => goToMeetings(stat.pair.id, true)}
@@ -471,7 +503,7 @@ export function ProgramMemberDashboardPage() {
 
       <Container className="sm:mt-0 mt-4">
         <div className="grid gap-4 lg:gap-6">
-          {pairings.length === 0 ? (
+          {allActivePairings.length === 0 ? (
             <Card className="border-dashed border-2 border-gray-200 bg-gray-50/30 border-0 sm:border">
               <CardContent className="py-20 text-center">
                 <KeenIcon icon="info-circle" className="text-5xl text-gray-200 mb-4" />

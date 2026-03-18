@@ -72,7 +72,7 @@ export async function getEvidenceUrl(path: string | null): Promise<string> {
 /**
  * Fetch all evidence (supervisor only)
  */
-export async function fetchAllEvidence(programId?: string, organisationId?: string): Promise<Evidence[]> {
+export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> {
   let query = supabase
     .from('mp_evidence_uploads')
     .select(`
@@ -90,8 +90,6 @@ export async function fetchAllEvidence(programId?: string, organisationId?: stri
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
-  } else if (organisationId) {
-    // organisation filtering handled by RLS
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -102,7 +100,7 @@ export async function fetchAllEvidence(programId?: string, organisationId?: stri
 /**
  * Fetch pending and rejected evidence (supervisor only)
  */
-export async function fetchPendingEvidence(programId?: string, organisationId?: string): Promise<Evidence[]> {
+export async function fetchPendingEvidence(programId?: string): Promise<Evidence[]> {
   let query = supabase
     .from('mp_evidence_uploads')
     .select(`
@@ -120,8 +118,6 @@ export async function fetchPendingEvidence(programId?: string, organisationId?: 
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
-  } else if (organisationId) {
-    // organisation filtering handled by RLS
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -214,10 +210,10 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // 1. Fetch pair details to get organisation and program context
+  // 1. Fetch pair details to get program context
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
-    .select('organisation_id, program_id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name)')
+    .select('program_id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name)')
     .eq('id', input.pair_id)
     .single();
 
@@ -232,7 +228,6 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
       pair_id: input.pair_id,
       pair_task_id: input.pair_task_id,
       pair_subtask_id: input.pair_subtask_id,
-      organisation_id: pair.organisation_id,
       program_id: pair.program_id,
       evidence_type_id: input.evidence_type_id,
       file_url: input.file_url,
@@ -264,8 +259,7 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
       data.task?.name || 'an item', 
       submitterName || 'Partner', 
       recipientId,
-      user.id,
-      pair.organisation_id
+      user.id
     );
   }
 
@@ -289,7 +283,7 @@ export async function reviewEvidence(
   // 1. First, get the evidence to find the pair_task_id
   const { data: currentEvidence } = await supabase
     .from('mp_evidence_uploads')
-    .select('pair_task_id, organisation_id')
+    .select('pair_task_id')
     .eq('id', evidenceId)
     .single();
 
@@ -314,7 +308,7 @@ export async function reviewEvidence(
     *,
     task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
     subtask:mp_pair_subtasks!pair_subtask_id(id, name),
-    pair:mp_pairs(id, organisation_id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
+    pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
   `);
 
   if (updateError) throw updateError;
@@ -360,8 +354,7 @@ export async function reviewEvidence(
       pair.mentor?.full_name || 'Mentor',
       pair.mentee?.full_name || 'Mentee',
       isMentorSubmitter,
-      user.id,
-      pair.organisation_id
+      user.id
     );
   }
 
@@ -380,20 +373,17 @@ export async function uploadEvidenceFile(file: File, pairId: string): Promise<st
     compressionPreset: 'EVIDENCE'
   });
   
-  // uploadFile returns just the name, but our evidence system expects the path
   return `${pairId}/${path}`;
 }
 
 /**
  * Get evidence statistics
  */
-export async function fetchEvidenceStats(programId?: string, organisationId?: string) {
+export async function fetchEvidenceStats(programId?: string) {
   let query = supabase.from('mp_evidence_uploads').select('status, pair:mp_pairs!inner(program_id)');
   
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
-  } else if (organisationId) {
-    // organisation filtering handled by RLS
   }
   const { data, error } = await query;
   if (error) throw error;

@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 export interface Notification {
   id: string;
   recipient_id: string;
-  organisation_id: string | null;
   type: string;
   title: string;
   description: string | null;
@@ -102,23 +101,12 @@ export async function createNotification(
   title: string,
   description: string | null,
   actionUrl: string | null = null,
-  relatedId: string | null = null,
-  organisationId: string | null = null
+  relatedId: string | null = null
 ): Promise<void> {
-  // If no organisationId is provided, attempt to get it from the active session metadata
-  let activeOrgId = organisationId;
-  
-  if (!activeOrgId) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const metadata = session?.user?.user_metadata || {};
-    activeOrgId = metadata.active_org_id || metadata.selected_organisation_id;
-  }
-
   const { error } = await supabase
     .from('mp_notifications')
     .insert({
       recipient_id: recipientId,
-      organisation_id: activeOrgId,
       type,
       title,
       description,

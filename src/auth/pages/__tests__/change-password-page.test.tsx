@@ -51,7 +51,7 @@ describe('ChangePasswordPage', () => {
     render(<ChangePasswordPage />, { 
       authValue: { user: { id: 'u1' } as any, role: 'program-member' } 
     });
-    expect(screen.getByRole('heading', { name: /change your password/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /update password/i })).toBeInTheDocument();
   });
 
   it('submits the form successfully', async () => {
@@ -64,7 +64,7 @@ describe('ChangePasswordPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/create a strong password/i), { target: { value: 'NewPassword123!' } });
     fireEvent.change(screen.getByPlaceholderText(/verify your password/i), { target: { value: 'NewPassword123!' } });
     
-    fireEvent.submit(screen.getByRole('button', { name: /reset password/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /save new password/i }).closest('form')!);
 
     await waitFor(() => {
       expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'NewPassword123!' });
@@ -87,7 +87,7 @@ describe('ChangePasswordPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/create a strong password/i), { target: { value: 'ValidPassword123!' } });
     fireEvent.change(screen.getByPlaceholderText(/verify your password/i), { target: { value: 'ValidPassword123!' } });
     
-    fireEvent.submit(screen.getByRole('button', { name: /reset password/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /save new password/i }).closest('form')!);
 
     await waitFor(() => {
       expect(screen.getByText(errorMsg)).toBeInTheDocument();

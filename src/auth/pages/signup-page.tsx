@@ -17,16 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { getSignupSchema, SignupSchemaType } from '../forms/signup-schema';
-import { useQuery } from '@tanstack/react-query';
-import { fetchOrganisations } from '@/lib/api/organisations';
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -37,12 +28,6 @@ export function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Fetch organisations for the dropdown
-  const { data: organisations = [], isLoading: isLoadingOrgs } = useQuery({
-    queryKey: ['organisations', 'all'],
-    queryFn: fetchOrganisations,
-  });
-
   const form = useForm<SignupSchemaType>({
     resolver: zodResolver(getSignupSchema()),
     defaultValues: {
@@ -51,7 +36,6 @@ export function SignUpPage() {
       confirmPassword: '',
       firstName: '',
       lastName: '',
-      organisation_id: '',
       terms: false,
     },
   });
@@ -67,11 +51,10 @@ export function SignUpPage() {
         values.password,
         values.confirmPassword,
         values.firstName,
-        values.lastName,
-        values.organisation_id,
+        values.lastName
       );
 
-      // Set success message and metadata
+      // Set success message
       setSuccessMessage(
         'Registration successful! Please check your email to confirm your account.',
       );
@@ -158,35 +141,6 @@ export function SignUpPage() {
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="organisation_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-gray-500">Organisation</FormLabel>
-                  <Select
-                    disabled={isLoadingOrgs}
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={isLoadingOrgs ? "Loading..." : "Select organisation"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {organisations.map((org) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

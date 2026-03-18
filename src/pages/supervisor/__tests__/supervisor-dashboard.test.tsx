@@ -28,6 +28,19 @@ vi.mock('@/hooks/use-tasks', async (importOriginal) => {
   };
 });
 
+// Mock organisation provider
+vi.mock('@/providers/organisation-provider', async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    useOrganisation: vi.fn(() => ({ 
+      activeProgram: { id: 'p1', name: 'Test Program' }, 
+      programs: [{ id: 'p1', name: 'Test Program' }],
+      isLoading: false 
+    })),
+  };
+});
+
 import { useAllParticipants } from '@/hooks/use-participants';
 import { usePairs } from '@/hooks/use-pairs';
 import { usePendingEvidence } from '@/hooks/use-evidence';

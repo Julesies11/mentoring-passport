@@ -18,20 +18,25 @@ export function RequireRole({
   children,
   redirectTo = '/',
 }: RequireRoleProps) {
-  const { user, role, loading, isAutoSelecting } = useAuth();
+  const { user, role, isSysAdmin, loading } = useAuth();
 
-  // Wait for auth to load or auto-selection to finish
-  if (loading || isAutoSelecting) {
+  // Wait for auth to load
+  if (loading) {
     return <ScreenLoader />;
   }
 
-  // User must be authenticated
-  if (!user || !role) {
+  // User must be authenticated to have a role
+  if (!user) {
     return <Navigate to="/auth/signin" replace />;
   }
 
-  // Check if user has one of the allowed roles OR is an administrator (God-mode)
-  if (!allowedRoles.includes(role) && role !== 'administrator') {
+  // If we have a user but no role, they shouldn't be here
+  if (!role) {
+    return <Navigate to="/auth/signin" replace />;
+  }
+
+  // Check if user has one of the allowed roles OR is a system administrator (God-mode)
+  if (!allowedRoles.includes(role) && !isSysAdmin) {
     return <Navigate to={redirectTo} replace />;
   }
 

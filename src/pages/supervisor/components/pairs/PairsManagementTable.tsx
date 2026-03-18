@@ -32,9 +32,10 @@ interface PairsTableProps {
   isLoading: boolean;
   onShowMatchmaker: () => void;
   activeProgram?: Program | null;
+  mode?: 'supervisor' | 'org-admin';
 }
 
-export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activeProgram }: PairsTableProps) {
+export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activeProgram, mode = 'supervisor' }: PairsTableProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +48,9 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const { data: allStatuses = [] } = useAllPairTaskStatuses();
+
+  // Determine base path for navigation
+  const basePath = mode === 'org-admin' ? '/admin' : '/supervisor';
 
   // If we are on mobile and status is 'all', force it to 'active'
   useEffect(() => {
@@ -152,7 +156,9 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-3 sm:px-5 py-3 sm:py-4 min-h-0 sm:min-h-14 gap-2 sm:gap-2.5">
-        <CardTitle className="text-sm sm:text-base">Mentoring Pairings</CardTitle>
+        <CardTitle className="text-sm sm:text-base">
+          {mode === 'org-admin' ? 'Organisation Pairs' : 'Mentoring Pairings'}
+        </CardTitle>
         <CardToolbar className="w-full sm:w-auto mt-1 sm:mt-0">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
             <SearchInput
@@ -177,16 +183,18 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
                 </SelectContent>
               </Select>
 
-              <Button 
-                size="sm" 
-                onClick={onShowMatchmaker} 
-                className="h-8 sm:h-9 shrink-0 text-[10px] sm:text-xs"
-                disabled={!activeProgram}
-              >
-                <KeenIcon icon="plus-squared" />
-                <span className="hidden sm:inline">Create Pair</span>
-                <span className="sm:hidden">Create</span>
-              </Button>
+              {mode === 'supervisor' && (
+                <Button 
+                  size="sm" 
+                  onClick={onShowMatchmaker} 
+                  className="h-8 sm:h-9 shrink-0 text-[10px] sm:text-xs"
+                  disabled={!activeProgram}
+                >
+                  <KeenIcon icon="plus-squared" />
+                  <span className="hidden sm:inline">Create Pair</span>
+                  <span className="sm:hidden">Create</span>
+                </Button>
+              )}
             </div>
           </div>
         </CardToolbar>
@@ -248,39 +256,33 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
                       key={pair.id} 
                       id={`pair-${pair.id}`}
                       className="cursor-pointer hover:bg-muted/40 transition-colors scroll-mt-20"
-                      onClick={() => navigate(`/supervisor/checklist?pair=${pair.id}`)}
+                      onClick={() => navigate(`${basePath}/checklist?pair=${pair.id}`)}
                     >
                       <TableCell className="overflow-hidden">
-                        <div 
-                          className="flex items-center gap-2 md:gap-3 group/member cursor-pointer"
-                          onClick={(e) => handleOpenProfile(e, pair.mentor)}
-                        >
-                          <Avatar className="size-7 md:size-8 shrink-0 group-hover/member:ring-2 group-hover/member:ring-primary/20 transition-all">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <Avatar className="size-7 md:size-8 shrink-0">
                             <AvatarImage src={getAvatarPublicUrl(pair.mentor?.avatar_url, pair.mentor?.id)} alt={pair.mentor?.full_name || ''} />
                             <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                               {getInitials(pair.mentor?.full_name || pair.mentor?.email)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block group-hover/member:text-primary transition-colors">{pair.mentor?.full_name || 'No name'}</span>
+                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentor?.full_name || 'No name'}</span>
                             <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentor?.job_title || 'N/A'}</span>
                           </div>
                         </div>
                       </TableCell>
 
                       <TableCell className="overflow-hidden">
-                        <div 
-                          className="flex items-center gap-2 md:gap-3 group/member cursor-pointer"
-                          onClick={(e) => handleOpenProfile(e, pair.mentee)}
-                        >
-                          <Avatar className="size-7 md:size-8 shrink-0 group-hover/member:ring-2 group-hover/member:ring-primary/20 transition-all">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <Avatar className="size-7 md:size-8 shrink-0">
                             <AvatarImage src={getAvatarPublicUrl(pair.mentee?.avatar_url, pair.mentee?.id)} alt={pair.mentee?.full_name || ''} />
                             <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
                               {getInitials(pair.mentee?.full_name || pair.mentee?.email)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block group-hover/member:text-primary transition-colors">{pair.mentee?.full_name || 'No name'}</span>
+                            <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentee?.full_name || 'No name'}</span>
                             <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentee?.job_title || 'N/A'}</span>
                           </div>
                         </div>
@@ -320,7 +322,7 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
                             className="size-9 rounded-full hover:bg-primary/10 hover:text-primary transition-all"
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent row click when clicking button
-                              navigate(`/supervisor/checklist?pair=${pair.id}`);
+                              navigate(`${basePath}/checklist?pair=${pair.id}`);
                             }}
                           >
                             <KeenIcon icon="setting-2" className="text-lg" />

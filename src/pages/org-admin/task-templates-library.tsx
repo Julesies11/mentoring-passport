@@ -40,7 +40,6 @@ export function TaskTemplatesLibraryPage() {
   const navigate = useNavigate();
   const { activeOrganisation } = useOrganisation();
   const queryClient = useQueryClient();
-  const organisationId = activeOrganisation?.id;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
@@ -51,27 +50,22 @@ export function TaskTemplatesLibraryPage() {
   const [editListName, setEditListName] = useState('');
 
   // Fetch task lists and programs
-  const { data: taskLists = [], isLoading: isLoadingLists, error: listsError } = useTaskLists(organisationId);
+  const { data: taskLists = [], isLoading: isLoadingLists } = useTaskLists();
   const { data: programs = [] } = usePrograms();
-
-  if (listsError) {
-    console.error('TaskTemplatesLibraryPage: Error fetching task lists:', listsError);
-  }
 
   // Create task list mutation
   const createTaskListMutation = useMutation({
     mutationFn: (name: string) => createTaskList({
       name,
-      organisation_id: organisationId!,
       is_active: true,
       description: ''
     }),
     onSuccess: (newList) => {
-      queryClient.invalidateQueries({ queryKey: ['task-lists', organisationId] });
+      queryClient.invalidateQueries({ queryKey: ['task-lists'] });
       setIsNewListDialogOpen(false);
       setNewListName('');
       toast.success('Task list created successfully');
-      navigate(`/org-admin/task-templates/${newList.id}`);
+      navigate(`/admin/task-templates/${newList.id}`);
     },
   });
 
@@ -79,7 +73,7 @@ export function TaskTemplatesLibraryPage() {
   const updateTaskListMutation = useMutation({
     mutationFn: (name: string) => updateTaskList(selectedTaskList!.id, { name }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task-lists', organisationId] });
+      queryClient.invalidateQueries({ queryKey: ['task-lists'] });
       setIsRenameListDialogOpen(false);
       setSelectedTaskList(null);
       setEditListName('');
@@ -89,9 +83,9 @@ export function TaskTemplatesLibraryPage() {
 
   // Duplicate task list mutation
   const duplicateTaskListMutation = useMutation({
-    mutationFn: (name: string) => duplicateTaskList(selectedTaskList!.id, name, organisationId!),
+    mutationFn: (name: string) => duplicateTaskList(selectedTaskList!.id, name),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task-lists', organisationId] });
+      queryClient.invalidateQueries({ queryKey: ['task-lists'] });
       setIsDuplicateListDialogOpen(false);
       setSelectedTaskList(null);
       setEditListName('');
@@ -103,7 +97,7 @@ export function TaskTemplatesLibraryPage() {
   const deleteTaskListMutation = useMutation({
     mutationFn: (id: string) => deleteTaskList(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task-lists', organisationId] });
+      queryClient.invalidateQueries({ queryKey: ['task-lists'] });
       toast.success('Task list deleted successfully');
     },
   });
@@ -143,7 +137,6 @@ export function TaskTemplatesLibraryPage() {
           <Card>
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                {/* Search - limited width */}
                 <div className="w-full sm:max-w-md">
                   <SearchInput
                     placeholder="Search templates..."
@@ -244,7 +237,6 @@ export function TaskTemplatesLibraryPage() {
                     <div className="flex flex-col flex-1">
                       <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight">{list.name}</h3>
                       
-                      {/* Sneak Peek of top 3 tasks */}
                       <div className="space-y-1.5 mb-4">
                         {list.tasks && list.tasks.length > 0 ? (
                           list.tasks.slice(0, 3).map((task, _idx) => (
@@ -296,7 +288,7 @@ export function TaskTemplatesLibraryPage() {
                         variant="primary" 
                         size="sm" 
                         className="flex-1 rounded-xl shadow-lg shadow-primary/10"
-                        onClick={() => navigate(`/org-admin/task-templates/${list.id}`)}
+                        onClick={() => navigate(`/admin/task-templates/${list.id}`)}
                       >
                         <KeenIcon icon="notepad-edit" className="mr-2" /> Edit Tasks
                       </Button>
@@ -309,7 +301,6 @@ export function TaskTemplatesLibraryPage() {
         </div>
       </Container>
 
-      {/* New List Dialog */}
       <Dialog open={isNewListDialogOpen} onOpenChange={setIsNewListDialogOpen}>
         <DialogContent className="max-w-[400px]">
           <DialogHeader>
@@ -341,7 +332,6 @@ export function TaskTemplatesLibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Rename List Dialog */}
       <Dialog open={isRenameListDialogOpen} onOpenChange={setIsRenameListDialogOpen}>
         <DialogContent className="max-w-[400px]">
           <DialogHeader>
@@ -370,7 +360,6 @@ export function TaskTemplatesLibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Duplicate List Dialog */}
       <Dialog open={isDuplicateListDialogOpen} onOpenChange={setIsDuplicateListDialogOpen}>
         <DialogContent className="max-w-[400px]">
           <DialogHeader>

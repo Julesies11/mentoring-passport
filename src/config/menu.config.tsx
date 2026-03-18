@@ -7,129 +7,124 @@ import { type MenuConfig } from './types';
  * Access is controlled via 'requiredRole' and 'requiredFlag' on each item.
  */
 export const SIDEBAR_MENU_CONFIG: MenuConfig = [
-  // --- SYSTEM LEVEL (System Owner Only) ---
-  { 
-    heading: 'System Management',
-    requiredFlag: ['isSystemOwner'] 
-  },
+  // --- SYSTEM ADMINISTRATION LEVEL (Sys Admin only) ---
   {
-    title: 'Admin Dashboard',
+    title: 'System Hub',
     icon: () => <KeenIcon icon="element-11" />,
-    path: '/admin/dashboard',
-    requiredFlag: ['isSystemOwner']
+    path: '/sys-admin/dashboard',
+    requiredRole: ['administrator']
   },
   {
-    title: 'Organisations',
+    title: 'Instance Settings',
     icon: () => <KeenIcon icon="bank" />,
-    path: '/admin/organisations',
-    requiredFlag: ['isSystemOwner']
+    path: '/sys-admin/settings',
+    requiredRole: ['administrator']
   },
   {
-    title: 'Users',
+    title: 'User Directory',
     icon: () => <KeenIcon icon="users" />,
-    path: '/admin/users',
-    requiredFlag: ['isSystemOwner']
+    path: '/sys-admin/users',
+    requiredRole: ['administrator']
   },
 
-  // --- ORGANISATION LEVEL (Org Admin Only) ---
-  { 
-    heading: 'Administration',
-    requiredFlag: ['isOrgAdmin']
-  },
+  // --- ORGANISATION ADMINISTRATION LEVEL (Org Admin) ---
   {
-    title: 'Org Hub',
+    title: 'Admin Hub',
     icon: () => <KeenIcon icon="element-11" />,
-    path: '/org-admin/hub',
-    requiredFlag: ['isOrgAdmin']
+    path: '/admin/dashboard',
+    requiredRole: ['org-admin']
   },
   {
     title: 'Programs',
     icon: () => <KeenIcon icon="layers" />,
-    path: '/org-admin/programs',
-    requiredFlag: ['isOrgAdmin']
+    path: '/admin/programs',
+    requiredRole: ['org-admin']
+  },
+  {
+    title: 'Organisation Pairs',
+    icon: () => <KeenIcon icon="disconnect" />,
+    path: '/admin/pairs',
+    requiredRole: ['org-admin']
   },
   {
     title: 'Manage Members',
     icon: () => <KeenIcon icon="users" />,
-    path: '/org-admin/participants',
-    requiredFlag: ['isOrgAdmin']
+    path: '/admin/participants',
+    requiredRole: ['org-admin']
+  },
+  {
+    title: 'Audit Evidence',
+    icon: () => <KeenIcon icon="eye" />,
+    path: '/admin/evidence-audit',
+    requiredRole: ['org-admin']
   },
   {
     title: 'Task Templates',
     icon: () => <KeenIcon icon="check-squared" />,
-    path: '/org-admin/task-templates',
-    requiredFlag: ['isOrgAdmin']
+    path: '/admin/task-templates',
+    requiredRole: ['org-admin']
   },
 
-  // --- SUPERVISOR LEVEL (Org Admin AND Supervisor) ---
-  { 
-    heading: 'Supervisor Role',
-    requiredFlag: ['isSupervisor']
-  },
+  // --- SUPERVISOR LEVEL ---
   {
     title: 'Supervisor Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/supervisor/hub',
-    requiredFlag: ['isSupervisor']
+    requiredRole: ['supervisor']
   },
   {
     title: 'Pairs',
     icon: () => <KeenIcon icon="disconnect" />,
     path: '/supervisor/pairs',
-    requiredFlag: ['isSupervisor']
+    requiredRole: ['supervisor']
   },
   {
     title: 'Program Tasks',
     icon: () => <KeenIcon icon="check-squared" />,
     path: '/supervisor/program-tasks',
-    requiredFlag: ['isSupervisor']
+    requiredRole: ['supervisor']
   },
   {
     title: 'Pair Management',
     icon: () => <KeenIcon icon="setting-2" />,
     path: '/supervisor/checklist',
-    requiredFlag: ['isSupervisor']
+    requiredRole: ['supervisor']
   },
   {
     title: 'Evidence Review',
     icon: () => <KeenIcon icon="eye" />,
     path: '/supervisor/evidence-review',
-    requiredFlag: ['isSupervisor']
+    requiredRole: ['supervisor']
   },
   {
     title: 'Calendar',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/supervisor/calendar',
-    requiredFlag: ['isSupervisor']
+    requiredRole: ['supervisor']
   },
 
   // --- PROGRAM MEMBER LEVEL (Mentor / Mentee) ---
-  { 
-    heading: 'Relationship Hub',
-    requiredRole: ['program-member', 'mentor', 'mentee']
-  },
   {
     title: 'Relationship Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/program-member/dashboard',
-    requiredRole: ['program-member', 'mentor', 'mentee']
+    requiredRole: ['program-member']
   },
   {
     title: 'Tasks',
     icon: () => <KeenIcon icon="clipboard" />,
     path: '/program-member/tasks',
-    requiredRole: ['program-member', 'mentor', 'mentee']
+    requiredRole: ['program-member']
   },
   {
     title: 'Meetings',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/program-member/meetings',
-    requiredRole: ['program-member', 'mentor', 'mentee']
+    requiredRole: ['program-member']
   },
 ];
 
 // --- LEGACY EXPORTS (Mapped to the Master Config for Backward Compatibility) ---
-// These will be filtered dynamically by SidebarMenu instead of being separate arrays.
 export const MENU_ADMINISTRATOR: MenuConfig = SIDEBAR_MENU_CONFIG;
 export const MENU_ORG_ADMIN: MenuConfig = SIDEBAR_MENU_CONFIG;
 export const MENU_SUPERVISOR: MenuConfig = SIDEBAR_MENU_CONFIG;

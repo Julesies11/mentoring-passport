@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { Container } from '@/components/common/container';
 import { Toolbar, ToolbarHeading, ToolbarActions } from '@/layouts/demo1/components/toolbar';
@@ -18,7 +18,6 @@ import {
 import { fetchTaskLists, fetchAllPairTaskStatuses } from '@/lib/api/tasks';
 import { fetchPairs } from '@/lib/api/pairs';
 import { fetchOrgSupervisors, syncProgramSupervisors } from '@/lib/api/participants';
-import { updateOrganisation } from '@/lib/api/organisations';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ProgramDialog } from '../supervisor/components/program-dialog';
@@ -36,8 +35,7 @@ import { OrganisationLogo } from '@/components/common/organisation-logo';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
 
 export function OrgAdminProgramsPage() {
-  const { activeOrganisation, refreshOrganisation, isLoading: isOrgLoadingContext } = useOrganisation();
-  const organisationId = activeOrganisation?.id;
+  const { activeOrganisation, isLoading: isOrgLoadingContext } = useOrganisation();
   const queryClient = useQueryClient();
 
   // State
@@ -50,34 +48,29 @@ export function OrgAdminProgramsPage() {
   const [duplicateName, setDuplicateName] = useState('');
 
   // Data fetching
-  const { data: programs = [], isLoading: isLoadingPrograms, error: programsError } = useQuery({
-    queryKey: ['programs', organisationId],
-    queryFn: () => fetchPrograms(organisationId!),
-    enabled: !!organisationId,
+  const { data: programs = [], isLoading: isLoadingPrograms } = useQuery({
+    queryKey: ['programs'],
+    queryFn: () => fetchPrograms(),
   });
 
   const { data: taskLists = [] } = useQuery({
-    queryKey: ['task-lists', organisationId],
-    queryFn: () => fetchTaskLists(organisationId!),
-    enabled: !!organisationId,
+    queryKey: ['task-lists'],
+    queryFn: () => fetchTaskLists(),
   });
 
   const { data: allSupervisors = [] } = useQuery({
-    queryKey: ['org-supervisors', organisationId],
-    queryFn: () => fetchOrgSupervisors(organisationId!),
-    enabled: !!organisationId,
+    queryKey: ['org-supervisors'],
+    queryFn: () => fetchOrgSupervisors(),
   });
 
   const { data: pairs = [] } = useQuery({
-    queryKey: ['pairs', organisationId],
-    queryFn: () => fetchPairs(undefined, organisationId!),
-    enabled: !!organisationId,
+    queryKey: ['pairs'],
+    queryFn: () => fetchPairs(),
   });
 
   const { data: taskStatuses = [] } = useQuery({
     queryKey: ['pair-tasks', 'all-statuses'],
-    queryFn: fetchAllPairTaskStatuses,
-    enabled: !!organisationId,
+    queryFn: () => fetchAllPairTaskStatuses(),
   });
 
   // Calculate aggregated data
@@ -85,18 +78,18 @@ export function OrgAdminProgramsPage() {
     const stats: Record<string, { 
       pairCount: number, 
       completion: number, 
-      supervisors: Array<{ id: string, name: string, avatar_url: string | null, email: string }> 
+      supervisors: Array<{ id: string, name: string, avatar_url: string | null, email: string, job_title: string | null }> 
     }> = {};
     
     programs.forEach(p => {
-      // Find supervisors assigned to this program
       const assignedSupervisors = allSupervisors
         .filter(s => s.assigned_program_ids.includes(p.id))
         .map(s => ({
           id: s.id,
           name: s.full_name || 'Unnamed Supervisor',
           avatar_url: s.avatar_url,
-          email: s.email
+          email: s.email,
+          job_title: s.job_title
         }));
 
       const programPairs = pairs.filter(pair => pair.program_id === p.id);
@@ -137,7 +130,6 @@ export function OrgAdminProgramsPage() {
   });
 
   const handleProgramSubmit = async (data: any) => {
-    if (!organisationId) return;
     setIsProcessingProgram(true);
     try {
       const { supervisor_ids, ...programData } = data;
@@ -148,10 +140,7 @@ export function OrgAdminProgramsPage() {
         programId = editingProgram.id;
         toast.success('Program updated successfully');
       } else {
-        const newProgram = await createProgram({
-          ...programData,
-          organisation_id: organisationId
-        });
+        const newProgram = await createProgram(programData);
         programId = newProgram.id;
         toast.success('Program created successfully');
       }
@@ -162,7 +151,7 @@ export function OrgAdminProgramsPage() {
       }
 
       queryClient.invalidateQueries({ queryKey: ['programs'] });
-      queryClient.invalidateQueries({ queryKey: ['org-supervisors', organisationId] });
+      queryClient.invalidateQueries({ queryKey: ['org-supervisors'] });
       setIsProgramDialogOpen(false);
     } catch (error) {
       console.error('Error handling program:', error);
@@ -295,8 +284,8 @@ export function OrgAdminProgramsPage() {
                                       <span className="text-[11px] font-bold text-gray-800 leading-tight truncate">
                                         {s.name}
                                       </span>
-                                      <span className="text-[9px] text-gray-400 font-medium leading-none truncate">
-                                        {s.email}
+                                      <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none truncate">
+                                        {s.job_title || 'Supervisor'}
                                       </span>
                                     </div>
                                   </div>
@@ -387,7 +376,6 @@ export function OrgAdminProgramsPage() {
               </table>
             </div>
 
-            {/* Pagination placeholder - as requested 25 rows default */}
             {sortedPrograms.length > 0 && (
               <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
                 <span className="text-xs text-muted-foreground font-medium">
@@ -412,7 +400,6 @@ export function OrgAdminProgramsPage() {
         allSupervisors={allSupervisors}
       />
 
-      {/* Duplicate Dialog */}
       <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
         <DialogContent className="max-w-[400px]">
           <DialogHeader>

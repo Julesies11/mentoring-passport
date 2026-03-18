@@ -18,8 +18,9 @@ describe('SidebarMenu', () => {
     render(<SidebarMenu />, {
       authValue: {
         role: 'org-admin',
+        isAdmin: true,
         isOrgAdmin: true,
-        isSupervisor: false,
+        isSupervisor: true,
       },
     });
 
@@ -28,7 +29,7 @@ describe('SidebarMenu', () => {
     expect(screen.getByText('Supervisor Role')).toBeInTheDocument();
 
     // Specific links
-    expect(screen.getByText('Org Hub')).toBeInTheDocument();
+    expect(screen.getByText('Admin Hub')).toBeInTheDocument();
     expect(screen.getByText('Supervisor Hub')).toBeInTheDocument();
     expect(screen.getByText('Programs')).toBeInTheDocument();
     expect(screen.getByText('Pairs')).toBeInTheDocument();
