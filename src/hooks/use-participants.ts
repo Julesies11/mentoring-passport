@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
 import { NotificationService } from '@/lib/api/notifications-service';
@@ -13,7 +13,6 @@ import {
   updateParticipant,
   archiveParticipant,
   restoreParticipant,
-  fetchParticipantStats,
   type UpdateParticipantInput,
 } from '@/lib/api/participants';
 
@@ -69,12 +68,15 @@ export function useParticipants(programId?: string) {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['participants', 'stats', programId],
-    queryFn: () => fetchParticipantStats(programId),
-    enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  const stats = useMemo(() => {
+    return {
+      total: participants.length,
+      supervisors: participants.filter(p => p.role === 'supervisor').length,
+      programMembers: participants.filter(p => p.role === 'program-member').length,
+      active: participants.filter(p => p.status === 'active').length,
+      archived: participants.filter(p => p.status === 'archived').length,
+    };
+  }, [participants]);
 
   const createMutation = useMutation({
     mutationFn: createParticipant,

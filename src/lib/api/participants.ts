@@ -188,19 +188,3 @@ export async function restoreParticipant(id: string): Promise<void> {
 
   if (error) throw error;
 }
-
-/**
- * Fetch participant stats
- */
-export async function fetchParticipantStats(programId?: string) {
-  const { data, error } = await supabase.from('mp_profiles').select('role, status');
-  if (error) throw error;
-
-  return {
-    total: data.length,
-    active: data.filter(p => p.status === PROFILE_STATUS.ACTIVE).length,
-    archived: data.filter(p => p.status === PROFILE_STATUS.ARCHIVED).length,
-    supervisors: data.filter(p => p.role === ROLES.SUPERVISOR || p.role === ROLES.ORG_ADMIN || p.role === ROLES.ADMINISTRATOR).length,
-    'program-members': data.filter(p => p.role === ROLES.PROGRAM_MEMBER).length,
-  };
-}

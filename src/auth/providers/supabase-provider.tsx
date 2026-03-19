@@ -16,9 +16,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const effectiveRole = currentUser?.role;
   const isSysAdmin = effectiveRole === ROLES.ADMINISTRATOR;
-  const isOrgAdmin = effectiveRole === ROLES.ORG_ADMIN;
-  const isSupervisor = effectiveRole === ROLES.SUPERVISOR;
+  const isOrgAdmin = effectiveRole === ROLES.ORG_ADMIN || isSysAdmin;
+  const isSupervisor = effectiveRole === ROLES.SUPERVISOR || isOrgAdmin;
   const isProgramMember = effectiveRole === ROLES.PROGRAM_MEMBER;
+  const isAdmin = isSysAdmin || isOrgAdmin;
 
   const saveAuth = useCallback((newAuth: AuthModel | undefined) => {
     setAuth(newAuth);
@@ -171,6 +172,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     verify,
     role: effectiveRole,
     profileId: currentUser?.id,
+    isAdmin,
     isSysAdmin,
     isOrgAdmin,
     isSupervisor,
@@ -181,7 +183,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setIsMentee,
   }), [
     loading, auth, currentUser, isMentor, isMentee, 
-    effectiveRole, isSupervisor, isSysAdmin, isOrgAdmin, isProgramMember, login, logout, verify, saveAuth
+    effectiveRole, isSupervisor, isAdmin, isSysAdmin, isOrgAdmin, isProgramMember, login, logout, verify, saveAuth
   ]);
 
   return (

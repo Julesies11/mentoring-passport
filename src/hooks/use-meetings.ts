@@ -1,7 +1,9 @@
+import React, { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAuth } from '@/auth/context/auth-context';
 import { NotificationService } from '@/lib/api/notifications-service';
+import { isFuture } from 'date-fns';
 import {
   fetchAllMeetings,
   fetchPairMeetings,
@@ -9,7 +11,6 @@ import {
   createMeeting,
   updateMeeting,
   deleteMeeting,
-  fetchMeetingStats,
   type CreateMeetingInput,
   type UpdateMeetingInput,
 } from '@/lib/api/meetings';
@@ -28,11 +29,13 @@ export function useAllMeetings() {
     enabled: true,
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['meetings', 'stats', programId],
-    queryFn: () => fetchMeetingStats(programId),
-    enabled: true,
-  });
+  const stats = useMemo(() => {
+    return {
+      total: meetings.length,
+      upcoming: meetings.filter((m: any) => isFuture(new Date(m.date_time))).length,
+      past: meetings.filter((m: any) => !isFuture(new Date(m.date_time))).length,
+    };
+  }, [meetings]);
 
   const createMutation = useMutation({
     mutationFn: createMeeting,

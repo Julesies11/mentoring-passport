@@ -29,7 +29,7 @@ describe('ParticipantDialog', () => {
       />
     );
     
-    expect(screen.getByText('Add New Participant')).toBeDefined();
+    expect(screen.getByText('Add New User')).toBeDefined();
     expect(screen.getByLabelText(/Email \*/i)).toBeDefined();
     expect(screen.getByLabelText(/Password \*/i)).toBeDefined();
     expect(screen.getByText('Profile Picture')).toBeDefined();
@@ -61,7 +61,7 @@ describe('ParticipantDialog', () => {
       />
     );
     
-    expect(screen.getByText('Edit Participant')).toBeDefined();
+    expect(screen.getByText('Edit User')).toBeDefined();
     expect(screen.getByLabelText(/Full Name \*/i)).toHaveValue('John Participant');
     expect(screen.queryByLabelText(/Password \*/i)).toBeNull(); // Password hidden in edit mode
   });

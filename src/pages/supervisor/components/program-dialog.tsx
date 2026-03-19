@@ -169,7 +169,9 @@ export function ProgramDialog({
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Assigned Supervisors</Label>
+                <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">
+                  Assigned Supervisors {selectedSupervisorIds.length > 0 && `(${selectedSupervisorIds.length} Assigned)`}
+                </Label>
                 <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8 rounded-lg text-[11px] font-bold">

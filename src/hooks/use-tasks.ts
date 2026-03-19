@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { TASK_STATUS, TaskStatus } from '@/config/constants';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
@@ -7,7 +7,6 @@ import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchTasks,
   fetchPairTasks,
-  fetchPairTaskStats,
   fetchAllPairTaskStatuses,
   updatePairTaskStatus,
   createPairTask,
@@ -91,7 +90,6 @@ export function useTasks() {
     isLoading,
     error,
     fetchPairTasks,
-    fetchPairTaskStats,
     updatePairTaskStatus: updatePairTaskStatusCallback,
     reorderTasks: reorderTasksCallback,
   };
@@ -209,20 +207,23 @@ export function usePairTasks(pairId: string) {
     enabled: !!pairId,
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['pair-tasks', pairId, 'stats'],
-    queryFn: () => fetchPairTaskStats(pairId),
-    enabled: !!pairId,
-  });
+  const stats = useMemo(() => {
+    const total = tasks.length;
+    const completedCount = tasks.filter(t => t.status === TASK_STATUS.COMPLETED).length;
+    return {
+      total,
+      not_submitted: tasks.filter(t => t.status === TASK_STATUS.NOT_SUBMITTED).length,
+      awaiting_review: tasks.filter(t => t.status === TASK_STATUS.AWAITING_REVIEW).length,
+      completed: completedCount,
+      completion_percentage: total > 0 ? Math.round((completedCount / total) * 100) : 0,
+    };
+  }, [tasks]);
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ taskId, status, evidenceNotes }: { taskId: string; status: TaskStatus; evidenceNotes?: string }) =>
       updatePairTaskStatus(taskId, status, user?.id, evidenceNotes),
     onSuccess: async (updatedTask) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] }),
-        queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] })
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
 
       const currentTask = tasks.find(t => t.id === updatedTask.id);
       const mentorId = currentTask?.pair?.mentor_id;
@@ -244,11 +245,10 @@ export function usePairTasks(pairId: string) {
         );
       }
 
-      const freshStats = await fetchPairTaskStats(pairId);
       const actorName = user.full_name || user.email || 'Participant';
-      if (freshStats.completed === freshStats.total) {
+      if (stats.completed === stats.total) {
         await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName);
-      } else if (freshStats.completed >= freshStats.total / 2 && (freshStats.completed - 1) < freshStats.total / 2) {
+      } else if (stats.completed >= stats.total / 2 && (stats.completed - 1) < stats.total / 2) {
         await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName);
       }
     },
@@ -258,7 +258,6 @@ export function usePairTasks(pairId: string) {
     mutationFn: createPairTask,
     onSuccess: async (newTask) => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
-      queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
       
       const currentTasks = tasks;
       const hasStarted = currentTasks.some(t => t.status !== TASK_STATUS.NOT_SUBMITTED);
@@ -306,7 +305,6 @@ export function usePairTasks(pairId: string) {
     mutationFn: deletePairTask,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
-      queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
       toast.success('Task deleted successfully');
     },
     onError: (error: any) => {

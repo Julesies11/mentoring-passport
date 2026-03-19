@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAuth } from '@/auth/context/auth-context';
@@ -10,7 +10,6 @@ import {
   updatePair,
   archivePair,
   restorePair,
-  fetchPairStats,
   type UpdatePairInput,
   type CreatePairInput,
 } from '@/lib/api/pairs';
@@ -29,12 +28,13 @@ export function usePairs() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['pairs', 'stats', programId],
-    queryFn: () => fetchPairStats(programId),
-    enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  const stats = useMemo(() => {
+    return {
+      total: pairs.length,
+      active: pairs.filter(p => p.status === 'active').length,
+      archived: pairs.filter(p => p.status === 'archived').length,
+    };
+  }, [pairs]);
 
   const createMutation = useMutation({
     mutationFn: (input: CreatePairInput) => {

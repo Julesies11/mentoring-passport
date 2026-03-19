@@ -1,5 +1,5 @@
 import { PAIR_STATUS, PROGRAM_STATUS } from '@/config/constants';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PairingProvider, usePairing } from '../pairing-provider';

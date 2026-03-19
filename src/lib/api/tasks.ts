@@ -625,18 +625,10 @@ export async function updatePairTaskStatus(
     updateData.last_feedback = null;
   }
 
-  const { error: updateError } = await supabase
+  const { data, error } = await supabase
     .from('mp_pair_tasks')
     .update(updateData)
-    .eq('id', taskId);
-
-  if (updateError) {
-    console.error('Error updating pair task status:', updateError);
-    throw updateError;
-  }
-
-  const { data, error: fetchError } = await supabase
-    .from('mp_pair_tasks')
+    .eq('id', taskId)
     .select(`
       id,
       pair_id,
@@ -656,12 +648,11 @@ export async function updatePairTaskStatus(
       updated_at,
       evidence_type:mp_evidence_types(id, name, requires_submission)
     `)
-    .eq('id', taskId)
     .single();
 
-  if (fetchError) {
-    console.error('Error fetching updated pair task:', fetchError);
-    throw fetchError;
+  if (error) {
+    console.error('Error updating pair task status:', error);
+    throw error;
   }
 
   const task = data as any;
@@ -669,33 +660,6 @@ export async function updatePairTaskStatus(
     ...task,
     completed_by: Array.isArray(task.completed_by) ? task.completed_by[0] : task.completed_by
   } as PairTask;
-}
-
-/**
- * Get task completion statistics for a pair
- */
-export async function fetchPairTaskStats(pairId: string) {
-  const { data, error } = await supabase
-    .from('mp_pair_tasks')
-    .select('status')
-    .eq('pair_id', pairId);
-
-  if (error) {
-    console.error('Error fetching pair task stats:', error);
-    throw error;
-  }
-
-  const stats = {
-    total: data.length,
-    not_submitted: data.filter(t => t.status === TASK_STATUS.NOT_SUBMITTED).length,
-    awaiting_review: data.filter(t => t.status === TASK_STATUS.AWAITING_REVIEW).length,
-    completed: data.filter(t => t.status === TASK_STATUS.COMPLETED).length,
-    completion_percentage: data.length > 0 
-      ? Math.round((data.filter(t => t.status === TASK_STATUS.COMPLETED).length / data.length) * 100)
-      : 0,
-  };
-
-  return stats;
 }
 
 /**
@@ -924,28 +888,19 @@ export async function createPairTask(task: Omit<PairTask, 'id' | 'created_at' | 
 export async function updatePairTask(taskId: string, updates: Partial<PairTask>): Promise<PairTask> {
   const { id: _id, pair_id: _pair_id, created_at: _created_at, updated_at: _updated_at, task: _task, subtasks: _subtasks, evidence_type: _evidence_type, ...cleanUpdates } = updates as any;
 
-  const { error: updateError } = await supabase
+  const { data, error } = await supabase
     .from('mp_pair_tasks')
     .update(cleanUpdates)
-    .eq('id', taskId);
-
-  if (updateError) {
-    console.error('Error updating pair task:', updateError);
-    throw updateError;
-  }
-
-  const { data, error: fetchError } = await supabase
-    .from('mp_pair_tasks')
+    .eq('id', taskId)
     .select(`
       *,
       evidence_type:mp_evidence_types(id, name, requires_submission)
     `)
-    .eq('id', taskId)
     .single();
 
-  if (fetchError) {
-    console.error('Error fetching updated pair task:', fetchError);
-    throw fetchError;
+  if (error) {
+    console.error('Error updating pair task:', error);
+    throw error;
   }
 
   return data;
@@ -993,28 +948,19 @@ export async function createPairSubTask(subtask: Omit<PairSubTask, 'id' | 'creat
 export async function updatePairSubTask(subtaskId: string, updates: Partial<PairSubTask>): Promise<PairSubTask> {
   const { id: _id, created_at: _created_at, updated_at: _updated_at, evidence_type: _evidence_type, ...cleanUpdates } = updates as any;
 
-  const { error: updateError } = await supabase
+  const { data, error } = await supabase
     .from('mp_pair_subtasks')
     .update(cleanUpdates)
-    .eq('id', subtaskId);
-
-  if (updateError) {
-    console.error('Error updating pair subtask:', updateError);
-    throw updateError;
-  }
-
-  const { data, error: fetchError } = await supabase
-    .from('mp_pair_subtasks')
+    .eq('id', subtaskId)
     .select(`
       *,
       evidence_type:mp_evidence_types(id, name, requires_submission)
     `)
-    .eq('id', subtaskId)
     .single();
 
-  if (fetchError) {
-    console.error('Error fetching updated pair subtask:', fetchError);
-    throw fetchError;
+  if (error) {
+    console.error('Error updating pair subtask:', error);
+    throw error;
   }
 
   return data;

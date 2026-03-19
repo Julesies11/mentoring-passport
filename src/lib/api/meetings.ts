@@ -168,15 +168,20 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
  * Create a new meeting
  */
 export async function createMeeting(input: CreateMeetingInput): Promise<Meeting> {
-  // 1. Fetch pair details to get program context
-  const { data: pair, error: pairError } = await supabase
-    .from('mp_pairs')
-    .select('program_id')
-    .eq('id', input.pair_id)
-    .single();
+  let finalProgramId = input.program_id;
 
-  if (pairError || !pair) {
-    throw new Error('Could not verify pairing context for meeting creation.');
+  // 1. Fetch pair details to get program context if not provided
+  if (!finalProgramId) {
+    const { data: pair, error: pairError } = await supabase
+      .from('mp_pairs')
+      .select('program_id')
+      .eq('id', input.pair_id)
+      .single();
+
+    if (pairError || !pair) {
+      throw new Error('Could not verify pairing context for meeting creation.');
+    }
+    finalProgramId = pair.program_id;
   }
 
   // 2. Insert the meeting
@@ -185,7 +190,7 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     .insert({
       pair_id: input.pair_id,
       pair_task_id: input.pair_task_id,
-      program_id: pair.program_id,
+      program_id: finalProgramId,
       title: input.title,
       notes: input.notes,
       date_time: input.date_time,
@@ -268,32 +273,4 @@ export async function deleteMeeting(meetingId: string): Promise<Meeting> {
   }
 
   return { ...data, pair: data.mp_pairs };
-}
-
-/**
- * Get meeting statistics
- */
-export async function fetchMeetingStats(programId?: string) {
-  let query = supabase
-    .from('mp_meetings')
-    .select('date_time, mp_pairs!inner(program_id)');
-
-  if (programId && typeof programId === 'string' && programId !== '[object Object]') {
-    query = query.eq('mp_pairs.program_id', programId);
-  }
-
-  const { data: meetingsData, error: meetingsError } = await query;
-
-  if (meetingsError) {
-    console.error('Error fetching meeting stats:', meetingsError);
-    throw meetingsError;
-  }
-
-  const stats = {
-    total: meetingsData.length,
-    upcoming: meetingsData.filter(m => isFuture(new Date(m.date_time))).length,
-    past: meetingsData.filter(m => !isFuture(new Date(m.date_time))).length,
-  };
-
-  return stats;
 }

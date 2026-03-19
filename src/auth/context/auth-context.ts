@@ -18,6 +18,7 @@ export const AuthContext = createContext<{
   updateProfile: (userData: Partial<UserModel>) => Promise<UserModel | undefined>;
   logout: () => void;
   verify: () => Promise<void>;
+  isAdmin: boolean;
   isSysAdmin: boolean;
   role: UserRole | undefined;
   profileId: string | undefined;
@@ -43,6 +44,7 @@ export const AuthContext = createContext<{
   updateProfile: async () => undefined,
   logout: () => {},
   verify: async () => {},
+  isAdmin: false,
   isSysAdmin: false,
   role: undefined,
   profileId: undefined,

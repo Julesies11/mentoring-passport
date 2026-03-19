@@ -14,17 +14,13 @@ import { ContentLoader } from '@/components/common/content-loader';
 // System Administrator Pages
 const SysAdminDashboardPage = lazy(() => import('@/pages/admin/dashboard').then(m => ({ default: m.AdminDashboardPage })));
 const SysAdminInstanceSettingsPage = lazy(() => import('@/pages/org-admin/settings').then(m => ({ default: m.OrgSettingsPage })));
-const SysAdminUsersPage = lazy(() => import('@/pages/admin/users').then(m => ({ default: m.AdminUsersPage })));
 
 // Organisation Administrator Pages
 const OrgAdminDashboardPage = lazy(() => import('@/pages/org-admin/dashboard').then(m => ({ default: m.OrgAdminDashboardPage })));
 const OrgAdminProgramsPage = lazy(() => import('@/pages/org-admin/programs').then(m => ({ default: m.OrgAdminProgramsPage })));
-const OrgAdminPairsPage = lazy(() => import('@/pages/org-admin/pairs-page').then(m => ({ default: m.OrgAdminPairsPage })));
 const ParticipantsPage = lazy(() => import('@/pages/supervisor/participants-page').then(m => ({ default: m.ParticipantsPage })));
 const TaskTemplatesLibraryPage = lazy(() => import('@/pages/org-admin/task-templates').then(m => ({ default: m.TaskTemplatesLibraryPage })));
 const TaskTemplateEditorPage = lazy(() => import('@/pages/org-admin/task-templates').then(m => ({ default: m.TaskTemplateEditorPage })));
-const ManageSupervisorsPage = lazy(() => import('@/pages/org-admin/supervisors').then(m => ({ default: m.ManageSupervisorsPage })));
-const EvidenceAuditPage = lazy(() => import('@/pages/org-admin/evidence-audit-page').then(m => ({ default: m.EvidenceAuditPage })));
 
 // Supervisor Pages
 const SupervisorDashboardPage = lazy(() => import('@/pages/supervisor/dashboard-page').then(m => ({ default: m.SupervisorDashboardPage })));
@@ -107,14 +103,6 @@ export function AppRoutingSetup() {
                   </RequireRole>
                 }
               />
-              <Route
-                path="/sys-admin/users"
-                element={
-                  <RequireRole allowedRoles={[ROLES.ADMINISTRATOR]}>
-                    <SysAdminUsersPage />
-                  </RequireRole>
-                }
-              />
 
               {/* Organisation Administrator Routes */}
               <Route
@@ -130,14 +118,6 @@ export function AppRoutingSetup() {
                 element={
                   <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <OrgAdminProgramsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/admin/pairs"
-                element={
-                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
-                    <OrgAdminPairsPage />
                   </RequireRole>
                 }
               />
@@ -162,22 +142,6 @@ export function AppRoutingSetup() {
                 element={
                   <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <TaskTemplateEditorPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/admin/supervisors"
-                element={
-                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
-                    <ManageSupervisorsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/admin/evidence-audit"
-                element={
-                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
-                    <EvidenceAuditPage />
                   </RequireRole>
                 }
               />

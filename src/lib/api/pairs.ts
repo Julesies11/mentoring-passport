@@ -113,7 +113,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw new Error('Invalid program selection. Please ensure a program is selected.');
   }
 
-  // Step 2: Fetch the "Not Applicable" evidence type to use as a fallback
+  // Step 1: Fetch the "Not Applicable" evidence type to use as a fallback
   const { data: naEvidenceType } = await supabase
     .from('mp_evidence_types')
     .select('id')
@@ -123,7 +123,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
 
   const fallbackEvidenceTypeId = naEvidenceType?.id;
 
-  // Step 3: Create the pair
+  // Step 2: Create the pair
   const { data: pair, error: pairError } = await supabase
     .from('mp_pairs')
     .insert({
@@ -141,8 +141,8 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw pairError;
   }
 
-  // Step 4: Fetch all active tasks from PROGRAM tasks list
-  const { data: tasks, error: tasksError } = await supabase
+  // Step 3: Fetch all active tasks for the program
+  const { data: programTasks, error: tasksError } = await supabase
     .from('mp_program_tasks')
     .select('id, name, evidence_type_id, sort_order')
     .eq('is_active', true)
@@ -154,9 +154,9 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     throw tasksError;
   }
 
-  // Step 5: Create pair_tasks for this new pair
-  if (tasks && tasks.length > 0) {
-    const pairTasks = tasks.map(task => ({
+  if (programTasks && programTasks.length > 0) {
+    // Step 4: Batch create pair_tasks and return the created IDs
+    const pairTasksToInsert = programTasks.map(task => ({
       pair_id: pair.id,
       program_task_id: task.id,
       name: task.name,
@@ -165,63 +165,51 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
       status: TASK_STATUS.NOT_SUBMITTED,
       is_custom: false,
       program_id: input.program_id
-    }));
+    })).filter(pt => !!pt.evidence_type_id);
 
-    // Filter out any tasks that still don't have an evidence_type_id if fallback failed
-    const validPairTasks = pairTasks.filter(pt => !!pt.evidence_type_id);
-
-    if (validPairTasks.length > 0) {
-      const { error: pairTasksError } = await supabase
+    if (pairTasksToInsert.length > 0) {
+      const { data: createdPairTasks, error: pairTasksError } = await supabase
         .from('mp_pair_tasks')
-        .insert(validPairTasks);
+        .insert(pairTasksToInsert)
+        .select('id, program_task_id');
 
       if (pairTasksError) {
         console.error('Error creating pair tasks:', pairTasksError);
-      }
-
-      // Step 6: Create pair_subtasks for each pair task
-      for (const task of tasks) {
-        // Fetch program subtasks for this program task
-        const { data: programSubtasks, error: subtasksError } = await supabase
+      } else if (createdPairTasks && createdPairTasks.length > 0) {
+        // Step 5: Fetch ALL program subtasks for these program tasks in one go
+        const programTaskIds = programTasks.map(t => t.id);
+        const { data: allProgramSubtasks, error: subtasksError } = await supabase
           .from('mp_program_subtasks')
-          .select('id, name, sort_order, master_subtask_id')
-          .eq('program_task_id', task.id)
+          .select('id, program_task_id, name, sort_order, master_subtask_id')
+          .in('program_task_id', programTaskIds)
           .order('sort_order', { ascending: true });
 
         if (subtasksError) {
           console.error('Error fetching program subtasks:', subtasksError);
-          continue;
-        }
+        } else if (allProgramSubtasks && allProgramSubtasks.length > 0) {
+          // Step 6: Map program subtasks to their new pair_task_id and batch insert
+          const pairSubtasksToInsert = allProgramSubtasks.map(subtask => {
+            const pairTask = createdPairTasks.find(pt => pt.program_task_id === subtask.program_task_id);
+            if (!pairTask) return null;
 
-        if (programSubtasks && programSubtasks.length > 0) {
-          // Get the created pair task ID
-          const { data: createdPairTask } = await supabase
-            .from('mp_pair_tasks')
-            .select('id')
-            .eq('pair_id', pair.id)
-            .eq('program_task_id', task.id)
-            .single();
-
-          if (createdPairTask) {
-            const pairSubtasks = programSubtasks.map(subtask => ({
-              pair_task_id: createdPairTask.id,
+            return {
+              pair_task_id: pairTask.id,
               master_subtask_id: subtask.master_subtask_id,
               name: subtask.name,
-              evidence_type_id: fallbackEvidenceTypeId, // Subtasks don't always have evidence types, using fallback
+              evidence_type_id: fallbackEvidenceTypeId,
               sort_order: subtask.sort_order,
               is_completed: false,
               is_custom: false
-            }));
+            };
+          }).filter(st => st !== null && !!st.evidence_type_id);
 
-            const validSubtasks = pairSubtasks.filter(st => !!st.evidence_type_id);
-            if (validSubtasks.length > 0) {
-              const { error: pairSubtasksError } = await supabase
-                .from('mp_pair_subtasks')
-                .insert(validSubtasks);
+          if (pairSubtasksToInsert.length > 0) {
+            const { error: pairSubtasksError } = await supabase
+              .from('mp_pair_subtasks')
+              .insert(pairSubtasksToInsert);
 
-              if (pairSubtasksError) {
-                console.error('Error creating pair subtasks:', pairSubtasksError);
-              }
+            if (pairSubtasksError) {
+              console.error('Error creating pair subtasks:', pairSubtasksError);
             }
           }
         }
@@ -283,41 +271,6 @@ export async function restorePair(id: string): Promise<void> {
     console.error('Error restoring pair:', error);
     throw error;
   }
-}
-
-/**
- * Get pair statistics
- */
-export async function fetchPairStats(programId?: string) {
-  // Defensive check: Ensure programId is a string and not an object
-  if (programId && (typeof programId !== 'string' || programId === '[object Object]')) {
-    console.warn('fetchPairStats called with invalid programId:', programId);
-    return { total: 0, active: 0, completed: 0, archived: 0 };
-  }
-
-  let query = supabase
-    .from('mp_pairs')
-    .select('status'); 
-
-  if (programId) {
-    query = query.eq('program_id', programId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching meeting stats:', error);
-    throw error;
-  }
-
-  const stats = {
-    total: data.length,
-    active: data.filter(p => p.status === PAIR_STATUS.ACTIVE).length,
-    completed: data.filter(p => p.status === PAIR_STATUS.COMPLETED).length,
-    archived: data.filter(p => p.status === PAIR_STATUS.ARCHIVED).length,
-  };
-
-  return stats;
 }
 
 /**

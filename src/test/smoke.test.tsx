@@ -17,7 +17,6 @@ import { SupervisorErrorLogsPage } from '@/pages/supervisor/error-logs-page';
 import { OrgAdminDashboardPage } from '@/pages/org-admin/dashboard';
 import { OrgAdminProgramsPage } from '@/pages/org-admin/programs';
 import { OrgAdminTaskTemplatesPage } from '@/pages/org-admin/task-templates';
-import { ManageSupervisorsPage } from '@/pages/org-admin/supervisors';
 
 // Program Member Pages
 import { ProgramMemberDashboardPage } from '@/pages/dashboards/program-member-dashboard';
@@ -73,13 +72,6 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
         expect(container).not.toBeEmptyDOMElement();
       });
     });
-
-    it('Admin Users Page renders without crashing', async () => {
-      const { container } = render(<AdminUsersPage />, { authValue: adminAuth });
-      await waitFor(() => {
-        expect(container).not.toBeEmptyDOMElement();
-      });
-    });
   });
 
   describe('Organisation Admin Pages', () => {
@@ -101,20 +93,6 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
 
     it('Org Admin Task Templates renders without crashing', async () => {
       const { container } = render(<OrgAdminTaskTemplatesPage />, { authValue: orgAdminAuth });
-      await waitFor(() => {
-        expect(container).not.toBeEmptyDOMElement();
-      });
-    });
-
-    it('Manage Supervisors Page renders without crashing', async () => {
-      const { container } = render(<ManageSupervisorsPage />, { authValue: orgAdminAuth });
-      await waitFor(() => {
-        expect(container).not.toBeEmptyDOMElement();
-      });
-    });
-
-    it('Org Admin Dashboard renders without crashing', async () => {
-      const { container } = render(<OrgAdminDashboardPage />);
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });

@@ -1,5 +1,5 @@
 import { ROLES, PROGRAM_STATUS } from '@/config/constants';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OrganisationProvider, useOrganisation } from '../organisation-provider';

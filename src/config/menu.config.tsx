@@ -13,118 +13,127 @@ import { type MenuConfig } from './types';
 export const SIDEBAR_MENU_CONFIG: MenuConfig = [
   // --- SYSTEM ADMINISTRATION LEVEL (Sys Admin only) ---
   {
+    heading: 'System'
+  },
+  {
     title: 'System Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/sys-admin/dashboard',
-    requiredRole: [ROLES.ADMINISTRATOR]
+    requiredRole: [ROLES.ADMINISTRATOR],
+    requiredFlag: ['isSysAdmin']
   },
   {
     title: 'Instance Settings',
     icon: () => <KeenIcon icon="bank" />,
     path: '/sys-admin/settings',
-    requiredRole: [ROLES.ADMINISTRATOR]
-  },
-  {
-    title: 'User Directory',
-    icon: () => <KeenIcon icon="users" />,
-    path: '/sys-admin/users',
-    requiredRole: [ROLES.ADMINISTRATOR]
+    requiredRole: [ROLES.ADMINISTRATOR],
+    requiredFlag: ['isSysAdmin']
   },
 
   // --- ORGANISATION ADMINISTRATION LEVEL (Org Admin) ---
   {
+    heading: 'Administration'
+  },
+  {
     title: 'Admin Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/admin/dashboard',
-    requiredRole: [ROLES.ORG_ADMIN]
+    requiredRole: [ROLES.ORG_ADMIN],
+    requiredFlag: ['isOrgAdmin']
   },
   {
     title: 'Programs',
     icon: () => <KeenIcon icon="layers" />,
     path: '/admin/programs',
-    requiredRole: [ROLES.ORG_ADMIN]
-  },
-  {
-    title: 'Organisation Pairs',
-    icon: () => <KeenIcon icon="disconnect" />,
-    path: '/admin/pairs',
-    requiredRole: [ROLES.ORG_ADMIN]
+    requiredRole: [ROLES.ORG_ADMIN],
+    requiredFlag: ['isOrgAdmin']
   },
   {
     title: 'Manage Members',
     icon: () => <KeenIcon icon="users" />,
     path: '/admin/participants',
-    requiredRole: [ROLES.ORG_ADMIN]
-  },
-  {
-    title: 'Audit Evidence',
-    icon: () => <KeenIcon icon="eye" />,
-    path: '/admin/evidence-audit',
-    requiredRole: [ROLES.ORG_ADMIN]
+    requiredRole: [ROLES.ORG_ADMIN],
+    requiredFlag: ['isOrgAdmin']
   },
   {
     title: 'Task Templates',
     icon: () => <KeenIcon icon="check-squared" />,
     path: '/admin/task-templates',
-    requiredRole: [ROLES.ORG_ADMIN]
+    requiredRole: [ROLES.ORG_ADMIN],
+    requiredFlag: ['isOrgAdmin']
   },
 
   // --- SUPERVISOR LEVEL ---
   {
+    heading: 'Supervisor Role'
+  },
+  {
     title: 'Supervisor Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/supervisor/hub',
-    requiredRole: [ROLES.SUPERVISOR]
+    requiredRole: [ROLES.SUPERVISOR],
+    requiredFlag: ['isSupervisor']
   },
   {
     title: 'Pairs',
     icon: () => <KeenIcon icon="disconnect" />,
     path: '/supervisor/pairs',
-    requiredRole: [ROLES.SUPERVISOR]
+    requiredRole: [ROLES.SUPERVISOR],
+    requiredFlag: ['isSupervisor']
   },
   {
     title: 'Program Tasks',
     icon: () => <KeenIcon icon="check-squared" />,
     path: '/supervisor/program-tasks',
-    requiredRole: [ROLES.SUPERVISOR]
+    requiredRole: [ROLES.SUPERVISOR],
+    requiredFlag: ['isSupervisor']
   },
   {
     title: 'Pair Management',
     icon: () => <KeenIcon icon="setting-2" />,
     path: '/supervisor/checklist',
-    requiredRole: [ROLES.SUPERVISOR]
+    requiredRole: [ROLES.SUPERVISOR],
+    requiredFlag: ['isSupervisor']
   },
   {
     title: 'Evidence Review',
     icon: () => <KeenIcon icon="eye" />,
     path: '/supervisor/evidence-review',
-    requiredRole: [ROLES.SUPERVISOR]
+    requiredRole: [ROLES.SUPERVISOR],
+    requiredFlag: ['isSupervisor']
   },
   {
     title: 'Calendar',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/supervisor/calendar',
-    requiredRole: [ROLES.SUPERVISOR]
+    requiredRole: [ROLES.SUPERVISOR],
+    requiredFlag: ['isSupervisor']
   },
 
   // --- PROGRAM MEMBER LEVEL (Mentor / Mentee) ---
   {
+    heading: 'Member Hub'
+  },
+  {
     title: 'Relationship Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/program-member/dashboard',
-    requiredRole: [ROLES.PROGRAM_MEMBER]
+    requiredRole: [ROLES.PROGRAM_MEMBER],
+    requiredFlag: ['isProgramMember']
   },
   {
     title: 'Tasks',
     icon: () => <KeenIcon icon="clipboard" />,
     path: '/program-member/tasks',
-    requiredRole: [ROLES.PROGRAM_MEMBER]
+    requiredRole: [ROLES.PROGRAM_MEMBER],
+    requiredFlag: ['isProgramMember']
   },
   {
     title: 'Meetings',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/program-member/meetings',
-    requiredRole: [ROLES.PROGRAM_MEMBER]
+    requiredRole: [ROLES.PROGRAM_MEMBER],
+    requiredFlag: ['isProgramMember']
   },
 ];
 
