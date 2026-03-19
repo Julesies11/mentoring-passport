@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
 import { NotificationService } from '@/lib/api/notifications-service';
@@ -25,6 +26,7 @@ export function useOrgSupervisors() {
     queryKey: ['org-supervisors'],
     queryFn: () => fetchOrgSupervisors(),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const assignMutation = useMutation({
@@ -43,11 +45,14 @@ export function useOrgSupervisors() {
     }
   });
 
+  const assignToProgramCallback = useCallback(assignMutation.mutateAsync, [assignMutation]);
+  const removeFromProgramCallback = useCallback(removeMutation.mutateAsync, [removeMutation]);
+
   return {
     supervisors,
     isLoading,
-    assignToProgram: assignMutation.mutateAsync,
-    removeFromProgram: removeMutation.mutateAsync,
+    assignToProgram: assignToProgramCallback,
+    removeFromProgram: removeFromProgramCallback,
     isAssigning: assignMutation.isPending,
     isRemoving: removeMutation.isPending
   };
@@ -61,12 +66,14 @@ export function useParticipants(programId?: string) {
     queryKey: ['participants', programId],
     queryFn: () => fetchParticipants(programId),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const { data: stats } = useQuery({
     queryKey: ['participants', 'stats', programId],
     queryFn: () => fetchParticipantStats(programId),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const createMutation = useMutation({
@@ -108,19 +115,26 @@ export function useParticipants(programId?: string) {
     },
   });
 
+  const createParticipantCallback = useCallback(createMutation.mutate, [createMutation]);
+  const updateParticipantCallback = useCallback((id: string, input: UpdateParticipantInput) =>
+    updateMutation.mutate({ id, input }), [updateMutation]);
+  const archiveParticipantCallback = useCallback(archiveMutation.mutate, [archiveMutation]);
+  const restoreParticipantCallback = useCallback(restoreMutation.mutate, [restoreMutation]);
+  const createParticipantAsyncCallback = useCallback(createMutation.mutateAsync, [createMutation]);
+  const updateParticipantAsyncCallback = useCallback((id: string, input: UpdateParticipantInput) =>
+    updateMutation.mutateAsync({ id, input }), [updateMutation]);
+
   return {
     participants,
     stats,
     isLoading,
     error,
-    createParticipant: createMutation.mutate,
-    updateParticipant: (id: string, input: UpdateParticipantInput) =>
-      updateMutation.mutate({ id, input }),
-    archiveParticipant: archiveMutation.mutate,
-    restoreParticipant: restoreMutation.mutate,
-    createParticipantAsync: createMutation.mutateAsync,
-    updateParticipantAsync: (id: string, input: UpdateParticipantInput) =>
-      updateMutation.mutateAsync({ id, input }),
+    createParticipant: createParticipantCallback,
+    updateParticipant: updateParticipantCallback,
+    archiveParticipant: archiveParticipantCallback,
+    restoreParticipant: restoreParticipantCallback,
+    createParticipantAsync: createParticipantAsyncCallback,
+    updateParticipantAsync: updateParticipantAsyncCallback,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isArchiving: archiveMutation.isPending,
@@ -133,6 +147,7 @@ export function useParticipant(id: string) {
     queryKey: ['participants', id],
     queryFn: () => fetchParticipant(id),
     enabled: !!id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
@@ -141,6 +156,7 @@ export function useAllParticipants(programId?: string) {
     queryKey: ['participants', 'all', programId],
     queryFn: () => fetchParticipants(programId),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
@@ -149,5 +165,6 @@ export function useParticipantsByRole(role: 'supervisor' | 'program-member') {
     queryKey: ['participants', 'role', role],
     queryFn: () => fetchParticipantsByRole(role),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

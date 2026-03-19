@@ -26,12 +26,14 @@ export function usePairs() {
     queryKey: ['pairs', programId],
     queryFn: () => fetchPairs(programId),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const { data: stats } = useQuery({
     queryKey: ['pairs', 'stats', programId],
     queryFn: () => fetchPairStats(programId),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const createMutation = useMutation({
@@ -68,21 +70,30 @@ export function usePairs() {
     },
   });
 
+  const createPairCallback = useCallback((input: any) => createMutation.mutate({ ...input, program_id: programId }), [createMutation, programId]);
+  const createPairAsyncCallback = useCallback((input: any) => createMutation.mutateAsync({ ...input, program_id: programId }), [createMutation, programId]);
+  const updatePairCallback = useCallback((id: string, input: UpdatePairInput) =>
+    updateMutation.mutate({ id, input }), [updateMutation]);
+  const updatePairAsyncCallback = useCallback((id: string, input: UpdatePairInput) =>
+    updateMutation.mutateAsync({ id, input }), [updateMutation]);
+  const archivePairCallback = useCallback(archiveMutation.mutate, [archiveMutation]);
+  const archivePairAsyncCallback = useCallback(archiveMutation.mutateAsync, [archiveMutation]);
+  const restorePairCallback = useCallback(restoreMutation.mutate, [restoreMutation]);
+  const restorePairAsyncCallback = useCallback(restoreMutation.mutateAsync, [restoreMutation]);
+
   return {
     pairs,
     stats,
     isLoading,
     error,
-    createPair: (input: any) => createMutation.mutate({ ...input, program_id: programId }),
-    createPairAsync: (input: any) => createMutation.mutateAsync({ ...input, program_id: programId }),
-    updatePair: (id: string, input: UpdatePairInput) =>
-      updateMutation.mutate({ id, input }),
-    updatePairAsync: (id: string, input: UpdatePairInput) =>
-      updateMutation.mutateAsync({ id, input }),
-    archivePair: archiveMutation.mutate,
-    archivePairAsync: archiveMutation.mutateAsync,
-    restorePair: restoreMutation.mutate,
-    restorePairAsync: restoreMutation.mutateAsync,
+    createPair: createPairCallback,
+    createPairAsync: createPairAsyncCallback,
+    updatePair: updatePairCallback,
+    updatePairAsync: updatePairAsyncCallback,
+    archivePair: archivePairCallback,
+    archivePairAsync: archivePairAsyncCallback,
+    restorePair: restorePairCallback,
+    restorePairAsync: restorePairAsyncCallback,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isArchiving: archiveMutation.isPending,
@@ -142,6 +153,7 @@ export function useAllPairs(programId?: string) {
   return useQuery({
     queryKey: ['pairs', programId],
     queryFn: () => fetchPairs(programId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 

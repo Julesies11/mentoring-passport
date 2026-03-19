@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react';
 import { TASK_STATUS, TaskStatus } from '@/config/constants';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
@@ -44,6 +45,7 @@ export function useTasks() {
     queryKey: ['tasks'],
     queryFn: () => fetchTasks(),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const reorderTasksMutation = useMutation({
@@ -78,16 +80,20 @@ export function useTasks() {
     },
   });
 
+  const updatePairTaskStatusCallback = useCallback((taskId: string, status: TaskStatus) =>
+    updatePairTaskStatus(taskId, status, user?.id), [user?.id]);
+
+  const reorderTasksCallback = useCallback((newOrder: { id: string; sort_order: number }[]) =>
+    reorderTasksMutation.mutate(newOrder), [reorderTasksMutation]);
+
   return {
     tasks,
     isLoading,
     error,
     fetchPairTasks,
     fetchPairTaskStats,
-    updatePairTaskStatus: (taskId: string, status: TaskStatus) =>
-      updatePairTaskStatus(taskId, status, user?.id),
-    reorderTasks: (newOrder: { id: string; sort_order: number }[]) =>
-      reorderTasksMutation.mutate(newOrder),
+    updatePairTaskStatus: updatePairTaskStatusCallback,
+    reorderTasks: reorderTasksCallback,
   };
 }
 
@@ -96,6 +102,7 @@ export function useTaskLists() {
     queryKey: ['task-lists'],
     queryFn: () => fetchTaskLists(),
     enabled: true,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
@@ -104,6 +111,7 @@ export function useTaskListTasks(taskListId?: string) {
     queryKey: ['task-list-tasks', taskListId],
     queryFn: () => fetchTaskListTasks(taskListId!),
     enabled: !!taskListId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
@@ -114,6 +122,7 @@ export function useProgramTasks(programId?: string) {
     queryKey: ['program-tasks', programId],
     queryFn: () => fetchProgramTasks(programId!),
     enabled: !!programId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const createTaskMutation = useMutation({
@@ -162,14 +171,23 @@ export function useProgramTasks(programId?: string) {
     },
   });
 
+  const createTaskCallback = useCallback(createTaskMutation.mutate, [createTaskMutation]);
+  const updateTaskCallback = useCallback(({ taskId, updates }: { taskId: string; updates: Partial<ProgramTask> }) =>
+    updateTaskMutation.mutate({ taskId, updates }), [updateTaskMutation]);
+  const deleteTaskCallback = useCallback(deleteTaskMutation.mutate, [deleteTaskMutation]);
+  const createSubTaskCallback = useCallback(createSubTaskMutation.mutate, [createSubTaskMutation]);
+  const updateSubTaskCallback = useCallback(({ subtaskId, updates }: { subtaskId: string; updates: Partial<ProgramSubTask> }) =>
+    updateSubTaskMutation.mutate({ subtaskId, updates }), [updateSubTaskMutation]);
+  const deleteSubTaskCallback = useCallback(deleteSubTaskMutation.mutate, [deleteSubTaskMutation]);
+
   return {
     ...query,
-    createTask: createTaskMutation.mutate,
-    updateTask: updateTaskMutation.mutate,
-    deleteTask: deleteTaskMutation.mutate,
-    createSubTask: createSubTaskMutation.mutate,
-    updateSubTask: updateSubTaskMutation.mutate,
-    deleteSubTask: deleteSubTaskMutation.mutate,
+    createTask: createTaskCallback,
+    updateTask: updateTaskCallback,
+    deleteTask: deleteTaskCallback,
+    createSubTask: createSubTaskCallback,
+    updateSubTask: updateSubTaskCallback,
+    deleteSubTask: deleteSubTaskCallback,
   };
 }
 
@@ -177,6 +195,7 @@ export function useAllPairTaskStatuses(programId?: string) {
   return useQuery({
     queryKey: ['pair-tasks', 'all-statuses', programId],
     queryFn: () => fetchAllPairTaskStatuses(programId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
@@ -385,23 +404,39 @@ export function usePairTasks(pairId: string) {
     },
   });
 
+  const updateStatusCallback = useCallback((taskId: string, status: TaskStatus, evidenceNotes?: string) =>
+    updateStatusMutation.mutate({ taskId, status, evidenceNotes }), [updateStatusMutation]);
+
+  const createTaskCallback = useCallback(createPairTaskMutation.mutate, [createPairTaskMutation]);
+
+  const updateTaskCallback = useCallback((taskId: string, updates: Partial<PairTask>, options?: any) =>
+    updatePairTaskMutation.mutate({ taskId, updates }, options), [updatePairTaskMutation]);
+
+  const deleteTaskCallback = useCallback(deletePairTaskMutation.mutate, [deletePairTaskMutation]);
+
+  const createSubTaskCallback = useCallback(createPairSubTaskMutation.mutate, [createPairSubTaskMutation]);
+
+  const updateSubTaskCallback = useCallback((subtaskId: string, updates: Partial<PairSubTask>, options?: any) =>
+    updatePairSubTaskMutation.mutate({ subtaskId, updates }, options), [updatePairSubTaskMutation]);
+
+  const deleteSubTaskCallback = useCallback(deletePairSubTaskMutation.mutate, [deletePairSubTaskMutation]);
+
+  const reorderTasksCallback = useCallback((newOrder: { id: string; sort_order: number }[]) =>
+    reorderTasksMutation.mutate(newOrder), [reorderTasksMutation]);
+
   return {
     tasks,
     stats,
     isLoading,
     error,
-    updateStatus: (taskId: string, status: TaskStatus, evidenceNotes?: string) =>
-      updateStatusMutation.mutate({ taskId, status, evidenceNotes }),
-    createTask: createPairTaskMutation.mutate,
-    updateTask: (taskId: string, updates: Partial<PairTask>, options?: any) =>
-      updatePairTaskMutation.mutate({ taskId, updates }, options),
-    deleteTask: deletePairTaskMutation.mutate,
-    createSubTask: createPairSubTaskMutation.mutate,
-    updateSubTask: (subtaskId: string, updates: Partial<PairSubTask>, options?: any) =>
-      updatePairSubTaskMutation.mutate({ subtaskId, updates }, options),
-    deleteSubTask: deletePairSubTaskMutation.mutate,
-    reorderTasks: (newOrder: { id: string; sort_order: number }[]) =>
-      reorderTasksMutation.mutate(newOrder),
+    updateStatus: updateStatusCallback,
+    createTask: createTaskCallback,
+    updateTask: updateTaskCallback,
+    deleteTask: deleteTaskCallback,
+    createSubTask: createSubTaskCallback,
+    updateSubTask: updateSubTaskCallback,
+    deleteSubTask: deleteSubTaskCallback,
+    reorderTasks: reorderTasksCallback,
     isUpdating: updateStatusMutation.isPending || updatePairTaskMutation.isPending || updatePairSubTaskMutation.isPending || reorderTasksMutation.isPending,
     isDeleting: deletePairTaskMutation.isPending || deletePairSubTaskMutation.isPending,
     isCreating: createPairTaskMutation.isPending || createPairSubTaskMutation.isPending,

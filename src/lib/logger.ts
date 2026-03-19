@@ -6,6 +6,7 @@ export interface LogErrorParams {
   componentName?: string;
   metadata?: Record<string, any>;
   severity?: 'info' | 'warning' | 'error' | 'critical';
+  userId?: string;
 }
 
 export const logDebug = (message: string, ...args: any[]) => {
@@ -24,11 +25,12 @@ export const logError = async ({
   componentName,
   metadata = {},
   severity = 'error',
+  userId: providedUserId,
 }: LogErrorParams) => {
   try {
-    // Attempt to get the current user session
-    let userId = null;
-    if (supabase?.auth) {
+    // Attempt to get the current user session only if not provided
+    let userId = providedUserId || null;
+    if (!userId && supabase?.auth) {
       const { data: sessionData } = await supabase.auth.getSession();
       userId = sessionData?.session?.user?.id || null;
     }

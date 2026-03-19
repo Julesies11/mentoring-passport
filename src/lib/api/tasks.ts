@@ -568,15 +568,9 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
  * Reorder pair tasks in batch
  */
 export async function reorderPairTasks(tasks: { id: string; sort_order: number }[]): Promise<void> {
-  const promises = tasks.map(task => 
-    supabase
-      .from('mp_pair_tasks')
-      .update({ sort_order: task.sort_order })
-      .eq('id', task.id)
-  );
-
-  const results = await Promise.all(promises);
-  const error = results.find(r => r.error)?.error;
+  const { error } = await supabase
+    .from('mp_pair_tasks')
+    .upsert(tasks, { onConflict: 'id' });
 
   if (error) {
     console.error('Error reordering pair tasks:', error);
@@ -588,15 +582,9 @@ export async function reorderPairTasks(tasks: { id: string; sort_order: number }
  * Reorder master tasks in batch
  */
 export async function reorderMasterTasks(tasks: { id: string; sort_order: number }[]): Promise<void> {
-  const promises = tasks.map(task => 
-    supabase
-      .from('mp_tasks_master')
-      .update({ sort_order: task.sort_order })
-      .eq('id', task.id)
-  );
-
-  const results = await Promise.all(promises);
-  const error = results.find(r => r.error)?.error;
+  const { error } = await supabase
+    .from('mp_tasks_master')
+    .upsert(tasks, { onConflict: 'id' });
 
   if (error) {
     console.error('Error reordering master tasks:', error);
