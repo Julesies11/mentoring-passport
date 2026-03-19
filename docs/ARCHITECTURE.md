@@ -12,31 +12,35 @@ This document outlines the application's structure and data flow for the Single 
 - `src/providers/`: Context providers (Pairing, Theme, etc.).
 
 ## 2. Security Model (RBAC)
-The system uses a 3/4-tier security model enforced via Role-Based Access Control (RBAC) in the JWT and Supabase RLS:
+The system uses a 4-tier security model enforced via Role-Based Access Control (RBAC) in the JWT and Supabase RLS:
 
 1. **Administrator (`administrator`):** Global instance access, manages users and system settings.
 2. **Org Admin (`org-admin`):** Instance-level administrator with full access to programs, pairs, and task templates.
-3. **Supervisor (`supervisor`):** Program-scoped access. Managed participants and pairs within explicitly assigned programs via `mp_supervisor_programs`.
+3. **Supervisor (`supervisor`):** Program-scoped access. Manages participants and pairs within explicitly assigned programs via `mp_supervisor_programs`.
 4. **Program Member (`program-member`):** Mentors and Mentees restricted to their own pairings and tasks.
 
 **Source of Truth:** The user's role is stored in `mp_profiles.role` and automatically synced to `auth.users.app_metadata.role`. RLS policies verify this metadata directly from the JWT to ensure zero-recursion performance.
 
-## 3. Data Flow
+## 3. Data Flow & Business Logic Rules
+
+**MANDATORY RULE:** All business logic must live inside the React app for maximum testability.
+- **NO** Supabase SQL functions, triggers (except role sync), stored procedures, or RPC endpoints.
+- **NO** database-side joins or transformations.
+- **ALL** data shaping (grouping, aggregating, merging) occurs in the TypeScript layer (API services or TanStack Query `select` transformers).
 
 1.  **UI Component:** Triggered by user action or mount.
 2.  **Hook (`src/hooks/`):** Calls TanStack Query `useQuery` or `useMutation`.
 3.  **API Service (`src/lib/api/`):** Performs the actual `supabase` JS client call. Logic for assignment and scoped fetching is handled here.
-4.  **Supabase RLS:** Row Level Security policies enforce access control based on the user's `role` and `id` (and assignments for supervisors).
-5.  **Notifications:** Handled at the application level in `src/lib/api/notifications-service.ts`.
+4.  **Supabase RLS:** Row Level Security policies enforce access control based on the user's `role` and `id`.
 
 ## 4. Key Feature Modules
 
-### Task Management Flow
-1. **Master Templates:** Admins create `mp_task_lists_master` containing master tasks.
-2. **Program Assignment:** When a Program is created, it is linked to a Master Task List. A snapshot copy is made into `mp_program_tasks` for that specific program.
+### Task Management Flow (Snapshotting)
+1. **Master Templates:** Admins create `mp_task_lists_master` containing `mp_tasks_master`.
+2. **Program Assignment:** Programs are linked to a Master Task List. A snapshot copy is made into `mp_program_tasks` for that specific program.
 3. **Program Curation:** Supervisors (assigned to the program) can edit and refine the `mp_program_tasks` specifically for their program without affecting the global Master List.
-4. **Pair Assignment:** When a mentor-mentee Pair is created within a program, they are automatically assigned a snapshot of the current `mp_program_tasks` (copied to `mp_pair_tasks`).
-5. **Participant Execution:** Pairs work through their `mp_pair_tasks`. They can add custom tasks (`is_custom = true`) but cannot delete tasks originally assigned by the program.
+4. **Pair Assignment:** When a Pair is created, they are assigned a snapshot of the current `mp_program_tasks` (copied to `mp_pair_tasks`).
+5. **Execution:** Pairs work through their `mp_pair_tasks`. They can add custom tasks (`is_custom = true`) but cannot delete tasks originally assigned by the program.
 
 ### Admin Sections
 - **Administrator:** `src/pages/admin/` (User management, Instance settings).

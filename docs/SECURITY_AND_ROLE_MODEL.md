@@ -9,7 +9,7 @@ This document outlines the security architecture and structural implementation o
 | **1** | **Administrator** | Global | Full access to all instance data, global settings, and user management. |
 | **2** | **Org Admin** | Instance | God-mode within the instance. Manages programs, pairings, and task templates. |
 | **3** | **Supervisor** | Program | Managed participants and pairs within explicitly assigned programs (mapped via `mp_supervisor_programs`). |
-| **4** | **Participant** | Pair | Mentors and Mentees. Access only to their own profile, pairings, tasks, and meetings. |
+| **4** | **Program Member** | Pair | Mentors and Mentees. Access only to their own profile, pairings, tasks, and meetings. |
 
 ## 2. Data Model & Flattening
 
@@ -43,8 +43,9 @@ RLS policies use the following SQL helpers defined in Migration 091:
 ## 4. Frontend Implementation
 
 ### State Management
-- **AuthContext:** Provides `role`, `isSysAdmin`, `isOrgAdmin`, and `isSupervisor` booleans derived directly from the authenticated user's profile and JWT metadata.
-- **Sidebar Menu:** Dynamically switches between `MENU_ADMINISTRATOR`, `MENU_ORG_ADMIN`, `MENU_SUPERVISOR`, and `MENU_PROGRAM_MEMBER` layouts based on the active role.
+- **AuthContext:** Provides `role`, `isSysAdmin`, `isOrgAdmin`, `isSupervisor`, and `isProgramMember` booleans derived directly from the authenticated user's profile and JWT metadata.
+- **Sidebar Menu:** The sidebar dynamically filters items based on the user's role and flags.
+  - **Adaptive Headings:** Section headings (e.g., 'Supervisor Role', 'Member Hub') are **HIDDEN** for Supervisor and Program Member roles to reduce redundancy. They are only visible to Admins who manage multiple sections.
 
 ### Context Switching
 Unlike the previous multi-tenant model, there is no "Hospital Switcher." If a user needs to act in a different role, their `role` must be updated in `mp_profiles`. If a Supervisor manages multiple programs, the filtering is handled by the `is_supervisor(p_program_id)` RLS helper and frontend UI filters.

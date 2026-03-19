@@ -13,7 +13,7 @@ Mentoring Passport is a web application designed to facilitate and track mentori
 - **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage)
 - **State Management**: TanStack React Query
 - **Routing**: React Router DOM
-- **Icons**: Lucide React
+- **Icons**: KeenIcons (Metronic), Lucide React
 
 ## Features
 
@@ -21,33 +21,30 @@ Mentoring Passport is a web application designed to facilitate and track mentori
 
 #### Authentication & Authorization
 - Supabase email/password authentication
-- Role-based access control (Supervisor, Mentor, Mentee)
-- User profiles stored in `mp_profiles` table
-- Quick test login for development
+- Role-based access control (Admin, Org Admin, Supervisor, Program Member)
+- **Forced Password Change**: Users created by supervisors must change their temporary password on first login.
+- **Credential Sharing**: Supervisor-side dialog for secure copying of new account credentials.
 
-#### Role-Based Navigation
-- **Supervisor**: Dashboard, Participants, Pairs, Evidence Review, Archive
-- **Mentor**: Dashboard, My Mentees, Meetings, Tasks, Evidence, Notes
-- **Mentee**: Dashboard, My Mentor, Meetings, Checklist, Evidence, Notes
-- Responsive sidebar (desktop) and bottom navigation bar (mobile)
-
-#### Universal Notifications System
+#### Real-Time Notifications System
 - Database-driven notifications with automatic triggers
 - Real-time updates via Supabase Realtime
-- Notification types: evidence uploaded/reviewed, notes added, meetings created, pairs created, tasks completed
-- Unread count badge on notification bell
-- Mark as read/delete functionality
+- Notification types: evidence uploaded/reviewed, meetings created, pairs created, tasks completed
+- Unread count badge and full management (read/delete)
 
-#### Database Schema
+#### Role-Based Navigation
+- **Supervisor**: Dashboard, Participants, Pairs, Program Task Curation, Evidence Review.
+- **Program Member**: Dashboard, My Tasks, Relationship Hub, Meetings.
+- **Adaptive Sidebar**: Headings automatically hide for non-admin roles to maximize space.
+
+#### Database Schema (Snapshot System)
 All tables use `mp_` prefix:
-- `mp_profiles` - User profiles with roles
-- `mp_pairs` - Mentor-mentee pairings
-- `mp_tasks` - Standard task list (16 tasks)
-- `mp_evidence_types` - Lookup table for evidence types
-- `mp_pair_tasks` - Task completion tracking per pair
-- `mp_evidence` - Evidence submissions with approval workflow
-- `mp_meetings` - Meeting scheduling
-- `mp_notifications` - Universal notification system
+- `mp_profiles` - User profiles with `must_change_password` flag.
+- `mp_task_lists_master` / `mp_tasks_master` - Global templates.
+- `mp_program_tasks` - Snapshot of tasks for a specific program (curatable by supervisors).
+- `mp_pair_tasks` - Snapshot of tasks for a specific pair.
+- `mp_evidence_uploads` - Unified evidence submission and review.
+- `mp_meetings` - Meeting scheduling and notes.
+- `mp_notifications` - Universal notification system.
 
 ### 🚧 To Be Implemented
 
