@@ -24,6 +24,7 @@ export const AuthContext = createContext<{
   profileId: string | undefined;
   isOrgAdmin: boolean;
   isSupervisor: boolean;
+  isProgramMember: boolean;
   isMentor: boolean;
   isMentee: boolean;
   setIsMentor: (isMentor: boolean) => void;
@@ -50,6 +51,7 @@ export const AuthContext = createContext<{
   profileId: undefined,
   isOrgAdmin: false,
   isSupervisor: false,
+  isProgramMember: false,
   isMentor: false,
   isMentee: false,
   setIsMentor: () => {},

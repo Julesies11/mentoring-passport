@@ -36,7 +36,7 @@ describe('SidebarMenu', () => {
     expect(screen.getByText('Pairs')).toBeInTheDocument();
   });
 
-  it('renders only Supervisor Hub for regular Supervisor', () => {
+  it('renders only Supervisor Hub items without heading for regular Supervisor', () => {
     render(<SidebarMenu />, {
       authValue: {
         role: ROLES.SUPERVISOR,
@@ -45,14 +45,37 @@ describe('SidebarMenu', () => {
       },
     });
 
-    // Regular supervisor menu doesn't have sections currently in config, 
-    // it just lists the items.
-    expect(screen.queryByText('Administration')).not.toBeInTheDocument();
+    // Heading should NOT be there
+    expect(screen.queryByText('Supervisor Role')).not.toBeInTheDocument();
+    
+    // Items should still be there
     expect(screen.getByText('Supervisor Hub')).toBeInTheDocument();
     expect(screen.getByText('Pairs')).toBeInTheDocument();
     
     // Org Admin specific items should NOT be there
-    expect(screen.queryByText('Org Hub')).not.toBeInTheDocument();
+    expect(screen.queryByText('Administration')).not.toBeInTheDocument();
     expect(screen.queryByText('Programs')).not.toBeInTheDocument();
+  });
+
+  it('renders only Program Member items without heading for regular Program Member', () => {
+    render(<SidebarMenu />, {
+      authValue: {
+        role: ROLES.PROGRAM_MEMBER,
+        isOrgAdmin: false,
+        isSupervisor: false,
+        isProgramMember: true,
+      },
+    });
+
+    // Heading should NOT be there
+    expect(screen.queryByText('Member Hub')).not.toBeInTheDocument();
+    
+    // Items should still be there
+    expect(screen.getByText('Relationship Hub')).toBeInTheDocument();
+    expect(screen.getByText('Tasks')).toBeInTheDocument();
+    
+    // Other roles items should NOT be there
+    expect(screen.queryByText('Supervisor Role')).not.toBeInTheDocument();
+    expect(screen.queryByText('Supervisor Hub')).not.toBeInTheDocument();
   });
 });

@@ -59,10 +59,15 @@ export function SidebarMenu() {
       });
 
       // Cleanup: Remove headings that have no visible items following them
+      // Logic: ONLY show section titles for Org Admins and Sys Admins (who see multiple sections)
       const finalResult: MenuConfig = [];
+      const showHeadings = isSysAdmin || isOrgAdmin;
+
       for (let i = 0; i < result.length; i++) {
         const item = result[i];
         if (item.heading) {
+          if (!showHeadings) continue;
+
           // Check if there are any non-heading items before the next heading or end of list
           let hasContent = false;
           for (let j = i + 1; j < result.length; j++) {
