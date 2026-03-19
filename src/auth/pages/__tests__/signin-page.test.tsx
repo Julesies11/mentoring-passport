@@ -89,7 +89,7 @@ describe('SignInPage', () => {
   it('handles quick test login buttons', async () => {
     render(<SignInPage />, { authValue: { login: mockLogin } });
 
-    const orgAdminButton = screen.getByRole('button', { name: /org admin/i });
+    const orgAdminButton = screen.getByRole('button', { name: /org admin \(leesa\)/i });
     fireEvent.click(orgAdminButton);
 
     await waitFor(() => {
