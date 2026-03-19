@@ -18,6 +18,7 @@ const SysAdminInstanceSettingsPage = lazy(() => import('@/pages/org-admin/settin
 // Organisation Administrator Pages
 const OrgAdminDashboardPage = lazy(() => import('@/pages/org-admin/dashboard').then(m => ({ default: m.OrgAdminDashboardPage })));
 const OrgAdminProgramsPage = lazy(() => import('@/pages/org-admin/programs').then(m => ({ default: m.OrgAdminProgramsPage })));
+const OrgAdminJobTitlesPage = lazy(() => import('@/pages/org-admin/job-titles').then(m => ({ default: m.OrgAdminJobTitlesPage })));
 const ParticipantsPage = lazy(() => import('@/pages/supervisor/participants-page').then(m => ({ default: m.ParticipantsPage })));
 const TaskTemplatesLibraryPage = lazy(() => import('@/pages/org-admin/task-templates').then(m => ({ default: m.TaskTemplatesLibraryPage })));
 const TaskTemplateEditorPage = lazy(() => import('@/pages/org-admin/task-templates').then(m => ({ default: m.TaskTemplateEditorPage })));
@@ -118,6 +119,14 @@ export function AppRoutingSetup() {
                 element={
                   <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <OrgAdminProgramsPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/job-titles"
+                element={
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
+                    <OrgAdminJobTitlesPage />
                   </RequireRole>
                 }
               />

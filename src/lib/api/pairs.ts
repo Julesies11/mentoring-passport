@@ -13,7 +13,8 @@ export interface Pair {
     id: string;
     full_name: string | null;
     email: string;
-    job_title: string | null;
+    job_title_id: string | null;
+    job_title_name?: string | null;
     department: string | null;
     avatar_url: string | null;
     phone?: string | null;
@@ -22,7 +23,8 @@ export interface Pair {
     id: string;
     full_name: string | null;
     email: string;
-    job_title: string | null;
+    job_title_id: string | null;
+    job_title_name?: string | null;
     department: string | null;
     avatar_url: string | null;
     phone?: string | null;
@@ -46,6 +48,23 @@ export interface UpdatePairInput {
 }
 
 /**
+ * Helper to map database response to Pair interface
+ */
+function mapPair(p: any): Pair {
+  return {
+    ...p,
+    mentor: p.mentor ? {
+      ...p.mentor,
+      job_title_name: p.mentor.job_title?.title || 'No Job Title'
+    } : undefined,
+    mentee: p.mentee ? {
+      ...p.mentee,
+      job_title_name: p.mentee.job_title?.title || 'No Job Title'
+    } : undefined
+  };
+}
+
+/**
  * Fetch all pairs for a specific program in the instance
  */
 export async function fetchPairs(programId?: string): Promise<Pair[]> {
@@ -59,8 +78,8 @@ export async function fetchPairs(programId?: string): Promise<Pair[]> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
       program:mp_programs(id, name, status)
     `);
 
@@ -77,7 +96,7 @@ export async function fetchPairs(programId?: string): Promise<Pair[]> {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(mapPair);
 }
 
 /**
@@ -88,8 +107,8 @@ export async function fetchPair(id: string): Promise<Pair | null> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone)
     `)
     .eq('id', id)
     .single();
@@ -99,7 +118,7 @@ export async function fetchPair(id: string): Promise<Pair | null> {
     throw error;
   }
 
-  return data;
+  return data ? mapPair(data) : null;
 }
 
 /**
@@ -131,8 +150,8 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     })
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone)
     `)
     .single();
 
@@ -217,7 +236,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     }
   }
 
-  return pair;
+  return mapPair(pair);
 }
 
 /**
@@ -230,8 +249,8 @@ export async function updatePair(id: string, input: UpdatePairInput): Promise<Pa
     .eq('id', id)
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone)
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone)
     `)
     .single();
 
@@ -240,7 +259,7 @@ export async function updatePair(id: string, input: UpdatePairInput): Promise<Pa
     throw error;
   }
 
-  return data;
+  return mapPair(data);
 }
 
 /**
@@ -281,8 +300,8 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     .from('mp_pairs')
     .select(`
       *,
-      mentor:mp_profiles!mentor_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
-      mentee:mp_profiles!mentee_id(id, full_name, email, job_title, department, avatar_url, bio, phone),
+      mentor:mp_profiles!mentor_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
+      mentee:mp_profiles!mentee_id(id, full_name, email, job_title_id, job_title:mp_job_titles(title), department, avatar_url, bio, phone),
       program:mp_programs(id, name, status, start_date)
     `)
     .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
@@ -294,5 +313,5 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(mapPair);
 }

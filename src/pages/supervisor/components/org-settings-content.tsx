@@ -36,7 +36,7 @@ export function OrgSettingsContent() {
   };
 
   return (
-    <div className="max-w-[800px] mx-auto">
+    <div className="max-w-[800px] mx-auto space-y-5 lg:space-y-7.5">
       <Card className="border-0 sm:border">
         <CardHeader className="px-6 py-4 border-b border-gray-100">
           <CardTitle className="text-lg font-bold">General Settings</CardTitle>

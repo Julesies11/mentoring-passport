@@ -122,8 +122,8 @@ export function UnpairedDialog({ open, onOpenChange, participants, pairs, onPair
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="font-semibold text-gray-900">{participant.full_name || 'No name'}</span>
-                          {participant.job_title && (
-                            <span className="text-[10px] text-muted-foreground uppercase font-medium">{participant.job_title}</span>
+                          {(participant.job_title_name || participant.job_title) && (
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium">{participant.job_title_name || participant.job_title}</span>
                           )}
                           <span className="text-xs text-muted-foreground">{participant.email}</span>
                         </div>

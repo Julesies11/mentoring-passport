@@ -6,7 +6,8 @@ export interface Participant {
   email: string;
   full_name: string;
   role: UserRole;
-  job_title?: string;
+  job_title_id?: string;
+  job_title_name?: string;
   department?: string;
   status: ProfileStatus;
   avatar_url?: string;
@@ -18,13 +19,13 @@ export interface CreateParticipantInput {
   password?: string;
   full_name: string;
   role: UserRole;
-  job_title?: string;
+  job_title_id?: string;
   department?: string;
 }
 
 export interface UpdateParticipantInput {
   full_name?: string;
-  job_title?: string | null;
+  job_title_id?: string | null;
   department?: string | null;
   phone?: string | null;
   bio?: string | null;
@@ -34,20 +35,27 @@ export interface UpdateParticipantInput {
 }
 
 /**
+ * Helper to map database response to Participant interface
+ */
+function mapParticipant(p: any): Participant {
+  return {
+    ...p,
+    job_title_name: p.job_title?.title || 'No Job Title'
+  };
+}
+
+/**
  * Fetch all participants in the instance
  */
 export async function fetchParticipants(programId?: string): Promise<Participant[]> {
   const query = supabase
     .from('mp_profiles')
-    .select('*')
+    .select('*, job_title:mp_job_titles(title)')
     .order('full_name');
 
-  // Note: if programId filtering is strictly required for participants, 
-  // it usually involves an inner join with pairs. For a general directory, we fetch all.
-  
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return (data || []).map(mapParticipant);
 }
 
 /**
@@ -56,12 +64,12 @@ export async function fetchParticipants(programId?: string): Promise<Participant
 export async function fetchParticipantsByRole(role: string): Promise<Participant[]> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select('*, job_title:mp_job_titles(title)')
     .eq('role', role)
     .order('full_name');
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map(mapParticipant);
 }
 
 /**
@@ -70,7 +78,7 @@ export async function fetchParticipantsByRole(role: string): Promise<Participant
 export async function fetchParticipant(id: string): Promise<Participant | null> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select('*, job_title:mp_job_titles(title)')
     .eq('id', id)
     .single();
 
@@ -78,7 +86,7 @@ export async function fetchParticipant(id: string): Promise<Participant | null> 
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  return data;
+  return mapParticipant(data);
 }
 
 /**
@@ -89,6 +97,7 @@ export async function fetchOrgSupervisors() {
     .from('mp_profiles')
     .select(`
       *,
+      job_title:mp_job_titles(title),
       mp_supervisor_programs(program_id)
     `)
     .in('role', [ROLES.SUPERVISOR, ROLES.ORG_ADMIN, ROLES.ADMINISTRATOR])
@@ -96,7 +105,7 @@ export async function fetchOrgSupervisors() {
 
   if (error) throw error;
   return (data || []).map((s: any) => ({
-    ...s,
+    ...mapParticipant(s),
     assigned_program_ids: s.mp_supervisor_programs?.map((sp: any) => sp.program_id) || []
   }));
 }
@@ -138,16 +147,16 @@ export async function createParticipant(input: CreateParticipantInput): Promise<
       email: input.email,
       full_name: input.full_name,
       role: input.role,
-      job_title: input.job_title,
+      job_title_id: input.job_title_id,
       department: input.department,
       status: PROFILE_STATUS.ACTIVE,
       must_change_password: true
     })
-    .select()
+    .select('*, job_title:mp_job_titles(title)')
     .single();
 
   if (error) throw error;
-  return data;
+  return mapParticipant(data);
 }
 
 /**
@@ -158,11 +167,11 @@ export async function updateParticipant(id: string, updates: Partial<UpdateParti
     .from('mp_profiles')
     .update(updates)
     .eq('id', id)
-    .select()
+    .select('*, job_title:mp_job_titles(title)')
     .single();
 
   if (error) throw error;
-  return data;
+  return mapParticipant(data);
 }
 
 /**

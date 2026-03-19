@@ -81,7 +81,7 @@ export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor
     endIndex
   } = usePagination({
     items: filteredEvidence,
-    initialItemsPerPage: 10,
+    initialItemsPerPage: 50,
     resetDeps: [statusFilter]
   });
 

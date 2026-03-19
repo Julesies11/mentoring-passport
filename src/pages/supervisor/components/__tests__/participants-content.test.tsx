@@ -7,6 +7,7 @@ import { render } from '@/test/utils';
 // Mock hooks
 vi.mock('@/hooks/use-participants', () => ({
   useParticipants: vi.fn(),
+  useAllParticipants: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
 vi.mock('@/hooks/use-pairs', async (importOriginal) => {
@@ -36,8 +37,8 @@ import { usePairs } from '@/hooks/use-pairs';
 
 describe('ParticipantsContent', () => {
   const mockParticipants = [
-    { id: 'u1', full_name: 'John Doe', email: 'john@test.com', role: ROLES.PROGRAM_MEMBER, status: PROFILE_STATUS.ACTIVE, job_title: 'Developer' },
-    { id: 'u2', full_name: 'Jane Smith', email: 'jane@test.com', role: ROLES.SUPERVISOR, status: PROFILE_STATUS.ACTIVE, job_title: 'Manager' },
+    { id: 'u1', full_name: 'John Doe', email: 'john@test.com', role: ROLES.PROGRAM_MEMBER, status: PROFILE_STATUS.ACTIVE, job_title_id: 'jt1', job_title_name: 'Developer' },
+    { id: 'u2', full_name: 'Jane Smith', email: 'jane@test.com', role: ROLES.SUPERVISOR, status: PROFILE_STATUS.ACTIVE, job_title_id: 'jt2', job_title_name: 'Manager' },
   ];
 
   beforeEach(() => {
@@ -118,29 +119,30 @@ describe('ParticipantsContent', () => {
   });
 
   describe('Pagination', () => {
-    // Generate 12 participants to force 2 pages (default 10 per page)
-    const manyParticipants = Array.from({ length: 12 }, (_, i) => ({
+    // Generate 55 participants to force 2 pages (default 50 per page)
+    const manyParticipants = Array.from({ length: 55 }, (_, i) => ({
       id: `u${i}`,
       full_name: `User ${i + 1}`,
       email: `user${i + 1}@test.com`,
       role: ROLES.PROGRAM_MEMBER,
       status: PROFILE_STATUS.ACTIVE,
-      job_title: 'Staff'
+      job_title_id: 'jt1',
+      job_title_name: 'Staff'
     }));
 
     beforeEach(() => {
       vi.mocked(useParticipants).mockReturnValue({ 
         participants: manyParticipants, 
         isLoading: false,
-        stats: { total: 12 }
+        stats: { total: 55 }
       } as any);
     });
 
-    it('shows only first 10 items on page 1', () => {
+    it('shows only first 50 items on page 1', () => {
       render(<ParticipantsContent />);
       expect(screen.getByText('User 1')).toBeInTheDocument();
-      expect(screen.getByText('User 10')).toBeInTheDocument();
-      expect(screen.queryByText('User 11')).not.toBeInTheDocument();
+      expect(screen.getByText('User 50')).toBeInTheDocument();
+      expect(screen.queryByText('User 51')).not.toBeInTheDocument();
     });
 
     it('navigates to page 2 when next arrow is clicked', async () => {
@@ -154,8 +156,8 @@ describe('ParticipantsContent', () => {
       
       await waitFor(() => {
         expect(screen.queryByText('User 1')).not.toBeInTheDocument();
-        expect(screen.getByText('User 11')).toBeInTheDocument();
-        expect(screen.getByText('User 12')).toBeInTheDocument();
+        expect(screen.getByText('User 51')).toBeInTheDocument();
+        expect(screen.getByText('User 55')).toBeInTheDocument();
       });
     });
 
@@ -167,7 +169,7 @@ describe('ParticipantsContent', () => {
       fireEvent.click(nextButton!);
       
       await waitFor(() => {
-        expect(screen.getByText('User 11')).toBeInTheDocument();
+        expect(screen.getByText('User 51')).toBeInTheDocument();
       });
 
       // 2. Change search term
@@ -177,9 +179,8 @@ describe('ParticipantsContent', () => {
       // 3. Should be back on page 1 (verified by presence of User 1)
       await waitFor(() => {
         expect(screen.getByText('User 1')).toBeInTheDocument();
-        expect(screen.queryByText('User 11')).not.toBeInTheDocument();
+        expect(screen.queryByText('User 51')).not.toBeInTheDocument();
       });
     });
   });
 });
-

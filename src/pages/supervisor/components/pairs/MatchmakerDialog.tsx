@@ -54,7 +54,8 @@ export function MatchmakerDialog({
       .filter(p => 
         p.full_name?.toLowerCase().includes(search.toLowerCase()) || 
         p.email.toLowerCase().includes(search.toLowerCase()) ||
-        p.department?.toLowerCase().includes(search.toLowerCase())
+        p.department?.toLowerCase().includes(search.toLowerCase()) ||
+        p.job_title_name?.toLowerCase().includes(search.toLowerCase())
       );
   };
 
@@ -129,9 +130,9 @@ export function MatchmakerDialog({
                         <p className={cn("text-xs sm:text-sm font-bold truncate", isSelected ? "text-blue-900" : "text-gray-900")}>
                           {participant.full_name || 'No Name'}
                         </p>
-                        {participant.job_title && (
+                        {(participant.job_title_name || participant.job_title) && (
                           <p className="text-[8px] sm:text-[9px] text-blue-600/70 truncate uppercase font-bold leading-tight">
-                            {participant.job_title}
+                            {participant.job_title_name || participant.job_title}
                           </p>
                         )}
                         <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate uppercase font-medium">
@@ -207,9 +208,9 @@ export function MatchmakerDialog({
                         <p className={cn("text-xs sm:text-sm font-bold truncate", isSelected ? "text-green-900" : "text-gray-900")}>
                           {participant.full_name || 'No Name'}
                         </p>
-                        {participant.job_title && (
+                        {(participant.job_title_name || participant.job_title) && (
                           <p className="text-[8px] sm:text-[9px] text-green-600/70 truncate uppercase font-bold leading-tight">
-                            {participant.job_title}
+                            {participant.job_title_name || participant.job_title}
                           </p>
                         )}
                         <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate uppercase font-medium">

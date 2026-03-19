@@ -255,7 +255,7 @@ export function MeetingDialog({
         <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
           <span className="font-bold text-xs truncate block">{partnerName}</span>
           <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight truncate block">
-            {partnerRole} • {partner?.job_title || 'Participant'}
+            {partnerRole} • {(partner?.job_title_name || partner?.job_title) || 'Participant'}
           </span>
           <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest truncate block">
             {pair.program?.name || 'Standard Program'}

@@ -77,7 +77,7 @@ export function PairingSelector() {
                       )}
                     </div>
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate block mb-0.5">
-                      {partnerRole} • {partner?.job_title || 'Program Participant'}
+                      {partnerRole} • {(partner?.job_title_name || partner?.job_title) || 'Program Participant'}
                     </span>
                     <span className={cn(
                       "text-[9px] font-black uppercase tracking-widest truncate block",

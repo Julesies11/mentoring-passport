@@ -48,24 +48,26 @@ This project uses:
 
 Gemini must obey these rules:
 1. **Do NOT create Supabase SQL functions, triggers, stored procedures, RPC endpoints, or views.** (Except for Auth-related triggers and RLS helpers already established in migrations).
-2. **Do NOT add database-side joins or transformations.**
-3. **Do NOT rely on Supabase server logic for app behaviour.**
-4. **Keep ALL non-auth logic inside TypeScript where it can be unit tested.**
-5. **Only use basic Supabase features:**
-   - `supabase.from().select()`
+2. **USE SQL joins for data retrieval.** To ensure optimal performance, all relational data (e.g., fetching a profile with its job title) must be retrieved in a single query using Supabase's relational selection (`.select('*, table(column)')`).
+3. **Do NOT perform manual client-side joins** for core data unless there is a specific architectural reason to do so.
+4. **Do NOT rely on Supabase server logic for app behaviour.**
+5. **Keep ALL non-auth logic inside TypeScript where it can be unit tested.**
+6. **Only use basic Supabase features:**
+   - `supabase.from().select()` (with relational joins)
    - `insert`, `update`, `delete`
    - `auth` (sign up, sign in, session, etc.)
-6. Only create Supabase server logic if absolutely unavoidable:
+7. Only create Supabase server logic if absolutely unavoidable:
    - Authentication
    - Security policies (RLS)
    - Required Supabase built-ins (e.g., Role Sync Trigger)
 
-Every other transformation (grouping, aggregating, merging, joining) must be done inside the app code:
+Every other transformation (grouping, aggregating, merging, mapping) must be done inside the app code:
 - In API utility functions
 - In custom hooks
 - Inside TanStack Query `select` transformers
 
 This ensures:  
+✔ high performance via SQL joins  
 ✔ all logic is in TS  
 ✔ fully testable  
 ✔ predictable behaviour  
@@ -87,7 +89,8 @@ This ensures:
 ## Supabase Conventions
 - Use the JS client only.
 - Type responses with Supabase-generated types.
-- All filtering, joins, mapping, and data shaping must occur in the app.
+- **Relational Data**: Always use `.select()` with embedded resources for joins.
+- All filtering, mapping, and data shaping must occur in the app.
 - No custom SQL unless related to authentication or RLS.
 
 ## Tailwind / Metronic Conventions

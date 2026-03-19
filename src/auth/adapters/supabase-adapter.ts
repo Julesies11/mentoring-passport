@@ -300,7 +300,7 @@ export const SupabaseAdapter = {
 
         // Instance specific fields
         role: userRole as any,
-        job_title: profile?.job_title || '',
+        job_title_id: profile?.job_title_id || '',
         status: profile?.status || 'active',
         must_change_password: profile?.must_change_password ?? false,
         bio: profile?.bio || '',
@@ -317,5 +317,44 @@ export const SupabaseAdapter = {
   async logout(): Promise<void> {
     const { error } = await supabase.auth.signOut();
     if (error) throw new Error(error.message);
+  },
+
+  /**
+   * Update user profile in mp_profiles table
+   */
+  async updateUserProfile(userData: Partial<UserModel>): Promise<UserModel | undefined> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not found');
+
+      // Filter out non-profile fields for the database update
+      const { full_name, phone, bio, avatar_url, job_title_id, department } = userData;
+      
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      if (full_name !== undefined) updateData.full_name = full_name;
+      if (phone !== undefined) updateData.phone = phone;
+      if (bio !== undefined) updateData.bio = bio;
+      if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+      if (job_title_id !== undefined) updateData.job_title_id = job_title_id;
+      if (department !== undefined) updateData.department = department;
+
+      const { data: profile, error } = await supabase
+        .from('mp_profiles')
+        .update(updateData)
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      // Return refreshed complete profile
+      return await this.getUserProfile(user);
+    } catch (e) {
+      console.error('SupabaseAdapter: Error updating profile:', e);
+      throw e;
+    }
   },
 };

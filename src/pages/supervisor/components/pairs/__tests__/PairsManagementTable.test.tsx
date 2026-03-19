@@ -18,8 +18,8 @@ describe('PairsManagementTable', () => {
     {
       id: 'p1',
       status: PAIR_STATUS.ACTIVE,
-      mentor: { id: 'm1', full_name: 'Mentor One', email: 'm1@test.com' },
-      mentee: { id: 'e1', full_name: 'Mentee One', email: 'e1@test.com' },
+      mentor: { id: 'm1', full_name: 'Mentor One', email: 'm1@test.com', job_title_id: 'jt1' },
+      mentee: { id: 'e1', full_name: 'Mentee One', email: 'e1@test.com', job_title_id: 'jt2' },
       created_at: new Date().toISOString(),
     },
   ];
@@ -62,23 +62,21 @@ describe('PairsManagementTable', () => {
   });
 
   describe('Pagination', () => {
-    // Generate 30 pairs to ensure we have multiple pages even if itemsPerPage is 25
-    // But since PairsManagementTable hardcodes initialItemsPerPage: 10, 
-    // we should see 10 items on page 1.
-    const manyPairs = Array.from({ length: 30 }, (_, i) => ({
+    // Generate 60 pairs to ensure we have multiple pages with itemsPerPage at 50
+    const manyPairs = Array.from({ length: 60 }, (_, i) => ({
       id: `p${i}`,
       status: PAIR_STATUS.ACTIVE,
-      mentor: { id: `m${i}`, full_name: `Mentor ${i + 1}`, email: `m${i}@test.com` },
-      mentee: { id: `e${i}`, full_name: `Mentee ${i + 1}`, email: `e${i}@test.com` },
-      // Ensure deterministic sort order (descending by default in component, so newest first)
-      created_at: new Date(2025, 1, 30 - i).toISOString(),
+      mentor: { id: `m${i}`, full_name: `Mentor ${i + 1}`, email: `m${i}@test.com`, job_title_id: 'jt1' },
+      mentee: { id: `e${i}`, full_name: `Mentee ${i + 1}`, email: `e${i}@test.com`, job_title_id: 'jt2' },
+      // Ensure newest first
+      created_at: new Date(2025, 1, 60 - i).toISOString(),
     }));
 
-    it('shows only first 10 pairs on page 1', () => {
+    it('shows only first 50 pairs on page 1', () => {
       render(<PairsManagementTable pairs={manyPairs} isLoading={false} onShowMatchmaker={vi.fn()} />);
       expect(screen.getByText('Mentor 1')).toBeInTheDocument();
-      expect(screen.getByText('Mentor 10')).toBeInTheDocument();
-      expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
+      expect(screen.getByText('Mentor 50')).toBeInTheDocument();
+      expect(screen.queryByText('Mentor 51')).not.toBeInTheDocument();
     });
 
     it('navigates to page 2 when next arrow is clicked', async () => {
@@ -89,8 +87,8 @@ describe('PairsManagementTable', () => {
       
       await waitFor(() => {
         expect(screen.queryByText('Mentor 1')).not.toBeInTheDocument();
-        expect(screen.getByText('Mentor 11')).toBeInTheDocument();
-        expect(screen.getByText('Mentor 20')).toBeInTheDocument();
+        expect(screen.getByText('Mentor 51')).toBeInTheDocument();
+        expect(screen.getByText('Mentor 60')).toBeInTheDocument();
       });
     });
 
@@ -101,7 +99,7 @@ describe('PairsManagementTable', () => {
       const nextButton = screen.getByTestId('keen-icon-black-right').closest('button');
       fireEvent.click(nextButton!);
       await waitFor(() => {
-        expect(screen.getByText('Mentor 11')).toBeInTheDocument();
+        expect(screen.getByText('Mentor 51')).toBeInTheDocument();
       });
 
       // 2. Change search term
@@ -111,7 +109,7 @@ describe('PairsManagementTable', () => {
       // 3. Should be back on page 1
       await waitFor(() => {
         expect(screen.getByText('Mentor 1')).toBeInTheDocument();
-        expect(screen.queryByText('Mentor 11')).not.toBeInTheDocument();
+        expect(screen.queryByText('Mentor 51')).not.toBeInTheDocument();
       });
     });
   });

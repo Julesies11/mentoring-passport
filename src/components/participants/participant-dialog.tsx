@@ -34,13 +34,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials, getAvatarPublicUrl } from '@/lib/utils/avatar';
 
 import { validateImage } from '@/lib/utils/image';
+import { useJobTitles } from '@/hooks/use-job-titles';
 
 const createParticipantSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(['administrator', 'org-admin', 'supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
-  job_title: z.string().optional(),
+  job_title_id: z.string().optional(),
   department: z.string().optional(),
   phone: z.string().optional(),
 });
@@ -48,7 +49,7 @@ const createParticipantSchema = z.object({
 const updateParticipantSchema = z.object({
   role: z.enum(['administrator', 'org-admin', 'supervisor', 'program-member']),
   full_name: z.string().min(1, 'Name is required'),
-  job_title: z.string().optional(),
+  job_title_id: z.string().optional(),
   department: z.string().optional(),
   bio: z.string().optional(),
   phone: z.string().optional(),
@@ -79,6 +80,8 @@ export function ParticipantDialog({
   const [avatar, setAvatar] = useState<ImageInputFile[]>([]);
   const [deleteAvatar, setDeleteAvatar] = useState(false);
 
+  const { jobTitles, isLoading: isLoadingTitles } = useJobTitles();
+
   const isSysAdmin = currentUserRole === 'administrator';
 
   const {
@@ -95,7 +98,7 @@ export function ParticipantDialog({
       email: '',
       password: '',
       full_name: '',
-      job_title: '',
+      job_title_id: 'none',
       department: '',
       phone: '',
       bio: '',
@@ -108,7 +111,7 @@ export function ParticipantDialog({
       reset({
         role: participant.role,
         full_name: participant.full_name || '',
-        job_title: participant.job_title || '',
+        job_title_id: participant.job_title_id || 'none',
         department: participant.department || '',
         phone: participant.phone || '',
         bio: participant.bio || '',
@@ -128,7 +131,7 @@ export function ParticipantDialog({
         password: '',
         role: 'program-member',
         full_name: '',
-        job_title: '',
+        job_title_id: 'none',
         department: '',
         phone: '',
         bio: '',
@@ -161,6 +164,10 @@ export function ParticipantDialog({
     onOpenChange(false);
   };
 
+  const currentJobTitleId = watch('job_title_id');
+  const currentJobTitleName = jobTitles.find(jt => jt.id === currentJobTitleId)?.title || participant?.job_title_name;
+  const isJobTitleInList = jobTitles.some(jt => jt.id === currentJobTitleId);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
@@ -169,7 +176,7 @@ export function ParticipantDialog({
       >
         <DialogHeader className="p-4 sm:p-6 pb-2 shrink-0 border-b border-gray-100">
           <DialogTitle className="text-lg sm:text-xl font-bold">
-            {readOnly ? 'User Profile' : isEdit ? 'Edit User' : 'Add New User'}
+            {readOnly ? 'User Profile' : isEdit ? 'Edit Participant' : 'Add New User'}
           </DialogTitle>
           <DialogDescription className="text-[10px] sm:text-xs uppercase font-bold text-gray-400 tracking-wider">
             {readOnly 
@@ -348,13 +355,24 @@ export function ParticipantDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="job_title" className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Job Title</Label>
-              <Input
-                id="job_title"
-                {...register('job_title')}
-                placeholder="Senior Registrar"
-                className="h-9 sm:h-10 border-gray-200 text-sm"
-                disabled={readOnly}
-              />
+              <Select
+                value={watch('job_title_id')}
+                onValueChange={(value) => setValue('job_title_id', value)}
+                disabled={readOnly || isLoadingTitles}
+              >
+                <SelectTrigger className="h-9 sm:h-10 border-gray-200 text-sm">
+                  <SelectValue placeholder={isLoadingTitles ? "Loading titles..." : (currentJobTitleName || "Select job title")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Job Title</SelectItem>
+                  {currentJobTitleId && currentJobTitleId !== 'none' && !isJobTitleInList && (
+                    <SelectItem value={currentJobTitleId}>{currentJobTitleName} (Inactive)</SelectItem>
+                  )}
+                  {jobTitles.filter(jt => jt.is_active || jt.id === currentJobTitleId).map((jt) => (
+                    <SelectItem key={jt.id} value={jt.id}>{jt.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">

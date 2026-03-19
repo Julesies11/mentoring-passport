@@ -42,13 +42,6 @@ export const SIDEBAR_MENU_CONFIG: MenuConfig = [
     requiredFlag: ['isOrgAdmin']
   },
   {
-    title: 'Programs',
-    icon: () => <KeenIcon icon="layers" />,
-    path: '/admin/programs',
-    requiredRole: [ROLES.ORG_ADMIN],
-    requiredFlag: ['isOrgAdmin']
-  },
-  {
     title: 'Manage Members',
     icon: () => <KeenIcon icon="users" />,
     path: '/admin/participants',
@@ -56,9 +49,23 @@ export const SIDEBAR_MENU_CONFIG: MenuConfig = [
     requiredFlag: ['isOrgAdmin']
   },
   {
+    title: 'Programs',
+    icon: () => <KeenIcon icon="layers" />,
+    path: '/admin/programs',
+    requiredRole: [ROLES.ORG_ADMIN],
+    requiredFlag: ['isOrgAdmin']
+  },
+  {
     title: 'Task Templates',
     icon: () => <KeenIcon icon="check-squared" />,
     path: '/admin/task-templates',
+    requiredRole: [ROLES.ORG_ADMIN],
+    requiredFlag: ['isOrgAdmin']
+  },
+  {
+    title: 'Job Titles',
+    icon: () => <KeenIcon icon="briefcase" />,
+    path: '/admin/job-titles',
     requiredRole: [ROLES.ORG_ADMIN],
     requiredFlag: ['isOrgAdmin']
   },

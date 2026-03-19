@@ -13,12 +13,20 @@ vi.mock('@/lib/api/profiles', async (importOriginal) => {
 });
 
 describe('EditProfilePage', () => {
+  const mockUser = {
+    id: 'u1',
+    email: 'test@example.com',
+    full_name: 'Test Supervisor',
+    job_title_id: 'jt1',
+    role: 'supervisor'
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders correctly with user data', () => {
-    render(<EditProfilePage />);
+    render(<EditProfilePage />, { authValue: { user: mockUser } });
     
     expect(screen.getByLabelText(/Full Name/i)).toHaveValue('Test Supervisor');
     expect(screen.getByText('Profile Picture')).toBeDefined();
@@ -27,7 +35,7 @@ describe('EditProfilePage', () => {
   it('submits correctly with updated data', async () => {
     (handleAvatarUpload as any).mockResolvedValue('new-avatar.png');
     
-    render(<EditProfilePage />);
+    render(<EditProfilePage />, { authValue: { user: mockUser } });
     
     const nameInput = screen.getByLabelText(/Full Name/i);
     fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
@@ -42,7 +50,7 @@ describe('EditProfilePage', () => {
   });
 
   it('resets form when cancel is clicked', () => {
-    render(<EditProfilePage />);
+    render(<EditProfilePage />, { authValue: { user: mockUser } });
     
     const nameInput = screen.getByLabelText(/Full Name/i);
     fireEvent.change(nameInput, { target: { value: 'New Name' } });

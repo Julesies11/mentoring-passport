@@ -41,7 +41,7 @@ describe('ParticipantDialog', () => {
       email: 'p1@example.com',
       role: ROLES.PROGRAM_MEMBER,
       full_name: 'John Participant',
-      job_title: 'Doctor',
+      job_title_id: 'jt1',
       status: PROFILE_STATUS.ACTIVE,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -61,7 +61,7 @@ describe('ParticipantDialog', () => {
       />
     );
     
-    expect(screen.getByText('Edit User')).toBeDefined();
+    expect(screen.getByText('Edit Participant')).toBeDefined();
     expect(screen.getByLabelText(/Full Name \*/i)).toHaveValue('John Participant');
     expect(screen.queryByLabelText(/Password \*/i)).toBeNull(); // Password hidden in edit mode
   });

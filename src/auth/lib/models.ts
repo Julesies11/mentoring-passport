@@ -30,7 +30,8 @@ export interface UserModel {
   // Instance-specific role
   role: UserRole; 
   profile_id: UUID;
-  job_title?: string;
+  job_title_id?: UUID;
+  job_title_name?: string;
   avatar_url?: string;
   department?: string;
   bio?: string;

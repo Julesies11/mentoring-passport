@@ -11,12 +11,20 @@ Stores user profile information, linked to `auth.users`.
 - `role` (TEXT): 'administrator', 'org-admin', 'supervisor', or 'program-member'. **(Source of Truth for RBAC, synced to auth.users.app_metadata.role)**
 - `full_name` (TEXT)
 - `department` (TEXT)
-- `job_title` (TEXT)
+- `job_title_id` (UUID, NULLable): References `mp_job_titles(id)`.
 - `bio` (TEXT)
 - `avatar_url` (TEXT)
 - `phone` (TEXT)
 - `status` (TEXT): 'active' or 'archived'.
 - `must_change_password` (BOOLEAN)
+
+### `mp_job_titles`
+Lookup table for managed job titles, controlled by Org Admins.
+- `id` (UUID, PK)
+- `organisation_id` (UUID): References `mp_organisations(id)`.
+- `title` (TEXT)
+- `created_at` (TIMESTAMPTZ)
+- `updated_at` (TIMESTAMPTZ)
 
 ### `mp_organisations`
 Stores the single organization's details.

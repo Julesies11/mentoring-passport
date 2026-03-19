@@ -30,8 +30,8 @@ export interface Evidence {
   subtask?: { id: string; name: string };
   pair?: {
     id: string;
-    mentor?: { id: string; full_name: string | null; job_title: string | null; avatar_url?: string | null };
-    mentee?: { id: string; full_name: string | null; job_title: string | null; avatar_url?: string | null };
+    mentor?: { id: string; full_name: string | null; job_title_id: string | null; job_title_name?: string | null; avatar_url?: string | null };
+    mentee?: { id: string; full_name: string | null; job_title_id: string | null; job_title_name?: string | null; avatar_url?: string | null };
   };
   reviewer?: { id: string; full_name: string | null };
   all_files?: { id: string; file_name: string | null; file_url: string | null; mime_type: string | null; created_at: string }[];
@@ -53,6 +53,31 @@ export interface CreateEvidenceInput {
 export interface ReviewEvidenceInput {
   status: typeof EVIDENCE_STATUS.APPROVED | typeof EVIDENCE_STATUS.REJECTED;
   rejection_reason?: string;
+}
+
+/**
+ * Helper to map database response to Evidence interface
+ */
+function mapEvidence(e: any): Evidence {
+  const mapPair = (pair: any) => {
+    if (!pair) return undefined;
+    return {
+      ...pair,
+      mentor: pair.mentor ? {
+        ...pair.mentor,
+        job_title_name: pair.mentor.job_title?.title || 'No Job Title'
+      } : undefined,
+      mentee: pair.mentee ? {
+        ...pair.mentee,
+        job_title_name: pair.mentee.job_title?.title || 'No Job Title'
+      } : undefined
+    };
+  };
+
+  return {
+    ...e,
+    pair: mapPair(e.pair)
+  };
 }
 
 /**
@@ -87,8 +112,8 @@ export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> 
       pair:mp_pairs!inner(
         id,
         program_id,
-        mentor:mentor_id(id, full_name, job_title),
-        mentee:mentee_id(id, full_name, job_title)
+        mentor:mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title)),
+        mentee:mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title))
       ),
       reviewer:mp_profiles!reviewed_by(id, full_name)
     `);
@@ -99,7 +124,7 @@ export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> 
 
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw error;
-  return groupEvidenceByTask(data || []);
+  return groupEvidenceByTask((data || []).map(mapEvidence));
 }
 
 /**
@@ -115,8 +140,8 @@ export async function fetchPendingEvidence(programId?: string): Promise<Evidence
       pair:mp_pairs!inner(
         id,
         program_id,
-        mentor:mentor_id(id, full_name, avatar_url, job_title),
-        mentee:mentee_id(id, full_name, avatar_url, job_title)
+        mentor:mentor_id(id, full_name, avatar_url, job_title_id, job_title:mp_job_titles(title)),
+        mentee:mentee_id(id, full_name, avatar_url, job_title_id, job_title:mp_job_titles(title))
       )
     `)
     .in('status', [EVIDENCE_STATUS.PENDING, EVIDENCE_STATUS.REJECTED]);
@@ -127,7 +152,7 @@ export async function fetchPendingEvidence(programId?: string): Promise<Evidence
 
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw error;
-  return groupEvidenceByTask(data || []);
+  return groupEvidenceByTask((data || []).map(mapEvidence));
 }
 
 /**

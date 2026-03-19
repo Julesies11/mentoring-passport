@@ -68,10 +68,10 @@ export function ProgramMemberRelationshipPage() {
               <KeenIcon icon="sms" className="text-muted-foreground text-base sm:text-lg" />
               <span className="truncate">{person.email}</span>
             </div>
-            {person.job_title && (
+            {(person.job_title_name || person.job_title) && (
               <div className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-600 font-medium">
                 <KeenIcon icon="briefcase" className="text-muted-foreground text-base sm:text-lg" />
-                <span className="truncate">{person.job_title}</span>
+                <span className="truncate">{person.job_title_name || person.job_title}</span>
               </div>
             )}
             {person.department && (

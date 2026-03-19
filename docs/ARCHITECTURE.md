@@ -15,7 +15,7 @@ This document outlines the application's structure and data flow for the Single 
 The system uses a 4-tier security model enforced via Role-Based Access Control (RBAC) in the JWT and Supabase RLS:
 
 1. **Administrator (`administrator`):** Global instance access, manages users and system settings.
-2. **Org Admin (`org-admin`):** Instance-level administrator with full access to programs, pairs, and task templates.
+2. **Org Admin (`org-admin`):** Instance-level administrator with full access to programs, pairs, job titles, and task templates.
 3. **Supervisor (`supervisor`):** Program-scoped access. Manages participants and pairs within explicitly assigned programs via `mp_supervisor_programs`.
 4. **Program Member (`program-member`):** Mentors and Mentees restricted to their own pairings and tasks.
 
@@ -25,12 +25,12 @@ The system uses a 4-tier security model enforced via Role-Based Access Control (
 
 **MANDATORY RULE:** All business logic must live inside the React app for maximum testability.
 - **NO** Supabase SQL functions, triggers (except role sync), stored procedures, or RPC endpoints.
-- **NO** database-side joins or transformations.
-- **ALL** data shaping (grouping, aggregating, merging) occurs in the TypeScript layer (API services or TanStack Query `select` transformers).
+- **USE SQL joins for data retrieval:** To ensure high performance, relational data (e.g., profiles with job titles) must be fetched in a single query using Supabase's relational selection.
+- **ALL** data mapping and business logic occurs in the TypeScript layer (API services or TanStack Query `select` transformers).
 
 1.  **UI Component:** Triggered by user action or mount.
 2.  **Hook (`src/hooks/`):** Calls TanStack Query `useQuery` or `useMutation`.
-3.  **API Service (`src/lib/api/`):** Performs the actual `supabase` JS client call. Logic for assignment and scoped fetching is handled here.
+3.  **API Service (`src/lib/api/`):** Performs the `supabase` JS client call. Includes relational `.select()` strings and maps the nested results to flat, typed interfaces.
 4.  **Supabase RLS:** Row Level Security policies enforce access control based on the user's `role` and `id`.
 
 ## 4. Key Feature Modules
@@ -42,9 +42,15 @@ The system uses a 4-tier security model enforced via Role-Based Access Control (
 4. **Pair Assignment:** When a Pair is created, they are assigned a snapshot of the current `mp_program_tasks` (copied to `mp_pair_tasks`).
 5. **Execution:** Pairs work through their `mp_pair_tasks`. They can add custom tasks (`is_custom = true`) but cannot delete tasks originally assigned by the program.
 
+### Managed Job Titles
+1. **Central Registry:** Org Admins manage a list of approved job titles in `mp_job_titles`.
+2. **Relational Link:** User profiles reference a job title via `job_title_id`.
+3. **Propagation:** Renaming a title in the central registry immediately updates the displayed title for all assigned users.
+4. **Active Status:** Titles can be deactivated. Deactivated titles remain on existing profiles but cannot be selected for new users or updates.
+
 ### Admin Sections
 - **Administrator:** `src/pages/admin/` (User management, Instance settings).
-- **Org Admin:** `src/pages/org-admin/` (Programs, Pairings, Task Templates, Evidence Audit).
+- **Org Admin:** `src/pages/org-admin/` (Programs, Pairings, Job Titles, Task Templates, Evidence Audit).
 
 ### Supervisor Section
 - **Location:** `src/pages/supervisor/`

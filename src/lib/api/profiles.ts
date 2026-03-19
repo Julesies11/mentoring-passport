@@ -8,7 +8,8 @@ export interface Profile {
   email: string;
   role: UserRole;
   full_name: string | null;
-  job_title: string | null;
+  job_title_id: string | null;
+  job_title_name?: string | null;
   bio: string | null;
   department: string | null;
   phone: string | null;
@@ -20,11 +21,21 @@ export interface Profile {
 
 export interface UpdateProfileInput {
   full_name?: string;
-  job_title?: string | null;
+  job_title_id?: string | null;
   bio?: string | null;
   department?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
+}
+
+/**
+ * Helper to map database response to Profile interface
+ */
+function mapProfile(p: any): Profile {
+  return {
+    ...p,
+    job_title_name: p.job_title?.title || 'No Job Title'
+  };
 }
 
 /**
@@ -33,7 +44,7 @@ export interface UpdateProfileInput {
 export async function fetchAllUsers(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select('*, job_title:mp_job_titles(title)')
     .order('full_name', { ascending: true });
 
   if (error) {
@@ -44,7 +55,7 @@ export async function fetchAllUsers(): Promise<Profile[]> {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(mapProfile);
 }
 
 /**
@@ -55,7 +66,7 @@ export async function searchUsers(query: string): Promise<Profile[]> {
   
   const { data, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select('*, job_title:mp_job_titles(title)')
     .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
     .order('full_name', { ascending: true });
 
@@ -68,7 +79,7 @@ export async function searchUsers(query: string): Promise<Profile[]> {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(mapProfile);
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput): Promise<Profile> {
@@ -80,11 +91,11 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
-      .select()
+      .select('*, job_title:mp_job_titles(title)')
       .single();
 
     if (error) throw error;
-    return profile;
+    return mapProfile(profile);
   } catch (err: any) {
     await logError({
       message: `Failed to update profile: ${err.message}`,
@@ -99,7 +110,7 @@ export async function updateProfile(userId: string, data: UpdateProfileInput): P
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data: profile, error } = await supabase
     .from('mp_profiles')
-    .select('*')
+    .select('*, job_title:mp_job_titles(title)')
     .eq('id', userId)
     .single();
 
@@ -107,7 +118,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     throw new Error(`Failed to get profile: ${error.message}`);
   }
 
-  return profile || null;
+  return profile ? mapProfile(profile) : null;
 }
 
 /**

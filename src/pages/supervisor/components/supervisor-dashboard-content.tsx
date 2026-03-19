@@ -328,7 +328,7 @@ export function SupervisorDashboardContent() {
                             <span className="text-primary">{p.mentor?.full_name}</span> & <span className="text-success">{p.mentee?.full_name}</span>
                           </span>
                           <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-tighter truncate md:whitespace-normal">
-                            {p.mentor?.job_title || 'N/A'} • {p.mentee?.job_title || 'N/A'}
+                            {p.mentor?.job_title_name || 'N/A'} • {p.mentee?.job_title_name || 'N/A'}
                           </span>
                         </div>
                       </div>

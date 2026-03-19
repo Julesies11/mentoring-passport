@@ -23,13 +23,15 @@ export interface Meeting {
     mentor?: {
       id: string;
       full_name: string | null;
-      job_title?: string | null;
+      job_title_id?: string | null;
+      job_title_name?: string | null;
       avatar_url?: string | null;
     };
     mentee?: {
       id: string;
       full_name: string | null;
-      job_title?: string | null;
+      job_title_id?: string | null;
+      job_title_name?: string | null;
       avatar_url?: string | null;
     };
   };
@@ -38,13 +40,15 @@ export interface Meeting {
     mentor?: {
       id: string;
       full_name: string | null;
-      job_title?: string | null;
+      job_title_id?: string | null;
+      job_title_name?: string | null;
       avatar_url?: string | null;
     };
     mentee?: {
       id: string;
       full_name: string | null;
-      job_title?: string | null;
+      job_title_id?: string | null;
+      job_title_name?: string | null;
       avatar_url?: string | null;
     };
   };
@@ -80,6 +84,32 @@ export function getMeetingStatus(dateTime: string): 'upcoming' | 'past' {
 }
 
 /**
+ * Helper to map database response to Meeting interface
+ */
+function mapMeeting(m: any): Meeting {
+  const mapPair = (pair: any) => {
+    if (!pair) return undefined;
+    return {
+      ...pair,
+      mentor: pair.mentor ? {
+        ...pair.mentor,
+        job_title_name: pair.mentor.job_title?.title || 'No Job Title'
+      } : undefined,
+      mentee: pair.mentee ? {
+        ...pair.mentee,
+        job_title_name: pair.mentee.job_title?.title || 'No Job Title'
+      } : undefined
+    };
+  };
+
+  return {
+    ...m,
+    pair: mapPair(m.mp_pairs),
+    mp_pairs: mapPair(m.mp_pairs)
+  };
+}
+
+/**
  * Fetch all meetings (supervisor only)
  */
 export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
@@ -90,8 +120,8 @@ export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
       mp_pairs!inner(
         id,
         program_id,
-        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
-        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
     `);
@@ -107,7 +137,7 @@ export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
     throw error;
   }
 
-  return (data || []).map(m => ({ ...m, pair: m.mp_pairs }));
+  return (data || []).map(mapMeeting);
 }
 
 /**
@@ -120,8 +150,8 @@ export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
       *,
       mp_pairs(
         id,
-        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
-        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
     `)
@@ -133,7 +163,7 @@ export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
     throw error;
   }
 
-  return (data || []).map(m => ({ ...m, pair: m.mp_pairs }));
+  return (data || []).map(mapMeeting);
 }
 
 /**
@@ -146,8 +176,8 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
       *,
       mp_pairs(
         id,
-        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
-        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
     `)
@@ -161,7 +191,7 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
     throw error;
   }
 
-  return (data || []).map(m => ({ ...m, pair: m.mp_pairs }));
+  return (data || []).map(mapMeeting);
 }
 
 /**
@@ -202,8 +232,8 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       *,
       mp_pairs(
         id,
-        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
-        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
     `)
@@ -214,7 +244,7 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     throw error;
   }
 
-  return { ...data, pair: data.mp_pairs };
+  return mapMeeting(data);
 }
 
 /**
@@ -232,8 +262,8 @@ export async function updateMeeting(
       *,
       mp_pairs(
         id,
-        mentor:mp_profiles!mentor_id(id, full_name, job_title, avatar_url),
-        mentee:mp_profiles!mentee_id(id, full_name, job_title, avatar_url)
+        mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
+        mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
       task:mp_pair_tasks!pair_task_id(id, name)
     `)
@@ -244,7 +274,7 @@ export async function updateMeeting(
     throw error;
   }
 
-  return { ...data, pair: data.mp_pairs };
+  return mapMeeting(data);
 }
 
 /**
@@ -272,5 +302,5 @@ export async function deleteMeeting(meetingId: string): Promise<Meeting> {
     throw error;
   }
 
-  return { ...data, pair: data.mp_pairs };
+  return mapMeeting(data);
 }

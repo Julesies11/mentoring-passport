@@ -167,7 +167,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     resetPassword: SupabaseAdapter.resetPassword,
     resendVerificationEmail: SupabaseAdapter.resendVerificationEmail,
     getUser: SupabaseAdapter.getCurrentUser,
-    updateProfile: SupabaseAdapter.updateUserProfile,
+    updateProfile: (userData: Partial<UserModel>) => SupabaseAdapter.updateUserProfile(userData),
     logout,
     verify,
     role: effectiveRole,

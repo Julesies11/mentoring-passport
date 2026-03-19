@@ -19,10 +19,18 @@ import { toast } from 'sonner';
 import { ImageInput, type ImageInputFile } from '@/components/image-input';
 import { KeenIcon } from '@/components/keenicons';
 import { X } from 'lucide-react';
+import { useJobTitles } from '@/hooks/use-job-titles';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
-  job_title: z.string().optional(),
+  job_title_id: z.string().optional(),
   bio: z.string().optional(),
   department: z.string().optional(),
   phone: z.string().optional(),
@@ -37,17 +45,20 @@ export function EditProfilePage() {
   const [avatar, setAvatar] = useState<ImageInputFile[]>([]);
   const [deleteAvatar, setDeleteAvatar] = useState(false);
 
+  const { jobTitles, isLoading: isLoadingTitles } = useJobTitles();
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
     setValue,
+    watch,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       full_name: user?.full_name || '',
-      job_title: user?.job_title || '',
+      job_title_id: user?.job_title_id || 'none',
       bio: user?.bio || '',
       department: user?.department || '',
       phone: user?.phone || '',
@@ -57,7 +68,7 @@ export function EditProfilePage() {
   useEffect(() => {
     if (user) {
       setValue('full_name', user.full_name || '');
-      setValue('job_title', user.job_title || '');
+      setValue('job_title_id', user.job_title_id || 'none');
       setValue('bio', user.bio || '');
       setValue('department', user.department || '');
       setValue('phone', user.phone || '');
@@ -84,10 +95,14 @@ export function EditProfilePage() {
         user.avatar_url
       );
 
-      await updateProfile({
+      // Map 'none' to null for database
+      const submissionData = {
         ...data,
-        avatar_url: finalAvatarUrl as string | undefined, // Cast since updateProfile expects UserModel
-      });
+        job_title_id: data.job_title_id === 'none' ? null : data.job_title_id,
+        avatar_url: finalAvatarUrl as string | undefined,
+      };
+
+      await updateProfile(submissionData);
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['user'] });
@@ -109,6 +124,10 @@ export function EditProfilePage() {
       setIsLoading(false);
     }
   };
+
+  const currentJobTitleId = watch('job_title_id');
+  const currentJobTitleName = jobTitles.find(jt => jt.id === currentJobTitleId)?.title || user?.job_title_name;
+  const isJobTitleInList = jobTitles.some(jt => jt.id === currentJobTitleId);
 
   return (
     <>
@@ -212,11 +231,24 @@ export function EditProfilePage() {
 
                     <div className="grid gap-2">
                       <Label htmlFor="job_title" className="text-gray-900 font-semibold">Job Title</Label>
-                      <Input
-                        id="job_title"
-                        {...register('job_title')}
-                        placeholder="e.g. Senior Registrar"
-                      />
+                      <Select
+                        value={watch('job_title_id')}
+                        onValueChange={(value) => setValue('job_title_id', value)}
+                        disabled={isLoading || isLoadingTitles}
+                      >
+                        <SelectTrigger className="h-10 border-gray-200 text-sm">
+                          <SelectValue placeholder={isLoadingTitles ? "Loading titles..." : (currentJobTitleName || "Select job title")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Job Title</SelectItem>
+                          {currentJobTitleId && currentJobTitleId !== 'none' && !isJobTitleInList && (
+                            <SelectItem value={currentJobTitleId}>{currentJobTitleName} (Inactive)</SelectItem>
+                          )}
+                          {jobTitles.filter(jt => jt.is_active || jt.id === currentJobTitleId).map((jt) => (
+                            <SelectItem key={jt.id} value={jt.id}>{jt.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

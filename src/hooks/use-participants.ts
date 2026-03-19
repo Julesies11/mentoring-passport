@@ -61,7 +61,7 @@ export function useParticipants(programId?: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const { data: participants = EMPTY_ARRAY, isLoading, error } = useQuery({
+  const { data: participants = EMPTY_ARRAY, isLoading: isLoadingParticipants, error } = useQuery({
     queryKey: ['participants', programId],
     queryFn: () => fetchParticipants(programId),
     enabled: true,
@@ -72,7 +72,7 @@ export function useParticipants(programId?: string) {
     return {
       total: participants.length,
       supervisors: participants.filter(p => p.role === 'supervisor').length,
-      programMembers: participants.filter(p => p.role === 'program-member').length,
+      'program-members': participants.filter(p => p.role === 'program-member').length,
       active: participants.filter(p => p.status === 'active').length,
       archived: participants.filter(p => p.status === 'archived').length,
     };
@@ -90,11 +90,12 @@ export function useParticipants(programId?: string) {
       updateParticipant(id, input),
     onSuccess: async (updatedParticipant, variables) => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
+      queryClient.invalidateQueries({ queryKey: ['pairs'] });
       
       const oldParticipant = participants.find(p => p.id === variables.id);
       const isNewlyCompleted = (
-        (!oldParticipant?.full_name || !oldParticipant?.job_title) &&
-        (updatedParticipant.full_name && updatedParticipant.job_title)
+        (!oldParticipant?.full_name || !oldParticipant?.job_title_id) &&
+        (updatedParticipant.full_name && updatedParticipant.job_title_id)
       );
 
       if (isNewlyCompleted && user?.id) {
@@ -106,14 +107,16 @@ export function useParticipants(programId?: string) {
   const archiveMutation = useMutation({
     mutationFn: archiveParticipant,
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['participants'] });
+      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      queryClient.invalidateQueries({ queryKey: ['pairs'] });
     },
   });
 
   const restoreMutation = useMutation({
     mutationFn: restoreParticipant,
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: ['participants'] });
+      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      queryClient.invalidateQueries({ queryKey: ['pairs'] });
     },
   });
 
@@ -129,7 +132,7 @@ export function useParticipants(programId?: string) {
   return {
     participants,
     stats,
-    isLoading,
+    isLoading: isLoadingParticipants,
     error,
     createParticipant: createParticipantCallback,
     updateParticipant: updateParticipantCallback,
@@ -144,21 +147,19 @@ export function useParticipants(programId?: string) {
   };
 }
 
+export function useAllParticipants() {
+  return useQuery({
+    queryKey: ['participants', 'all'],
+    queryFn: () => fetchParticipants(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
 export function useParticipant(id: string) {
   return useQuery({
     queryKey: ['participants', id],
     queryFn: () => fetchParticipant(id),
     enabled: !!id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-}
-
-export function useAllParticipants(programId?: string) {
-  return useQuery({
-    queryKey: ['participants', 'all', programId],
-    queryFn: () => fetchParticipants(programId),
-    enabled: true,
-    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 

@@ -98,7 +98,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
       const matchesSearch = 
         p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.job_title?.toLowerCase().includes(searchTerm.toLowerCase());
+        p.job_title_name?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesRole = roleFilter === 'all' || p.role === roleFilter;
       const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
@@ -121,7 +121,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
     endIndex
   } = usePagination({
     items: filteredParticipants,
-    initialItemsPerPage: 10
+    initialItemsPerPage: 50
   });
 
   useEffect(() => {
@@ -176,7 +176,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
     if (!editingParticipant || !isManageMode) return;
     setIsSubmitting(true);
     try {
-      const { avatar_file, delete_avatar, full_name, role, job_title, department, phone, bio, status } = data;
+      const { avatar_file, delete_avatar, full_name, role, job_title_id, department, phone, bio, status } = data;
       
       const finalAvatarUrl = await handleAvatarUpload(
         editingParticipant.id,
@@ -189,7 +189,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
         editingParticipant.id,
         {
           full_name,
-          job_title,
+          job_title_id: job_title_id === 'none' ? null : job_title_id,
           department,
           phone,
           bio,
@@ -407,7 +407,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                                 </span>
                                 <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium truncate flex items-center gap-1">
                                   <Briefcase size={10} className="text-gray-400 shrink-0" />
-                                  <span className="truncate">{p.job_title || 'No Job Title'}</span>
+                                  <span className="truncate">{p.job_title_name || 'No Job Title'}</span>
                                 </span>
                               </div>
                             </div>

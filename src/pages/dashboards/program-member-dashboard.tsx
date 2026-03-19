@@ -239,7 +239,7 @@ export function ProgramMemberDashboardPage() {
                 <CardTitle className="text-lg sm:text-xl font-bold text-gray-900">
                   {partner?.full_name || 'Partner'}
                 </CardTitle>
-                <CardDescription className="font-medium text-gray-500 text-xs sm:text-sm">{partner?.job_title || 'Program Member'}</CardDescription>
+                <CardDescription className="font-medium text-gray-500 text-xs sm:text-sm">{(partner?.job_title_name || partner?.job_title) || 'Program Member'}</CardDescription>
                 
                 <div className="flex justify-center mt-3 sm:mt-4 gap-2">
                     <Badge variant="primary" className={cn(

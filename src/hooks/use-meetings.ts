@@ -23,11 +23,13 @@ export function useAllMeetings() {
   const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
 
-  const { data: meetings = EMPTY_ARRAY, isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey: ['meetings', 'all', programId],
     queryFn: () => fetchAllMeetings(programId),
     enabled: true,
   });
+
+  const meetings = query.data || EMPTY_ARRAY;
 
   const stats = useMemo(() => {
     return {
@@ -117,8 +119,8 @@ export function useAllMeetings() {
   return {
     meetings,
     stats,
-    isLoading,
-    error,
+    isLoading: query.isLoading,
+    error: query.error,
     createMeeting: (input: CreateMeetingInput) => createMutation.mutateAsync(input),
     updateMeeting: (meetingId: string, input: UpdateMeetingInput) =>
       updateMutation.mutateAsync({ meetingId, input }),
@@ -133,7 +135,7 @@ export function usePairMeetings(pairId: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const { data: meetings = EMPTY_ARRAY, isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey: ['meetings', 'pair', pairId],
     queryFn: () => fetchPairMeetings(pairId),
     enabled: !!pairId,
@@ -195,9 +197,9 @@ export function usePairMeetings(pairId: string) {
   });
 
   return {
-    meetings,
-    isLoading,
-    error,
+    meetings: query.data || EMPTY_ARRAY,
+    isLoading: query.isLoading,
+    error: query.error,
     createMeeting: (input: CreateMeetingInput) => createMutation.mutateAsync(input),
     updateMeeting: (meetingId: string, input: UpdateMeetingInput) =>
       updateMutation.mutateAsync({ meetingId, input }),

@@ -28,6 +28,7 @@ const APP_ROUTES = [
   '/admin/programs',
   '/admin/participants',
   '/admin/task-templates',
+  '/admin/job-titles',
   
   // Supervisor
   '/supervisor/hub',

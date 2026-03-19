@@ -104,8 +104,8 @@ export function usePairs() {
 export function useUserPairs(userId: string) {
   const { loading: authLoading } = useAuth();
 
-  const selectFn = useCallback((pairs: any[]) => {
-    return [...pairs].sort((a, b) => {
+  const selectFn = useCallback((rawPairs: any[]) => {
+    return [...rawPairs].sort((a, b) => {
       const aActive = a.status === 'active' && a.program?.status === 'active';
       const bActive = b.status === 'active' && b.program?.status === 'active';
       

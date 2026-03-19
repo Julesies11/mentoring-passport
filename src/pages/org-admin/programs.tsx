@@ -33,10 +33,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OrganisationLogo } from '@/components/common/organisation-logo';
 import { ProfileAvatar } from '@/components/profile/profile-avatar';
+import { useJobTitles } from '@/hooks/use-job-titles';
 
 export function OrgAdminProgramsPage() {
   const { activeOrganisation, isLoading: isOrgLoadingContext } = useOrganisation();
   const queryClient = useQueryClient();
+  const { jobTitles } = useJobTitles();
 
   // State
   const [isProgramDialogOpen, setIsProgramDialogOpen] = useState(false);
@@ -78,7 +80,7 @@ export function OrgAdminProgramsPage() {
     const stats: Record<string, { 
       pairCount: number, 
       completion: number, 
-      supervisors: Array<{ id: string, name: string, avatar_url: string | null, email: string, job_title: string | null }> 
+      supervisors: Array<{ id: string, name: string, avatar_url: string | null, email: string, job_title_name: string | null }> 
     }> = {};
     
     programs.forEach(p => {
@@ -89,7 +91,7 @@ export function OrgAdminProgramsPage() {
           name: s.full_name || 'Unnamed Supervisor',
           avatar_url: s.avatar_url,
           email: s.email,
-          job_title: s.job_title
+          job_title_name: jobTitles.find(jt => jt.id === s.job_title_id)?.title || 'Supervisor'
         }));
 
       const programPairs = pairs.filter(pair => pair.program_id === p.id);
@@ -107,7 +109,7 @@ export function OrgAdminProgramsPage() {
     });
     
     return stats;
-  }, [programs, allSupervisors, pairs, taskStatuses]);
+  }, [programs, allSupervisors, pairs, taskStatuses, jobTitles]);
 
   // Mutations
   const duplicateMutation = useMutation({
@@ -285,7 +287,7 @@ export function OrgAdminProgramsPage() {
                                         {s.name}
                                       </span>
                                       <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none truncate">
-                                        {s.job_title || 'Supervisor'}
+                                        {s.job_title_name || 'Supervisor'}
                                       </span>
                                     </div>
                                   </div>

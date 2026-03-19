@@ -10,6 +10,7 @@ import { OrgSettingsPage as SysAdminSettingsPage } from '@/pages/supervisor/org-
 // Org Admin Pages
 import { OrgAdminDashboardPage } from '@/pages/org-admin/dashboard';
 import { OrgAdminProgramsPage } from '@/pages/org-admin/programs';
+import { OrgAdminJobTitlesPage } from '@/pages/org-admin/job-titles';
 import { TaskTemplatesLibraryPage as OrgAdminTaskTemplatesPage } from '@/pages/org-admin/task-templates';
 
 // Supervisor Pages
@@ -94,6 +95,13 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
 
     it('Org Admin Programs renders without crashing', async () => {
       const { container } = render(<OrgAdminProgramsPage />, { authValue: orgAdminAuth });
+      await waitFor(() => {
+        expect(container).not.toBeEmptyDOMElement();
+      });
+    });
+
+    it('Org Admin Job Titles renders without crashing', async () => {
+      const { container } = render(<OrgAdminJobTitlesPage />, { authValue: orgAdminAuth });
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });

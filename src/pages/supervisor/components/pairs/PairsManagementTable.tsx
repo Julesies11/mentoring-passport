@@ -145,7 +145,7 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
     endIndex
   } = usePagination({
     items: sortedPairs,
-    initialItemsPerPage: 10
+    initialItemsPerPage: 50
   });
 
   // Reset to page 1 when search or filter changes
@@ -268,7 +268,7 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
                           </Avatar>
                           <div className="flex flex-col min-w-0">
                             <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentor?.full_name || 'No name'}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentor?.job_title || 'N/A'}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentor?.job_title_name || 'N/A'}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -283,7 +283,7 @@ export function PairsManagementTable({ pairs, isLoading, onShowMatchmaker, activ
                           </Avatar>
                           <div className="flex flex-col min-w-0">
                             <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block">{pair.mentee?.full_name || 'No name'}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentee?.job_title || 'N/A'}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{pair.mentee?.job_title_name || 'N/A'}</span>
                           </div>
                         </div>
                       </TableCell>

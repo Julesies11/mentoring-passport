@@ -61,8 +61,8 @@ describe('ProgramMemberDashboardPage', () => {
       program: { status: PROGRAM_STATUS.ACTIVE, name: 'Test Program' },
       mentor_id: 'u1', // User is mentor
       mentee_id: 'u2',
-      mentee: { id: 'u2', full_name: 'Mentee Name', email: 'mentee@test.com' },
-      mentor: mockUser,
+      mentee: { id: 'u2', full_name: 'Mentee Name', email: 'mentee@test.com', job_title_id: 'jt1' },
+      mentor: { ...mockUser, job_title_id: 'jt2' },
       updated_at: new Date().toISOString(),
     };
 

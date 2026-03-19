@@ -94,7 +94,7 @@ export function UnpairedParticipantsTable({ participants, pairs, programTitle }:
     endIndex
   } = usePagination({
     items: unpairedParticipants,
-    initialItemsPerPage: 10
+    initialItemsPerPage: 50
   });
 
   return (
@@ -156,7 +156,7 @@ export function UnpairedParticipantsTable({ participants, pairs, programTitle }:
                         </Avatar>
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-gray-900 text-xs md:text-sm truncate block group-hover/member:text-primary transition-colors">{participant.full_name || 'No name'}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{participant.job_title || 'N/A'}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-medium truncate block">{participant.job_title_name || 'N/A'}</span>
                         </div>
                       </div>
                     </TableCell>

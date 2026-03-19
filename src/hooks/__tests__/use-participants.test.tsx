@@ -4,18 +4,14 @@ import { useParticipants } from '../use-participants';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as participantsApi from '@/lib/api/participants';
 
-// Mock useOrganisation
-vi.mock('@/providers/organisation-provider', () => ({
-  useOrganisation: vi.fn(() => ({
-    activeOrganisation: { id: 'singleton-org' },
-    activeProgram: { id: 'prog1' },
-    isLoading: false
-  })),
-}));
-
 // Mock the API layer
 vi.mock('@/lib/api/participants', () => ({
   fetchParticipants: vi.fn(),
+  fetchParticipantsByRole: vi.fn(),
+  fetchParticipant: vi.fn(),
+  fetchOrgSupervisors: vi.fn(),
+  assignSupervisorToProgram: vi.fn(),
+  removeSupervisorFromProgram: vi.fn(),
   createParticipant: vi.fn(),
   updateParticipant: vi.fn(),
   archiveParticipant: vi.fn(),
@@ -41,7 +37,7 @@ describe('useParticipants Single-Organisation', () => {
   });
 
   it('fetches participants correctly without organisation filters', async () => {
-    const mockParticipants = [{ id: 'u1', full_name: 'Test' }];
+    const mockParticipants = [{ id: 'u1', full_name: 'Test', job_title_name: 'No Job Title' }];
     vi.mocked(participantsApi.fetchParticipants).mockResolvedValue(mockParticipants as any);
 
     const { result } = renderHook(() => useParticipants(), { wrapper: createWrapper() });

@@ -63,7 +63,7 @@ export function usePendingEvidence() {
   const { activeProgram } = useOrganisation();
   const programId = activeProgram?.id;
 
-  const { data: evidence = [], isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey: ['evidence', 'pending', programId],
     queryFn: () => fetchPendingEvidence(programId),
     enabled: true,
@@ -85,10 +85,10 @@ export function usePendingEvidence() {
   });
 
   return {
-    evidence,
+    evidence: query.data || [],
     stats,
-    isLoading,
-    error,
+    isLoading: query.isLoading,
+    error: query.error,
     reviewEvidence: (evidenceId: string, input: ReviewEvidenceInput) =>
       reviewMutation.mutateAsync({ evidenceId, input }),
     isReviewing: reviewMutation.isPending,
