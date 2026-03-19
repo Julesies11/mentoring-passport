@@ -1,3 +1,5 @@
+import { ROLES, PROFILE_STATUS, UserRole, ProfileStatus } from '@/config/constants';
+
 // Define UUID type for consistent usage
 export type UUID = string;
 
@@ -9,9 +11,6 @@ export interface AuthModel {
   access_token: string;
   refresh_token?: string;
 }
-
-// Role type for mentoring passport instance
-export type UserRole = 'supervisor' | 'program-member' | 'administrator' | 'org-admin';
 
 // User model representing the user profile in a single-organisation instance
 export interface UserModel {
@@ -35,6 +34,6 @@ export interface UserModel {
   avatar_url?: string;
   department?: string;
   bio?: string;
-  status?: 'active' | 'archived';
+  status?: ProfileStatus;
   must_change_password?: boolean;
 }

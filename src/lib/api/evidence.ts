@@ -1,3 +1,8 @@
+import { 
+  EVIDENCE_STATUS, 
+  EvidenceStatus, 
+  TASK_STATUS 
+} from '@/config/constants';
 import { supabase } from '@/lib/supabase';
 import { updatePairTaskStatus } from './tasks';
 import { NotificationService } from './notifications-service';
@@ -16,7 +21,7 @@ export interface Evidence {
   mime_type: string | null;
   file_size: number | null;
   description: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: EvidenceStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
@@ -42,11 +47,11 @@ export interface CreateEvidenceInput {
   mime_type?: string;
   file_size?: number;
   description?: string;
-  status?: 'pending' | 'approved';
+  status?: EvidenceStatus;
 }
 
 export interface ReviewEvidenceInput {
-  status: 'approved' | 'rejected';
+  status: typeof EVIDENCE_STATUS.APPROVED | typeof EVIDENCE_STATUS.REJECTED;
   rejection_reason?: string;
 }
 
@@ -114,7 +119,7 @@ export async function fetchPendingEvidence(programId?: string): Promise<Evidence
         mentee:mentee_id(id, full_name, avatar_url, job_title)
       )
     `)
-    .in('status', ['pending', 'rejected']);
+    .in('status', [EVIDENCE_STATUS.PENDING, EVIDENCE_STATUS.REJECTED]);
 
   if (programId && typeof programId === 'string' && programId !== '[object Object]') {
     query = query.eq('pair.program_id', programId);
@@ -237,7 +242,7 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
       description: input.description,
       submitted_by: user.id,
       type: input.file_url ? (input.mime_type?.startsWith('image/') ? 'photo' : 'file') : 'text',
-      status: input.status || 'pending',
+      status: input.status || EVIDENCE_STATUS.PENDING,
     })
     .select(`
       *,
@@ -299,7 +304,7 @@ export async function reviewEvidence(
   if (currentEvidence?.pair_task_id) {
     updateQuery = updateQuery
       .eq('pair_task_id', currentEvidence.pair_task_id)
-      .in('status', ['pending', 'rejected']);
+      .in('status', [EVIDENCE_STATUS.PENDING, EVIDENCE_STATUS.REJECTED]);
   } else {
     updateQuery = updateQuery.eq('id', evidenceId);
   }
@@ -313,21 +318,20 @@ export async function reviewEvidence(
 
   if (updateError) throw updateError;
   const data = updatedRecords[0];
-
   if (data.pair_task_id) {
     try {
-      if (input.status === 'approved') {
+      if (input.status === EVIDENCE_STATUS.APPROVED) {
         await supabase
           .from('mp_pair_tasks')
           .update({ rejection_reason: null })
           .eq('id', data.pair_task_id);
           
-        await updatePairTaskStatus(data.pair_task_id, 'completed', user.id);
+        await updatePairTaskStatus(data.pair_task_id, TASK_STATUS.COMPLETED, user.id);
       } else {
         await supabase
           .from('mp_pair_tasks')
           .update({ 
-            status: 'revision_required',
+            status: TASK_STATUS.REVISION_REQUIRED,
             rejection_reason: input.rejection_reason || 'Changes requested by supervisor.',
             last_feedback: input.rejection_reason || 'Changes requested by supervisor.'
           })
@@ -389,9 +393,9 @@ export async function fetchEvidenceStats(programId?: string) {
   if (error) throw error;
   return {
     total: data.length,
-    pending: data.filter(e => e.status === 'pending').length,
-    approved: data.filter(e => e.status === 'approved').length,
-    rejected: data.filter(e => e.status === 'rejected').length,
+    pending: data.filter(e => e.status === EVIDENCE_STATUS.PENDING).length,
+    approved: data.filter(e => e.status === EVIDENCE_STATUS.APPROVED).length,
+    rejected: data.filter(e => e.status === EVIDENCE_STATUS.REJECTED).length,
   };
 }
 

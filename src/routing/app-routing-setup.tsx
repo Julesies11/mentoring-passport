@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import { AuthRouting } from '@/auth/auth-routing';
 import { RequireAuth } from '@/auth/require-auth';
 import { RequireRole } from '@/auth/require-role';
@@ -65,13 +66,13 @@ function RoleBasedRedirect() {
 
   // Route to role-specific landing page
   switch (role) {
-    case 'administrator':
+    case ROLES.ADMINISTRATOR:
       return <Navigate to="/sys-admin/dashboard" replace />;
-    case 'org-admin':
+    case ROLES.ORG_ADMIN:
       return <Navigate to="/admin/dashboard" replace />;
-    case 'supervisor':
+    case ROLES.SUPERVISOR:
       return <Navigate to="/supervisor/hub" replace />;
-    case 'program-member':
+    case ROLES.PROGRAM_MEMBER:
       return <Navigate to="/program-member/dashboard" replace />;
     default:
       return <Navigate to="/error/404" replace />;
@@ -93,7 +94,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/sys-admin/dashboard"
                 element={
-                  <RequireRole allowedRoles={['administrator']}>
+                  <RequireRole allowedRoles={[ROLES.ADMINISTRATOR]}>
                     <SysAdminDashboardPage />
                   </RequireRole>
                 }
@@ -101,7 +102,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/sys-admin/settings"
                 element={
-                  <RequireRole allowedRoles={['administrator']}>
+                  <RequireRole allowedRoles={[ROLES.ADMINISTRATOR]}>
                     <SysAdminInstanceSettingsPage />
                   </RequireRole>
                 }
@@ -109,7 +110,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/sys-admin/users"
                 element={
-                  <RequireRole allowedRoles={['administrator']}>
+                  <RequireRole allowedRoles={[ROLES.ADMINISTRATOR]}>
                     <SysAdminUsersPage />
                   </RequireRole>
                 }
@@ -119,7 +120,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/dashboard"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <OrgAdminDashboardPage />
                   </RequireRole>
                 }
@@ -127,7 +128,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/programs"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <OrgAdminProgramsPage />
                   </RequireRole>
                 }
@@ -135,7 +136,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/pairs"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <OrgAdminPairsPage />
                   </RequireRole>
                 }
@@ -143,7 +144,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/participants"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <ParticipantsPage mode="manage" />
                   </RequireRole>
                 }
@@ -151,7 +152,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/task-templates"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <TaskTemplatesLibraryPage />
                   </RequireRole>
                 }
@@ -159,7 +160,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/task-templates/:id"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <TaskTemplateEditorPage />
                   </RequireRole>
                 }
@@ -167,7 +168,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/supervisors"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <ManageSupervisorsPage />
                   </RequireRole>
                 }
@@ -175,7 +176,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/admin/evidence-audit"
                 element={
-                  <RequireRole allowedRoles={['org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.ORG_ADMIN]}>
                     <EvidenceAuditPage />
                   </RequireRole>
                 }
@@ -185,7 +186,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/hub"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <SupervisorDashboardPage />
                   </RequireRole>
                 }
@@ -197,7 +198,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/pairs"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <PairsPage />
                   </RequireRole>
                 }
@@ -205,7 +206,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/program-tasks"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <SupervisorProgramTasksPage /> 
                   </RequireRole>
                 }
@@ -213,7 +214,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/evidence-review"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <EvidenceReviewPage />
                   </RequireRole>
                 }
@@ -221,7 +222,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/calendar"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <SupervisorCalendarPage />
                   </RequireRole>
                 }
@@ -229,7 +230,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/checklist"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <SupervisorChecklistPage />
                   </RequireRole>
                 }
@@ -237,7 +238,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/error-logs"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <SupervisorErrorLogsPage />
                   </RequireRole>
                 }
@@ -245,7 +246,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/supervisor/participants"
                 element={
-                  <RequireRole allowedRoles={['supervisor', 'org-admin']}>
+                  <RequireRole allowedRoles={[ROLES.SUPERVISOR, ROLES.ORG_ADMIN]}>
                     <ParticipantsPage mode="view" />
                   </RequireRole>
                 }
@@ -255,7 +256,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/program-member/dashboard"
                 element={
-                  <RequireRole allowedRoles={['program-member']}>
+                  <RequireRole allowedRoles={[ROLES.PROGRAM_MEMBER]}>
                     <ProgramMemberDashboardPage />
                   </RequireRole>
                 }
@@ -263,7 +264,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/program-member/tasks"
                 element={
-                  <RequireRole allowedRoles={['program-member']}>
+                  <RequireRole allowedRoles={[ROLES.PROGRAM_MEMBER]}>
                     <ProgramMemberTasksPage />
                   </RequireRole>
                 }
@@ -271,7 +272,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/program-member/mentees"
                 element={
-                  <RequireRole allowedRoles={['program-member']}>
+                  <RequireRole allowedRoles={[ROLES.PROGRAM_MEMBER]}>
                     <RelationshipPage />
                   </RequireRole>
                 }
@@ -279,7 +280,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/program-member/mentor"
                 element={
-                  <RequireRole allowedRoles={['program-member']}>
+                  <RequireRole allowedRoles={[ROLES.PROGRAM_MEMBER]}>
                     <RelationshipPage />
                   </RequireRole>
                 }
@@ -287,7 +288,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/program-member/checklist"
                 element={
-                  <RequireRole allowedRoles={['program-member']}>
+                  <RequireRole allowedRoles={[ROLES.PROGRAM_MEMBER]}>
                     <Navigate to="/program-member/tasks" replace />
                   </RequireRole>
                 }
@@ -295,7 +296,7 @@ export function AppRoutingSetup() {
               <Route
                 path="/program-member/meetings"
                 element={
-                  <RequireRole allowedRoles={['program-member']}>
+                  <RequireRole allowedRoles={[ROLES.PROGRAM_MEMBER]}>
                     <ProgramMemberMeetingsPage />
                   </RequireRole>
                 }

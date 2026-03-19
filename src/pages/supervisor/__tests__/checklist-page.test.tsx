@@ -1,3 +1,4 @@
+import { PAIR_STATUS, PROGRAM_STATUS, TASK_STATUS } from '@/config/constants';
 import { render, screen, fireEvent } from '@/test/utils';
 import { SupervisorChecklistPage } from '../checklist-page';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -19,8 +20,8 @@ describe('SupervisorChecklistPage Integration', () => {
       id: 'p1',
       mentor: { full_name: 'John Mentor' },
       mentee: { full_name: 'Sarah Mentee' },
-      status: 'active',
-      program: { status: 'active', start_date: new Date().toISOString() }
+      status: PAIR_STATUS.ACTIVE,
+      program: { status: PROGRAM_STATUS.ACTIVE, start_date: new Date().toISOString() }
     }
   ];
 
@@ -28,7 +29,7 @@ describe('SupervisorChecklistPage Integration', () => {
     {
       id: 't1',
       name: 'Initial Meeting',
-      status: 'not_submitted',
+      status: TASK_STATUS.NOT_SUBMITTED,
       subtasks: []
     }
   ];

@@ -1,3 +1,4 @@
+import { PAIR_STATUS, PROGRAM_STATUS, ROLES } from '@/config/constants';
 import { render, screen, waitFor, fireEvent } from '@/test/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MeetingDialog } from '../meeting-dialog';
@@ -22,7 +23,7 @@ vi.mock('@/providers/pairing-provider', async (importOriginal) => {
   };
 });
 
-const mockUser = { id: 'u1', full_name: 'Test User', role: 'program-member' };
+const mockUser = { id: 'u1', full_name: 'Test User', role: ROLES.PROGRAM_MEMBER };
 
 describe('MeetingDialog v4 (Double-Active Filtering)', () => {
   beforeEach(() => {
@@ -34,24 +35,24 @@ describe('MeetingDialog v4 (Double-Active Filtering)', () => {
     const pairings = [
       { 
         id: 'active-pair-active-prog', 
-        status: 'active', 
+        status: PAIR_STATUS.ACTIVE, 
         mentor_id: 'u1', 
         mentee: { full_name: 'Active Mentee' },
-        program: { status: 'active', name: 'Active Program', start_date: '2025-01-01' }
+        program: { status: PROGRAM_STATUS.ACTIVE, name: 'Active Program', start_date: '2025-01-01' }
       },
       { 
         id: 'second-active', 
-        status: 'active', 
+        status: PAIR_STATUS.ACTIVE, 
         mentor_id: 'u1', 
         mentee: { full_name: 'Second Mentee' },
-        program: { status: 'active', name: 'Active Program', start_date: '2025-01-01' }
+        program: { status: PROGRAM_STATUS.ACTIVE, name: 'Active Program', start_date: '2025-01-01' }
       },
       { 
         id: 'active-pair-inactive-prog', 
-        status: 'active', 
+        status: PAIR_STATUS.ACTIVE, 
         mentor_id: 'u1', 
         mentee: { full_name: 'Inactive Prog Mentee' },
-        program: { status: 'inactive', name: 'Old Program', start_date: '2024-01-01' }
+        program: { status: PROGRAM_STATUS.INACTIVE, name: 'Old Program', start_date: '2024-01-01' }
       }
     ];
 
@@ -91,17 +92,17 @@ describe('MeetingDialog v4 (Double-Active Filtering)', () => {
     const pairings = [
       { 
         id: 'old-prog', 
-        status: 'active', 
+        status: PAIR_STATUS.ACTIVE, 
         mentor_id: 'u1', 
         mentee: { full_name: 'Old Mentee' },
-        program: { status: 'active', name: '2024 Program', start_date: '2024-01-01' }
+        program: { status: PROGRAM_STATUS.ACTIVE, name: '2024 Program', start_date: '2024-01-01' }
       },
       { 
         id: 'new-prog', 
-        status: 'active', 
+        status: PAIR_STATUS.ACTIVE, 
         mentor_id: 'u1', 
         mentee: { full_name: 'New Mentee' },
-        program: { status: 'active', name: '2025 Program', start_date: '2025-01-01' }
+        program: { status: PROGRAM_STATUS.ACTIVE, name: '2025 Program', start_date: '2025-01-01' }
       }
     ];
 

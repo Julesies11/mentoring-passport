@@ -1,4 +1,8 @@
-import { KeenIcon } from '@/components/keenicons';
+import { ROLES } from './constants';
+import { 
+  KeenIcon 
+} from '@/components/keenicons';
+
 import { type MenuConfig } from './types';
 
 /**
@@ -12,19 +16,19 @@ export const SIDEBAR_MENU_CONFIG: MenuConfig = [
     title: 'System Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/sys-admin/dashboard',
-    requiredRole: ['administrator']
+    requiredRole: [ROLES.ADMINISTRATOR]
   },
   {
     title: 'Instance Settings',
     icon: () => <KeenIcon icon="bank" />,
     path: '/sys-admin/settings',
-    requiredRole: ['administrator']
+    requiredRole: [ROLES.ADMINISTRATOR]
   },
   {
     title: 'User Directory',
     icon: () => <KeenIcon icon="users" />,
     path: '/sys-admin/users',
-    requiredRole: ['administrator']
+    requiredRole: [ROLES.ADMINISTRATOR]
   },
 
   // --- ORGANISATION ADMINISTRATION LEVEL (Org Admin) ---
@@ -32,37 +36,37 @@ export const SIDEBAR_MENU_CONFIG: MenuConfig = [
     title: 'Admin Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/admin/dashboard',
-    requiredRole: ['org-admin']
+    requiredRole: [ROLES.ORG_ADMIN]
   },
   {
     title: 'Programs',
     icon: () => <KeenIcon icon="layers" />,
     path: '/admin/programs',
-    requiredRole: ['org-admin']
+    requiredRole: [ROLES.ORG_ADMIN]
   },
   {
     title: 'Organisation Pairs',
     icon: () => <KeenIcon icon="disconnect" />,
     path: '/admin/pairs',
-    requiredRole: ['org-admin']
+    requiredRole: [ROLES.ORG_ADMIN]
   },
   {
     title: 'Manage Members',
     icon: () => <KeenIcon icon="users" />,
     path: '/admin/participants',
-    requiredRole: ['org-admin']
+    requiredRole: [ROLES.ORG_ADMIN]
   },
   {
     title: 'Audit Evidence',
     icon: () => <KeenIcon icon="eye" />,
     path: '/admin/evidence-audit',
-    requiredRole: ['org-admin']
+    requiredRole: [ROLES.ORG_ADMIN]
   },
   {
     title: 'Task Templates',
     icon: () => <KeenIcon icon="check-squared" />,
     path: '/admin/task-templates',
-    requiredRole: ['org-admin']
+    requiredRole: [ROLES.ORG_ADMIN]
   },
 
   // --- SUPERVISOR LEVEL ---
@@ -70,37 +74,37 @@ export const SIDEBAR_MENU_CONFIG: MenuConfig = [
     title: 'Supervisor Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/supervisor/hub',
-    requiredRole: ['supervisor']
+    requiredRole: [ROLES.SUPERVISOR]
   },
   {
     title: 'Pairs',
     icon: () => <KeenIcon icon="disconnect" />,
     path: '/supervisor/pairs',
-    requiredRole: ['supervisor']
+    requiredRole: [ROLES.SUPERVISOR]
   },
   {
     title: 'Program Tasks',
     icon: () => <KeenIcon icon="check-squared" />,
     path: '/supervisor/program-tasks',
-    requiredRole: ['supervisor']
+    requiredRole: [ROLES.SUPERVISOR]
   },
   {
     title: 'Pair Management',
     icon: () => <KeenIcon icon="setting-2" />,
     path: '/supervisor/checklist',
-    requiredRole: ['supervisor']
+    requiredRole: [ROLES.SUPERVISOR]
   },
   {
     title: 'Evidence Review',
     icon: () => <KeenIcon icon="eye" />,
     path: '/supervisor/evidence-review',
-    requiredRole: ['supervisor']
+    requiredRole: [ROLES.SUPERVISOR]
   },
   {
     title: 'Calendar',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/supervisor/calendar',
-    requiredRole: ['supervisor']
+    requiredRole: [ROLES.SUPERVISOR]
   },
 
   // --- PROGRAM MEMBER LEVEL (Mentor / Mentee) ---
@@ -108,19 +112,19 @@ export const SIDEBAR_MENU_CONFIG: MenuConfig = [
     title: 'Relationship Hub',
     icon: () => <KeenIcon icon="element-11" />,
     path: '/program-member/dashboard',
-    requiredRole: ['program-member']
+    requiredRole: [ROLES.PROGRAM_MEMBER]
   },
   {
     title: 'Tasks',
     icon: () => <KeenIcon icon="clipboard" />,
     path: '/program-member/tasks',
-    requiredRole: ['program-member']
+    requiredRole: [ROLES.PROGRAM_MEMBER]
   },
   {
     title: 'Meetings',
     icon: () => <KeenIcon icon="calendar" />,
     path: '/program-member/meetings',
-    requiredRole: ['program-member']
+    requiredRole: [ROLES.PROGRAM_MEMBER]
   },
 ];
 

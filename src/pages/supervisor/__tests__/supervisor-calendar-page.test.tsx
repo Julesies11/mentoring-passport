@@ -1,3 +1,4 @@
+import { MEETING_STATUS, PAIR_STATUS, PROGRAM_STATUS } from '@/config/constants';
 import { screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SupervisorCalendarPage } from '../calendar-page';
@@ -8,7 +9,7 @@ import * as pairsHook from '@/hooks/use-pairs';
 // Mock hooks
 vi.mock('@/hooks/use-meetings', () => ({
   useAllMeetings: vi.fn(),
-  getMeetingStatus: vi.fn((date) => (new Date(date) > new Date() ? 'upcoming' : 'past')),
+  getMeetingStatus: vi.fn((date) => (new Date(date) > new Date() ? MEETING_STATUS.UPCOMING : 'past')),
 }));
 
 vi.mock('@/hooks/use-pairs', async (importOriginal) => {
@@ -25,8 +26,8 @@ vi.mock('@/providers/organisation-provider', async (importOriginal) => {
   return {
     ...actual,
     useOrganisation: vi.fn(() => ({
-      programs: [{ id: 'prog1', name: 'Test Program', status: 'active' }],
-      activeProgram: { id: 'prog1', name: 'Test Program', status: 'active' },
+      programs: [{ id: 'prog1', name: 'Test Program', status: PROGRAM_STATUS.ACTIVE }],
+      activeProgram: { id: 'prog1', name: 'Test Program', status: PROGRAM_STATUS.ACTIVE },
       isLoading: false
     })),
   };
@@ -56,8 +57,8 @@ describe('SupervisorCalendarPage', () => {
       id: 'p1', 
       mentor: { full_name: 'Mentor One' }, 
       mentee: { full_name: 'Mentee One' },
-      program: { status: 'active' },
-      status: 'active'
+      program: { status: PROGRAM_STATUS.ACTIVE },
+      status: PAIR_STATUS.ACTIVE
     },
   ];
 

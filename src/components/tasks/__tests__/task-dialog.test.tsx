@@ -1,3 +1,4 @@
+import { TASK_STATUS } from '@/config/constants';
 import { render, screen, waitFor } from '@/test/utils';
 import userEvent from '@testing-library/user-event';
 import { TaskDialog } from '../task-dialog';
@@ -29,7 +30,7 @@ vi.mock('@/hooks/use-file-upload', () => ({
 const mockTask = {
   id: 'pt1',
   name: 'Initial Meeting',
-  status: 'not_submitted' as const,
+  status: TASK_STATUS.NOT_SUBMITTED,
   evidence_notes: 'Initial progress note',
   evidence_type: {
     id: 'et1',
@@ -154,7 +155,7 @@ describe('TaskDialog', () => {
   it('renders feedback from supervisor when in revision_required status', async () => {
     const revisionTask = {
       ...mockTask,
-      status: 'revision_required' as const,
+      status: TASK_STATUS.REVISION_REQUIRED,
       rejection_reason: 'Please upload a clearer photo'
     };
     
@@ -169,7 +170,7 @@ describe('TaskDialog', () => {
   it('renders "Task Successfully Validated" state when completed', () => {
     const completedTask = {
       ...mockTask,
-      status: 'completed' as const,
+      status: TASK_STATUS.COMPLETED,
       completed_at: new Date().toISOString()
     };
     

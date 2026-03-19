@@ -1,3 +1,7 @@
+import { 
+  TASK_STATUS, 
+  TaskStatus, 
+} from '@/config/constants';
 import { supabase } from '@/lib/supabase';
 
 export interface Task {
@@ -102,7 +106,7 @@ export interface PairTask {
   name: string;
   evidence_type_id: string | null;
   sort_order: number;
-  status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required';
+  status: TaskStatus | 'revision_required';
   is_custom: boolean;
   last_feedback?: string | null;
   evidence_notes?: string | null;
@@ -605,7 +609,7 @@ export async function reorderMasterTasks(tasks: { id: string; sort_order: number
  */
 export async function updatePairTaskStatus(
   taskId: string,
-  status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required',
+  status: TaskStatus | 'revision_required',
   userId?: string,
   evidenceNotes?: string
 ): Promise<PairTask> {
@@ -615,11 +619,11 @@ export async function updatePairTaskStatus(
     updateData.evidence_notes = evidenceNotes;
   }
   
-  if (status === 'awaiting_review') {
+  if (status === TASK_STATUS.AWAITING_REVIEW) {
     updateData.submitted_at = new Date().toISOString();
   }
 
-  if (status === 'completed') {
+  if (status === TASK_STATUS.COMPLETED) {
     updateData.completed_at = new Date().toISOString();
     if (userId) {
       updateData.completed_by_user_id = userId;
@@ -629,7 +633,7 @@ export async function updatePairTaskStatus(
     updateData.completed_by_user_id = null;
   }
 
-  if (status === 'awaiting_review' || status === 'completed') {
+  if (status === TASK_STATUS.AWAITING_REVIEW || status === TASK_STATUS.COMPLETED) {
     updateData.last_feedback = null;
   }
 
@@ -695,11 +699,11 @@ export async function fetchPairTaskStats(pairId: string) {
 
   const stats = {
     total: data.length,
-    not_submitted: data.filter(t => t.status === 'not_submitted').length,
-    awaiting_review: data.filter(t => t.status === 'awaiting_review').length,
-    completed: data.filter(t => t.status === 'completed').length,
+    not_submitted: data.filter(t => t.status === TASK_STATUS.NOT_SUBMITTED).length,
+    awaiting_review: data.filter(t => t.status === TASK_STATUS.AWAITING_REVIEW).length,
+    completed: data.filter(t => t.status === TASK_STATUS.COMPLETED).length,
     completion_percentage: data.length > 0 
-      ? Math.round((data.filter(t => t.status === 'completed').length / data.length) * 100)
+      ? Math.round((data.filter(t => t.status === TASK_STATUS.COMPLETED).length / data.length) * 100)
       : 0,
   };
 

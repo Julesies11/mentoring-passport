@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -19,7 +20,7 @@ const createTestQueryClient = () => new QueryClient({
 export const mockUser: UserModel = {
   id: '00000000-0000-0000-0000-000000000001',
   email: 'test@example.com',
-  role: 'supervisor',
+  role: ROLES.SUPERVISOR,
   full_name: 'Test Supervisor',
   avatar_url: '',
   organisation_id: '00000000-0000-0000-0000-000000000002',
@@ -52,7 +53,7 @@ const defaultAuthValue = {
   logout: () => {},
   verify: async () => {},
   isAdmin: false,
-  role: 'supervisor' as any,
+  role: ROLES.SUPERVISOR as any,
   profileId: '00000000-0000-0000-0000-000000000001',
   isSystemOwner: false,
   isOrgAdmin: false,

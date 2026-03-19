@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import { screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SidebarMenu } from '../sidebar-menu';
@@ -17,7 +18,7 @@ describe('SidebarMenu', () => {
   it('renders Admin and Supervisor sections for Org Admin', () => {
     render(<SidebarMenu />, {
       authValue: {
-        role: 'org-admin',
+        role: ROLES.ORG_ADMIN,
         isAdmin: true,
         isOrgAdmin: true,
         isSupervisor: true,
@@ -38,7 +39,7 @@ describe('SidebarMenu', () => {
   it('renders only Supervisor Hub for regular Supervisor', () => {
     render(<SidebarMenu />, {
       authValue: {
-        role: 'supervisor',
+        role: ROLES.SUPERVISOR,
         isOrgAdmin: false,
         isSupervisor: true,
       },

@@ -1,3 +1,4 @@
+import { PROGRAM_STATUS } from '@/config/constants';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import { ProgramDialog } from '../program-dialog';
@@ -39,7 +40,7 @@ describe('ProgramDialog', () => {
       id: 'p1',
       organisation_id: 'org1',
       name: 'Existing Program',
-      status: 'active' as const,
+      status: PROGRAM_STATUS.ACTIVE,
       task_list_id: null,
       start_date: null,
       end_date: null,
@@ -113,7 +114,7 @@ describe('ProgramDialog', () => {
       expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
         name: 'New Program',
         supervisor_ids: ['s1'],
-        status: 'active'
+        status: PROGRAM_STATUS.ACTIVE
       }));
     });
   });

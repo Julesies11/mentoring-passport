@@ -1,4 +1,6 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { ROLES, PROGRAM_STATUS } from '@/config/constants';
+import { renderHook, waitFor } from '@testing-library/react';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OrganisationProvider, useOrganisation } from '../organisation-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -22,7 +24,8 @@ vi.mock('@/lib/supabase', () => ({
 
 const mockUser = {
   id: 'u1',
-  role: 'supervisor'
+  role: ROLES.SUPERVISOR
+
 };
 
 const createWrapper = () => {
@@ -46,9 +49,9 @@ describe('OrganisationProvider Single-Organisation', () => {
 
   it('fetches singleton organisation and sorts programs correctly', async () => {
     const mockPrograms = [
-      { id: 'p1', status: 'inactive', start_date: '2025-01-01', name: 'Old Inactive', created_at: '2025-01-01' },
-      { id: 'p2', status: 'active', start_date: '2025-02-01', name: 'Newer Active', created_at: '2025-02-01' },
-      { id: 'p3', status: 'active', start_date: '2025-01-15', name: 'Older Active', created_at: '2025-01-15' },
+      { id: 'p1', status: PROGRAM_STATUS.INACTIVE, start_date: '2025-01-01', name: 'Old Inactive', created_at: '2025-01-01' },
+      { id: 'p2', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-02-01', name: 'Newer Active', created_at: '2025-02-01' },
+      { id: 'p3', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-01-15', name: 'Older Active', created_at: '2025-01-15' },
     ];
 
     vi.mocked(programsApi.fetchAssignedPrograms).mockResolvedValue(mockPrograms as any);
@@ -72,8 +75,8 @@ describe('OrganisationProvider Single-Organisation', () => {
 
   it('updates active program when setActiveProgram is called', async () => {
     const mockPrograms = [
-      { id: 'p1', status: 'active', start_date: '2025-01-01', name: 'P1' },
-      { id: 'p2', status: 'inactive', start_date: '2025-02-01', name: 'P2' },
+      { id: 'p1', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-01-01', name: 'P1' },
+      { id: 'p2', status: PROGRAM_STATUS.INACTIVE, start_date: '2025-02-01', name: 'P2' },
     ];
 
     vi.mocked(programsApi.fetchAssignedPrograms).mockResolvedValue(mockPrograms as any);

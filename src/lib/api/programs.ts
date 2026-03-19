@@ -1,7 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { STATUS } from '@/config/constants';
-
-export type ProgramStatus = 'active' | 'inactive' | 'archived';
+import { PROGRAM_STATUS, ProgramStatus, ROLES } from '@/config/constants';
 
 export interface Program {
   id: string;
@@ -66,7 +64,7 @@ export async function fetchAssignedPrograms(): Promise<Program[]> {
 
   // Use JWT metadata for role check to avoid RLS recursion on mp_profiles
   const role = user.app_metadata?.role;
-  const isPrivileged = role === 'administrator' || role === 'org-admin';
+  const isPrivileged = role === ROLES.ADMINISTRATOR || role === ROLES.ORG_ADMIN;
 
   // If Admin or Org Admin, they see all programs in the instance
   if (isPrivileged) {
@@ -150,7 +148,7 @@ export async function updateProgram(id: string, input: UpdateProgramInput): Prom
   if (
     input.task_list_id !== undefined && 
     input.task_list_id !== currentProgram?.task_list_id &&
-    currentProgram?.status !== 'active'
+    currentProgram?.status !== PROGRAM_STATUS.ACTIVE
   ) {
     throw new Error('Task list cannot be changed for an inactive or archived program.');
   }
@@ -268,7 +266,7 @@ export async function archiveProgram(id: string): Promise<void> {
   try {
     const { error } = await supabase
       .from('mp_programs')
-      .update({ status: STATUS.ARCHIVED })
+      .update({ status: PROGRAM_STATUS.ARCHIVED })
       .eq('id', id);
 
     if (error) throw error;
@@ -295,6 +293,6 @@ export async function duplicateProgram(sourceId: string, newName: string): Promi
   return createProgram({
     ...sourceData,
     name: newName,
-    status: STATUS.INACTIVE // Start as inactive
+    status: PROGRAM_STATUS.INACTIVE // Start as inactive
   });
 }

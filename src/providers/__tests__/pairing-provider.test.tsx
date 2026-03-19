@@ -1,4 +1,6 @@
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { PAIR_STATUS, PROGRAM_STATUS } from '@/config/constants';
+import { renderHook, waitFor } from '@testing-library/react';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PairingProvider, usePairing } from '../pairing-provider';
 import { useAuth } from '@/auth/context/auth-context';
@@ -65,31 +67,31 @@ describe('PairingProvider', () => {
     const mockPairings = [
       {
         id: 'p1',
-        status: 'archived',
+        status: PAIR_STATUS.ARCHIVED,
         mentor_id: 'mentor1',
         mentee: { full_name: 'Mentee A' },
-        program: { status: 'active', start_date: '2023-01-01' },
+        program: { status: PROGRAM_STATUS.ACTIVE, start_date: '2023-01-01' },
       },
       {
         id: 'p2',
-        status: 'active',
+        status: PAIR_STATUS.ACTIVE,
         mentor_id: 'mentor1',
         mentee: { full_name: 'Mentee Z' },
-        program: { status: 'active', start_date: '2023-05-01' },
+        program: { status: PROGRAM_STATUS.ACTIVE, start_date: '2023-05-01' },
       },
       {
         id: 'p3',
-        status: 'active',
+        status: PAIR_STATUS.ACTIVE,
         mentor_id: 'mentor1',
         mentee: { full_name: 'Mentee B' },
-        program: { status: 'active', start_date: '2023-10-01' },
+        program: { status: PROGRAM_STATUS.ACTIVE, start_date: '2023-10-01' },
       },
       {
         id: 'p4',
-        status: 'active',
+        status: PAIR_STATUS.ACTIVE,
         mentor_id: 'mentor2', // user is mentee
         mentor: { full_name: 'Mentor C' },
-        program: { status: 'active', start_date: '2023-10-01' }, // Same date as p3
+        program: { status: PROGRAM_STATUS.ACTIVE, start_date: '2023-10-01' }, // Same date as p3
       }
     ];
 
@@ -127,8 +129,8 @@ describe('PairingProvider', () => {
 
     vi.mocked(useUserPairs).mockReturnValue({
       data: [
-        { id: 'p1', status: 'active', program: { status: 'active' } },
-        { id: 'p2', status: 'active', program: { status: 'active' } },
+        { id: 'p1', status: PAIR_STATUS.ACTIVE, program: { status: PROGRAM_STATUS.ACTIVE } },
+        { id: 'p2', status: PAIR_STATUS.ACTIVE, program: { status: PROGRAM_STATUS.ACTIVE } },
       ],
       isLoading: false,
     } as any);
@@ -150,8 +152,8 @@ describe('PairingProvider', () => {
 
     vi.mocked(useUserPairs).mockReturnValue({
       data: [
-        { id: 'p1', status: 'active', program: { status: 'active' } },
-        { id: 'p2', status: 'active', program: { status: 'active' } },
+        { id: 'p1', status: PAIR_STATUS.ACTIVE, program: { status: PROGRAM_STATUS.ACTIVE } },
+        { id: 'p2', status: PAIR_STATUS.ACTIVE, program: { status: PROGRAM_STATUS.ACTIVE } },
       ],
       isLoading: false,
     } as any);

@@ -1,3 +1,4 @@
+import { ROLES, PROFILE_STATUS } from '@/config/constants';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ParticipantsContent } from '../participants-content';
@@ -35,8 +36,8 @@ import { usePairs } from '@/hooks/use-pairs';
 
 describe('ParticipantsContent', () => {
   const mockParticipants = [
-    { id: 'u1', full_name: 'John Doe', email: 'john@test.com', role: 'program-member', status: 'active', job_title: 'Developer' },
-    { id: 'u2', full_name: 'Jane Smith', email: 'jane@test.com', role: 'supervisor', status: 'active', job_title: 'Manager' },
+    { id: 'u1', full_name: 'John Doe', email: 'john@test.com', role: ROLES.PROGRAM_MEMBER, status: PROFILE_STATUS.ACTIVE, job_title: 'Developer' },
+    { id: 'u2', full_name: 'Jane Smith', email: 'jane@test.com', role: ROLES.SUPERVISOR, status: PROFILE_STATUS.ACTIVE, job_title: 'Manager' },
   ];
 
   beforeEach(() => {
@@ -72,7 +73,7 @@ describe('ParticipantsContent', () => {
     } as any);
 
     render(<ParticipantsContent />, {
-      authValue: { role: 'org-admin', isOrgAdmin: true }
+      authValue: { role: ROLES.ORG_ADMIN, isOrgAdmin: true }
     });
     
     expect(screen.getByText('Manage Members')).toBeInTheDocument();
@@ -89,7 +90,7 @@ describe('ParticipantsContent', () => {
     } as any);
 
     render(<ParticipantsContent />, {
-      authValue: { role: 'supervisor', isOrgAdmin: false, isSupervisor: true }
+      authValue: { role: ROLES.SUPERVISOR, isOrgAdmin: false, isSupervisor: true }
     });
     
     expect(screen.getByText('Member Directory')).toBeInTheDocument();
@@ -122,8 +123,8 @@ describe('ParticipantsContent', () => {
       id: `u${i}`,
       full_name: `User ${i + 1}`,
       email: `user${i + 1}@test.com`,
-      role: 'program-member',
-      status: 'active',
+      role: ROLES.PROGRAM_MEMBER,
+      status: PROFILE_STATUS.ACTIVE,
       job_title: 'Staff'
     }));
 

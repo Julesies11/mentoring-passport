@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import { screen, render as rtlRender } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SupervisorDashboardPage } from '@/pages/supervisor/dashboard-page';
@@ -55,7 +56,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 
 describe('Mobile UI Standards', () => {
-  const mockUser = { id: 's1', email: 'supervisor@test.com', role: 'supervisor' };
+  const mockUser = { id: 's1', email: 'supervisor@test.com', role: ROLES.SUPERVISOR };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -116,7 +117,7 @@ describe('Mobile UI Standards', () => {
         isOrgAdmin: true, 
         isSupervisor: true, 
         isAdmin: true,
-        role: 'org-admin'
+        role: ROLES.ORG_ADMIN
       };
 
       const { unmount } = renderBottomNav('/org-admin/hub', orgAdminAuth);
@@ -142,7 +143,7 @@ describe('Mobile UI Standards', () => {
         isOrgAdmin: false, 
         isSupervisor: true, 
         isAdmin: false,
-        role: 'supervisor'
+        role: ROLES.SUPERVISOR
       };
 
       const { unmount } = renderBottomNav('/supervisor/hub', supervisorAuth);
@@ -153,7 +154,7 @@ describe('Mobile UI Standards', () => {
         isOrgAdmin: false, 
         isSupervisor: false, 
         isAdmin: false,
-        role: 'program-member'
+        role: ROLES.PROGRAM_MEMBER
       };
 
       renderBottomNav('/program-member/dashboard', memberAuth);

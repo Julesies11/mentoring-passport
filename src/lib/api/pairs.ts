@@ -1,3 +1,4 @@
+import { PAIR_STATUS, PairStatus, TASK_STATUS } from '@/config/constants';
 import { supabase } from '@/lib/supabase';
 
 export interface Pair {
@@ -5,7 +6,7 @@ export interface Pair {
   mentor_id: string;
   mentee_id: string;
   program_id: string | null;
-  status: 'active' | 'completed' | 'archived';
+  status: PairStatus;
   created_at: string;
   updated_at: string;
   mentor?: {
@@ -41,7 +42,7 @@ export interface CreatePairInput {
 }
 
 export interface UpdatePairInput {
-  status?: 'active' | 'completed' | 'archived';
+  status?: PairStatus;
 }
 
 /**
@@ -161,7 +162,7 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
       name: task.name,
       evidence_type_id: task.evidence_type_id || fallbackEvidenceTypeId,
       sort_order: task.sort_order,
-      status: 'not_submitted' as const,
+      status: TASK_STATUS.NOT_SUBMITTED,
       is_custom: false,
       program_id: input.program_id
     }));
@@ -260,7 +261,7 @@ export async function updatePair(id: string, input: UpdatePairInput): Promise<Pa
 export async function archivePair(id: string): Promise<void> {
   const { error } = await supabase
     .from('mp_pairs')
-    .update({ status: 'archived' })
+    .update({ status: PAIR_STATUS.ARCHIVED })
     .eq('id', id);
 
   if (error) {
@@ -275,7 +276,7 @@ export async function archivePair(id: string): Promise<void> {
 export async function restorePair(id: string): Promise<void> {
   const { error } = await supabase
     .from('mp_pairs')
-    .update({ status: 'active' })
+    .update({ status: PAIR_STATUS.ACTIVE })
     .eq('id', id);
 
   if (error) {
@@ -311,9 +312,9 @@ export async function fetchPairStats(programId?: string) {
 
   const stats = {
     total: data.length,
-    active: data.filter(p => p.status === 'active').length,
-    completed: data.filter(p => p.status === 'completed').length,
-    archived: data.filter(p => p.status === 'archived').length,
+    active: data.filter(p => p.status === PAIR_STATUS.ACTIVE).length,
+    completed: data.filter(p => p.status === PAIR_STATUS.COMPLETED).length,
+    archived: data.filter(p => p.status === PAIR_STATUS.ARCHIVED).length,
   };
 
   return stats;

@@ -1,3 +1,4 @@
+import { ROLES, PROFILE_STATUS, PAIR_STATUS } from '@/config/constants';
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useParticipants } from '@/hooks/use-participants';
@@ -41,7 +42,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id');
   const { role } = useAuth();
-  const isOrgAdmin = role === 'org-admin' || role === 'administrator';
+  const isOrgAdmin = role === ROLES.ORG_ADMIN || role === ROLES.ADMINISTRATOR;
   const isManageMode = mode === 'manage' && isOrgAdmin;
 
   const { 
@@ -75,10 +76,10 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
 
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'org-admin' | 'supervisor' | 'program-member'>(
-    mode === 'view' ? 'program-member' : 'all'
+  const [roleFilter, setRoleFilter] = useState<'all' | typeof ROLES.ORG_ADMIN | typeof ROLES.SUPERVISOR | typeof ROLES.PROGRAM_MEMBER>(
+    mode === 'view' ? ROLES.PROGRAM_MEMBER : 'all'
   );
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active');
+  const [statusFilter, setStatusFilter] = useState<'all' | typeof PROFILE_STATUS.ACTIVE | typeof PROFILE_STATUS.ARCHIVED>(PROFILE_STATUS.ACTIVE);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,7 +89,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
 
   useEffect(() => {
     if (isMobile && statusFilter === 'all') {
-      setStatusFilter('active');
+      setStatusFilter(PROFILE_STATUS.ACTIVE);
     }
   }, [isMobile, statusFilter]);
 
@@ -382,7 +383,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                   ) : (
                     paginatedParticipants.map((p) => {
                       const activePairings = pairs.filter(pair => 
-                        pair.status === 'active' && (pair.mentor_id === p.id || pair.mentee_id === p.id)
+                        pair.status === PAIR_STATUS.ACTIVE && (pair.mentor_id === p.id || pair.mentee_id === p.id)
                       ).length;
                       
                       return (
@@ -445,13 +446,13 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                               variant="outline" 
                               className={cn(
                                 "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                                p.role === 'supervisor' ? "bg-purple-100 text-purple-700" : 
-                                (p.role === 'org-admin' || p.role === 'administrator') ? "bg-amber-100 text-amber-700" :
+                                p.role === ROLES.SUPERVISOR ? "bg-purple-100 text-purple-700" : 
+                                (p.role === ROLES.ORG_ADMIN || p.role === ROLES.ADMINISTRATOR) ? "bg-amber-100 text-amber-700" :
                                 "bg-blue-100 text-blue-700"
                               )}
                             >
-                              {p.role === 'supervisor' ? 'Supervisor' : 
-                               (p.role === 'org-admin' || p.role === 'administrator') ? 'Admin' : 
+                              {p.role === ROLES.SUPERVISOR ? 'Supervisor' : 
+                               (p.role === ROLES.ORG_ADMIN || p.role === ROLES.ADMINISTRATOR) ? 'Admin' : 
                                'Member'}
                             </Badge>
                           </TableCell>
@@ -460,7 +461,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                             variant="outline" 
                             className={cn(
                               "rounded-full font-black uppercase text-[9px] px-2.5 h-5 border-none",
-                              p.status === 'active' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                              p.status === PROFILE_STATUS.ACTIVE ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                             )}
                           >
                             {p.status}
@@ -484,7 +485,7 @@ export function ParticipantsContent({ mode = 'manage' }: ParticipantsContentProp
                                   <KeenIcon icon="pencil" className="text-lg" />
                                 </Button>
                                 
-                                {p.status === 'active' ? (
+                                {p.status === PROFILE_STATUS.ACTIVE ? (
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 

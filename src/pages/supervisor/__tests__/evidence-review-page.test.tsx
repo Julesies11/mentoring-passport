@@ -1,3 +1,4 @@
+import { EVIDENCE_STATUS } from '@/config/constants';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/utils';
 import { EvidenceReviewPage } from '../evidence-review-page';
@@ -27,7 +28,7 @@ const mockEvidence = [
   {
     id: 'e1',
     pair_id: 'p1',
-    status: 'pending',
+    status: EVIDENCE_STATUS.PENDING,
     submitted_by: 'u1',
     description: 'Evidence 1',
     created_at: new Date().toISOString(),
@@ -40,7 +41,7 @@ const mockEvidence = [
   {
     id: 'e2',
     pair_id: 'p2',
-    status: 'pending',
+    status: EVIDENCE_STATUS.PENDING,
     submitted_by: 'u2',
     description: 'Evidence 2',
     created_at: new Date().toISOString(),

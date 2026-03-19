@@ -1,3 +1,4 @@
+import { PAIR_STATUS } from '@/config/constants';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { usePairs } from '../use-pairs';
@@ -41,8 +42,8 @@ describe('usePairs Single-Organisation', () => {
   });
 
   it('fetches pairs correctly without organisation filters', async () => {
-    const mockPairs = [{ id: 'p1', status: 'active' }];
-    vi.mocked(pairsApi.fetchPairs).mockResolvedValue(mockPairs);
+    const mockPairs = [{ id: 'p1', status: PAIR_STATUS.ACTIVE }];
+    vi.mocked(pairsApi.fetchPairs).mockResolvedValue(mockPairs as any);
     vi.mocked(pairsApi.fetchPairStats).mockResolvedValue({ total: 1 } as any);
 
     const { result } = renderHook(() => usePairs(), { wrapper: createWrapper() });

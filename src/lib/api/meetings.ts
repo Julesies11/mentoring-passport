@@ -1,3 +1,4 @@
+import { LOCATION_TYPE, LocationType, MEETING_STATUS, MeetingStatus } from '@/config/constants';
 import { supabase } from '@/lib/supabase';
 import { isFuture } from 'date-fns';
 
@@ -9,7 +10,8 @@ export interface Meeting {
   date_time: string;
   notes: string | null;
   location: string | null;
-  meeting_type: 'in_person' | 'virtual' | 'phone' | null;
+  location_type: LocationType | null;
+  status: MeetingStatus;
   created_at: string;
   updated_at: string;
   task?: {
@@ -51,11 +53,13 @@ export interface Meeting {
 export interface CreateMeetingInput {
   pair_id: string;
   pair_task_id?: string | null;
+  program_id?: string | null;
   title: string;
   notes?: string;
   date_time: string;
   location?: string | null;
-  meeting_type?: 'in_person' | 'virtual' | 'phone' | null;
+  location_type?: LocationType | null;
+  status?: MeetingStatus;
 }
 
 export interface UpdateMeetingInput {
@@ -64,7 +68,8 @@ export interface UpdateMeetingInput {
   notes?: string;
   pair_task_id?: string | null;
   location?: string | null;
-  meeting_type?: 'in_person' | 'virtual' | 'phone' | null;
+  location_type?: LocationType | null;
+  status?: MeetingStatus;
 }
 
 /**
@@ -185,7 +190,8 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       notes: input.notes,
       date_time: input.date_time,
       location: input.location,
-      meeting_type: input.meeting_type,
+      location_type: input.location_type || LOCATION_TYPE.OTHER,
+      status: input.status || MEETING_STATUS.UPCOMING,
     })
     .select(`
       *,

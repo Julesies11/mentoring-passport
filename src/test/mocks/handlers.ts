@@ -1,4 +1,11 @@
 import { http, HttpResponse } from 'msw';
+import { 
+  ROLES, 
+  PROFILE_STATUS, 
+  PROGRAM_STATUS, 
+  PAIR_STATUS, 
+  TASK_STATUS 
+} from '@/config/constants';
 
 // Mock data
 const mockEvidenceTypes = [
@@ -7,15 +14,9 @@ const mockEvidenceTypes = [
 ];
 
 const mockProfiles = [
-  { id: 'm1', full_name: 'Mentor One', email: 'm1@test.com', organisation_id: 'org1', status: 'active' },
-  { id: 'me1', full_name: 'Mentee One', email: 'me1@test.com', organisation_id: 'org1', status: 'active' },
-  { id: 'u1', full_name: 'Supervisor User', email: 'u1@test.com', organisation_id: 'org1', status: 'active' },
-];
-
-const mockMemberships = [
-  { user_id: 'm1', organisation_id: 'org1', role: 'program-member', status: 'active' },
-  { user_id: 'me1', organisation_id: 'org1', role: 'program-member', status: 'active' },
-  { user_id: 'u1', organisation_id: 'org1', role: 'supervisor', status: 'active' },
+  { id: 'm1', full_name: 'Mentor One', email: 'm1@test.com', role: ROLES.PROGRAM_MEMBER, status: PROFILE_STATUS.ACTIVE },
+  { id: 'me1', full_name: 'Mentee One', email: 'me1@test.com', role: ROLES.PROGRAM_MEMBER, status: PROFILE_STATUS.ACTIVE },
+  { id: 'u1', full_name: 'Supervisor User', email: 'u1@test.com', role: ROLES.SUPERVISOR, status: PROFILE_STATUS.ACTIVE },
 ];
 
 const mockOrganisations = [
@@ -23,7 +24,7 @@ const mockOrganisations = [
 ];
 
 const mockPrograms = [
-  { id: 'prog1', organisation_id: 'org1', name: 'General Program', status: 'active' },
+  { id: 'prog1', name: 'General Program', status: PROGRAM_STATUS.ACTIVE },
 ];
 
 const mockPairs = [
@@ -35,7 +36,7 @@ const mockPairs = [
     mentee: mockProfiles[1],
     program_id: 'prog1',
     program: mockPrograms[0],
-    status: 'active'
+    status: PAIR_STATUS.ACTIVE
   },
 ];
 
@@ -44,7 +45,7 @@ const mockPairTasks = [
     id: 'pt1',
     pair_id: 'p1',
     name: 'Initial Meeting',
-    status: 'not_submitted',
+    status: TASK_STATUS.NOT_SUBMITTED,
     sort_order: 1,
     evidence_type_id: 'et1',
     master_task_id: 'mt1'
@@ -64,24 +65,7 @@ export const handlers = [
 
   // Fetch Profiles
   http.get('*/rest/v1/mp_profiles*', () => {
-    // Add joined memberships to the profiles
-    const profilesWithMemberships = mockProfiles.map(p => ({
-      ...p,
-      memberships: mockMemberships.filter(m => m.user_id === p.id)
-    }));
-    return HttpResponse.json(profilesWithMemberships);
-  }),
-
-  // Fetch Memberships
-  http.get('*/rest/v1/mp_memberships*', ({ request }) => {
-    const url = new URL(request.url);
-    const userIdParam = url.searchParams.get('user_id');
-    if (userIdParam) {
-      const userId = userIdParam.includes('.') ? userIdParam.split('.')[1] : userIdParam;
-      const filtered = mockMemberships.filter(m => m.user_id === userId);
-      return HttpResponse.json(filtered);
-    }
-    return HttpResponse.json(mockMemberships);
+    return HttpResponse.json(mockProfiles);
   }),
 
   // Fetch Pair Tasks
@@ -144,14 +128,7 @@ export const handlers = [
   }),
 
   // Fetch Programs
-  http.get('*/rest/v1/mp_programs*', ({ request }) => {
-    const url = new URL(request.url);
-    const orgIdParam = url.searchParams.get('organisation_id');
-    if (orgIdParam) {
-      const orgId = orgIdParam.includes('.') ? orgIdParam.split('.')[1] : orgIdParam;
-      const filtered = mockPrograms.filter(p => p.organisation_id === orgId);
-      return HttpResponse.json(filtered);
-    }
+  http.get('*/rest/v1/mp_programs*', () => {
     return HttpResponse.json(mockPrograms);
   }),
 ];

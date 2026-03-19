@@ -1,3 +1,4 @@
+import { TASK_STATUS, TaskStatus } from '@/config/constants';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
 import { toast } from 'sonner';
@@ -83,7 +84,7 @@ export function useTasks() {
     error,
     fetchPairTasks,
     fetchPairTaskStats,
-    updatePairTaskStatus: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed') =>
+    updatePairTaskStatus: (taskId: string, status: TaskStatus) =>
       updatePairTaskStatus(taskId, status, user?.id),
     reorderTasks: (newOrder: { id: string; sort_order: number }[]) =>
       reorderTasksMutation.mutate(newOrder),
@@ -196,7 +197,7 @@ export function usePairTasks(pairId: string) {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ taskId, status, evidenceNotes }: { taskId: string; status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required'; evidenceNotes?: string }) =>
+    mutationFn: ({ taskId, status, evidenceNotes }: { taskId: string; status: TaskStatus; evidenceNotes?: string }) =>
       updatePairTaskStatus(taskId, status, user?.id, evidenceNotes),
     onSuccess: async (updatedTask) => {
       await Promise.all([
@@ -210,7 +211,7 @@ export function usePairTasks(pairId: string) {
       const mentorName = currentTask?.pair?.mentor?.full_name || 'Mentor';
       const menteeName = currentTask?.pair?.mentee?.full_name || 'Mentee';
 
-      if (updatedTask.status === 'awaiting_review' && user?.id && mentorId && menteeId) {
+      if (updatedTask.status === TASK_STATUS.AWAITING_REVIEW && user?.id && mentorId && menteeId) {
         const actorName = user.full_name || user.email || 'Participant';
         await NotificationService.notifyTaskSubmitted(
           updatedTask.name, 
@@ -241,7 +242,7 @@ export function usePairTasks(pairId: string) {
       queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId, 'stats'] });
       
       const currentTasks = tasks;
-      const hasStarted = currentTasks.some(t => t.status !== 'not_submitted');
+      const hasStarted = currentTasks.some(t => t.status !== TASK_STATUS.NOT_SUBMITTED);
       
       if (hasStarted) {
         const firstTask = currentTasks[0];
@@ -389,7 +390,7 @@ export function usePairTasks(pairId: string) {
     stats,
     isLoading,
     error,
-    updateStatus: (taskId: string, status: 'not_submitted' | 'awaiting_review' | 'completed' | 'revision_required', evidenceNotes?: string) =>
+    updateStatus: (taskId: string, status: TaskStatus, evidenceNotes?: string) =>
       updateStatusMutation.mutate({ taskId, status, evidenceNotes }),
     createTask: createPairTaskMutation.mutate,
     updateTask: (taskId: string, updates: Partial<PairTask>, options?: any) =>

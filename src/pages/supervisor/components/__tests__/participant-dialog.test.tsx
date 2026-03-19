@@ -1,3 +1,4 @@
+import { ROLES, PROFILE_STATUS } from '@/config/constants';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import { ParticipantDialog } from '@/components/participants/participant-dialog';
@@ -38,10 +39,10 @@ describe('ParticipantDialog', () => {
     const participant = {
       id: 'p1',
       email: 'p1@example.com',
-      role: 'program-member' as const,
+      role: ROLES.PROGRAM_MEMBER,
       full_name: 'John Participant',
       job_title: 'Doctor',
-      status: 'active' as const,
+      status: PROFILE_STATUS.ACTIVE,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       active_mentor_count: 0,
@@ -85,7 +86,7 @@ describe('ParticipantDialog', () => {
       expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
         email: 'new@example.com',
         full_name: 'New Participant',
-        role: 'program-member'
+        role: ROLES.PROGRAM_MEMBER
       }));
     });
   });

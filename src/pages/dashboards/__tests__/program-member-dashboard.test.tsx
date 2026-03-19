@@ -1,3 +1,4 @@
+import { PAIR_STATUS, PROGRAM_STATUS } from '@/config/constants';
 import { screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProgramMemberDashboardPage } from '../program-member-dashboard';
@@ -56,8 +57,8 @@ describe('ProgramMemberDashboardPage', () => {
   it('renders relationship section when active pairings exist', async () => {
     const mockPairing = {
       id: 'p1',
-      status: 'active',
-      program: { status: 'active', name: 'Test Program' },
+      status: PAIR_STATUS.ACTIVE,
+      program: { status: PROGRAM_STATUS.ACTIVE, name: 'Test Program' },
       mentor_id: 'u1', // User is mentor
       mentee_id: 'u2',
       mentee: { id: 'u2', full_name: 'Mentee Name', email: 'mentee@test.com' },

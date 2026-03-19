@@ -1,3 +1,4 @@
+import { ROLES, PAIR_STATUS, PROGRAM_STATUS, TASK_STATUS, MEETING_STATUS } from '@/config/constants';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MeetingDialog } from '../meeting-dialog';
@@ -12,7 +13,7 @@ vi.mock('@/lib/api/tasks', () => ({
 vi.mock('@/lib/api/meetings', () => ({
   createMeeting: vi.fn().mockResolvedValue({}),
   updateMeeting: vi.fn().mockResolvedValue({}),
-  getMeetingStatus: vi.fn().mockReturnValue('upcoming'),
+  getMeetingStatus: vi.fn().mockReturnValue(MEETING_STATUS.UPCOMING),
 }));
 
 // Mock usePairing hook
@@ -24,16 +25,16 @@ vi.mock('@/providers/pairing-provider', async (importOriginal) => {
   };
 });
 
-const mockUser = { id: 'u1', full_name: 'Test User', role: 'program-member' };
-const mockSupervisor = { id: 's1', full_name: 'Test Supervisor', role: 'supervisor' };
+const mockUser = { id: 'u1', full_name: 'Test User', role: ROLES.PROGRAM_MEMBER };
+const mockSupervisor = { id: 's1', full_name: 'Test Supervisor', role: ROLES.SUPERVISOR };
 
 const mockPairings = [
   { 
     id: 'pair1', 
     mentor_id: 'u1', 
     mentee_id: 'm1', 
-    status: 'active',
-    program: { status: 'active', name: 'Prog 1', start_date: '2025-01-01' },
+    status: PAIR_STATUS.ACTIVE,
+    program: { status: PROGRAM_STATUS.ACTIVE, name: 'Prog 1', start_date: '2025-01-01' },
     mentee: { full_name: 'Mentee 1', avatar_url: '', job_title: 'Junior' },
     mentor: { full_name: 'Test User', avatar_url: '', job_title: 'Senior' }
   },
@@ -41,8 +42,8 @@ const mockPairings = [
     id: 'pair2', 
     mentor_id: 'u1', 
     mentee_id: 'm2', 
-    status: 'active',
-    program: { status: 'active', name: 'Prog 2', start_date: '2025-02-01' },
+    status: PAIR_STATUS.ACTIVE,
+    program: { status: PROGRAM_STATUS.ACTIVE, name: 'Prog 2', start_date: '2025-02-01' },
     mentee: { full_name: 'Mentee 2', avatar_url: '', job_title: 'Med' },
     mentor: { full_name: 'Test User', avatar_url: '', job_title: 'Senior' }
   }
@@ -52,8 +53,8 @@ describe('MeetingDialog V3', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(tasksApi.fetchPairTasks).mockResolvedValue([
-      { id: 'task1', name: 'Task 1', status: 'not_submitted' },
-      { id: 'task2', name: 'Task 2', status: 'completed' },
+      { id: 'task1', name: 'Task 1', status: TASK_STATUS.NOT_SUBMITTED },
+      { id: 'task2', name: 'Task 2', status: TASK_STATUS.COMPLETED },
     ] as any);
     
     vi.mocked(pairingProvider.usePairing).mockReturnValue({
@@ -95,9 +96,9 @@ describe('MeetingDialog V3', () => {
 
   it('filters out completed tasks but shows "Review" for awaiting_review tasks', async () => {
     vi.mocked(tasksApi.fetchPairTasks).mockResolvedValue([
-      { id: 'task1', name: 'Active Task', status: 'not_submitted' },
-      { id: 'task2', name: 'Review Task', status: 'awaiting_review' },
-      { id: 'task3', name: 'Done Task', status: 'completed' },
+      { id: 'task1', name: 'Active Task', status: TASK_STATUS.NOT_SUBMITTED },
+      { id: 'task2', name: 'Review Task', status: TASK_STATUS.AWAITING_REVIEW },
+      { id: 'task3', name: 'Done Task', status: TASK_STATUS.COMPLETED },
     ] as any);
 
     render(

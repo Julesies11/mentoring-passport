@@ -1,5 +1,5 @@
+import { ROLES, PROFILE_STATUS, UserRole, ProfileStatus } from '@/config/constants';
 import { supabase } from '@/lib/supabase';
-import { UserRole } from '@/auth/lib/models';
 
 export interface Participant {
   id: string;
@@ -8,7 +8,7 @@ export interface Participant {
   role: UserRole;
   job_title?: string;
   department?: string;
-  status: 'active' | 'archived';
+  status: ProfileStatus;
   avatar_url?: string;
   must_change_password?: boolean;
 }
@@ -28,7 +28,7 @@ export interface UpdateParticipantInput {
   department?: string | null;
   phone?: string | null;
   bio?: string | null;
-  status?: 'active' | 'archived';
+  status?: ProfileStatus;
   role?: UserRole;
   avatar_url?: string | null;
 }
@@ -91,7 +91,7 @@ export async function fetchOrgSupervisors() {
       *,
       mp_supervisor_programs(program_id)
     `)
-    .in('role', ['supervisor', 'org-admin', 'administrator'])
+    .in('role', [ROLES.SUPERVISOR, ROLES.ORG_ADMIN, ROLES.ADMINISTRATOR])
     .order('full_name');
 
   if (error) throw error;
@@ -140,7 +140,7 @@ export async function createParticipant(input: CreateParticipantInput): Promise<
       role: input.role,
       job_title: input.job_title,
       department: input.department,
-      status: 'active',
+      status: PROFILE_STATUS.ACTIVE,
       must_change_password: true
     })
     .select()
@@ -171,7 +171,7 @@ export async function updateParticipant(id: string, updates: Partial<UpdateParti
 export async function archiveParticipant(id: string): Promise<void> {
   const { error } = await supabase
     .from('mp_profiles')
-    .update({ status: 'archived' })
+    .update({ status: PROFILE_STATUS.ARCHIVED })
     .eq('id', id);
 
   if (error) throw error;
@@ -183,7 +183,7 @@ export async function archiveParticipant(id: string): Promise<void> {
 export async function restoreParticipant(id: string): Promise<void> {
   const { error } = await supabase
     .from('mp_profiles')
-    .update({ status: 'active' })
+    .update({ status: PROFILE_STATUS.ACTIVE })
     .eq('id', id);
 
   if (error) throw error;
@@ -198,9 +198,9 @@ export async function fetchParticipantStats(programId?: string) {
 
   return {
     total: data.length,
-    active: data.filter(p => p.status === 'active').length,
-    archived: data.filter(p => p.status === 'archived').length,
-    supervisors: data.filter(p => p.role === 'supervisor' || p.role === 'org-admin' || p.role === 'administrator').length,
-    'program-members': data.filter(p => p.role === 'program-member').length,
+    active: data.filter(p => p.status === PROFILE_STATUS.ACTIVE).length,
+    archived: data.filter(p => p.status === PROFILE_STATUS.ARCHIVED).length,
+    supervisors: data.filter(p => p.role === ROLES.SUPERVISOR || p.role === ROLES.ORG_ADMIN || p.role === ROLES.ADMINISTRATOR).length,
+    'program-members': data.filter(p => p.role === ROLES.PROGRAM_MEMBER).length,
   };
 }

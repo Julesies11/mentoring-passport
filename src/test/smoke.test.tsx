@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import { render } from './utils';
 import { describe, it, expect, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
@@ -44,7 +45,7 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
   
   describe('Administrator Pages', () => {
     const adminAuth = { 
-      role: 'administrator' as any, 
+      role: ROLES.ADMINISTRATOR as any, 
       isSupervisor: true, 
       isOrgAdmin: true, 
       isSystemOwner: true, 
@@ -53,7 +54,7 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
       user: {
         id: 'admin-id',
         email: 'admin@test.com',
-        role: 'administrator',
+        role: ROLES.ADMINISTRATOR,
         is_admin: true,
         is_system_owner: true
       }
@@ -82,7 +83,7 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
   });
 
   describe('Organisation Admin Pages', () => {
-    const orgAdminAuth = { role: 'org-admin' as any, isSupervisor: true, isOrgAdmin: true, isSystemOwner: false, isMentor: false, isMentee: false };
+    const orgAdminAuth = { role: ROLES.ORG_ADMIN as any, isSupervisor: true, isOrgAdmin: true, isSystemOwner: false, isMentor: false, isMentee: false };
 
     it('Org Admin Dashboard renders without crashing', async () => {
       const { container } = render(<OrgAdminDashboardPage />, { authValue: orgAdminAuth });

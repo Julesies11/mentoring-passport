@@ -1,3 +1,4 @@
+import { TASK_STATUS } from '@/config/constants';
 import { render, screen, fireEvent, waitFor } from '@/test/utils';
 import { PairTaskEditDialog } from '../pair-task-edit-dialog';
 import { describe, it, expect, vi } from 'vitest';
@@ -6,7 +7,7 @@ const mockTask = {
   id: 'new-task',
   pair_id: 'p1',
   name: '',
-  status: 'not_submitted' as const,
+  status: TASK_STATUS.NOT_SUBMITTED,
   sort_order: 1,
   evidence_type_id: '',
   master_task_id: null,

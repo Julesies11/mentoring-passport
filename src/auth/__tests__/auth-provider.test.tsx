@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthProvider } from '../providers/supabase-provider';
@@ -66,7 +67,7 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
   it('derives roles correctly for an administrator', async () => {
     const mockUser = {
       id: 'admin-1',
-      role: 'administrator',
+      role: ROLES.ADMINISTRATOR,
     };
     vi.mocked(SupabaseAdapter.getUserProfile).mockResolvedValue(mockUser as any);
 
@@ -82,14 +83,14 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
       expect(result.current.isAdmin).toBe(true);
       expect(result.current.isOrgAdmin).toBe(true); // administrator is also an org admin
       expect(result.current.isSupervisor).toBe(true);
-      expect(result.current.role).toBe('administrator');
+      expect(result.current.role).toBe(ROLES.ADMINISTRATOR);
     });
   });
 
   it('derives roles correctly for a supervisor', async () => {
     const mockUser = {
       id: 'supervisor-1',
-      role: 'supervisor',
+      role: ROLES.SUPERVISOR,
     };
     vi.mocked(SupabaseAdapter.getUserProfile).mockResolvedValue(mockUser as any);
 
@@ -104,14 +105,14 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
     await waitFor(() => {
       expect(result.current.isSupervisor).toBe(true);
       expect(result.current.isAdmin).toBe(false);
-      expect(result.current.role).toBe('supervisor');
+      expect(result.current.role).toBe(ROLES.SUPERVISOR);
     });
   });
 
   it('derives roles correctly for a program-member', async () => {
     const mockUser = {
       id: 'member-1',
-      role: 'program-member',
+      role: ROLES.PROGRAM_MEMBER,
     };
     vi.mocked(SupabaseAdapter.getUserProfile).mockResolvedValue(mockUser as any);
 
@@ -124,7 +125,7 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.role).toBe('program-member');
+      expect(result.current.role).toBe(ROLES.PROGRAM_MEMBER);
       expect(result.current.isSupervisor).toBe(false);
       expect(result.current.isAdmin).toBe(false);
     });

@@ -1,3 +1,4 @@
+import { PAIR_STATUS } from '@/config/constants';
 import { screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SupervisorDashboardPage } from '../dashboard-page';
@@ -71,7 +72,7 @@ describe('SupervisorDashboardPage', () => {
   it('renders data in executive summary', () => {
     vi.mocked(usePairs).mockReturnValue({ 
       pairs: [
-        { id: 'p1', status: 'active', mentor_id: 'u1', mentee_id: 'u2', updated_at: new Date().toISOString() }
+        { id: 'p1', status: PAIR_STATUS.ACTIVE, mentor_id: 'u1', mentee_id: 'u2', updated_at: new Date().toISOString() }
       ], 
       isLoading: false 
     } as any);

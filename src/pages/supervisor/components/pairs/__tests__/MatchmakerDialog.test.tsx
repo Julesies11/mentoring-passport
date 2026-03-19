@@ -1,11 +1,12 @@
 import { render, screen, fireEvent } from '@/test/utils';
 import { MatchmakerDialog } from '../MatchmakerDialog';
 import { describe, it, expect, vi } from 'vitest';
+import { ROLES } from '@/config/constants';
 
 const mockParticipants = [
-  { id: 'p1', full_name: 'Alice Mentor', email: 'alice@example.com', role: 'program-member' },
-  { id: 'p2', full_name: 'Bob Mentee', email: 'bob@example.com', role: 'program-member' },
-  { id: 'p3', full_name: 'Charlie User', email: 'charlie@example.com', role: 'program-member' },
+  { id: 'p1', full_name: 'Alice Mentor', email: 'alice@example.com', role: ROLES.PROGRAM_MEMBER },
+  { id: 'p2', full_name: 'Bob Mentee', email: 'bob@example.com', role: ROLES.PROGRAM_MEMBER },
+  { id: 'p3', full_name: 'Charlie User', email: 'charlie@example.com', role: ROLES.PROGRAM_MEMBER },
 ];
 
 const mockPairs = [];

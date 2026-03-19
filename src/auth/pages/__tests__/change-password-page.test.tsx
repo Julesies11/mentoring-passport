@@ -1,3 +1,4 @@
+import { ROLES } from '@/config/constants';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangePasswordPage } from '../change-password-page';
@@ -49,7 +50,7 @@ describe('ChangePasswordPage', () => {
 
   it('renders correctly when logged in (forced change)', () => {
     render(<ChangePasswordPage />, { 
-      authValue: { user: { id: 'u1' } as any, role: 'program-member' } 
+      authValue: { user: { id: 'u1' } as any, role: ROLES.PROGRAM_MEMBER } 
     });
     expect(screen.getByRole('heading', { name: /update password/i })).toBeInTheDocument();
   });
@@ -58,7 +59,7 @@ describe('ChangePasswordPage', () => {
     mockUpdateUser.mockResolvedValue({ data: {}, error: null });
     
     render(<ChangePasswordPage />, { 
-      authValue: { user: { id: 'u1' } as any, role: 'program-member' } 
+      authValue: { user: { id: 'u1' } as any, role: ROLES.PROGRAM_MEMBER } 
     });
     
     fireEvent.change(screen.getByPlaceholderText(/create a strong password/i), { target: { value: 'NewPassword123!' } });
@@ -81,7 +82,7 @@ describe('ChangePasswordPage', () => {
     });
     
     render(<ChangePasswordPage />, { 
-      authValue: { user: { id: 'u1' } as any, role: 'program-member' } 
+      authValue: { user: { id: 'u1' } as any, role: ROLES.PROGRAM_MEMBER } 
     });
     
     fireEvent.change(screen.getByPlaceholderText(/create a strong password/i), { target: { value: 'ValidPassword123!' } });

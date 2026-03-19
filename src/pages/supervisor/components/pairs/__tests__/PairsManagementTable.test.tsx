@@ -1,3 +1,4 @@
+import { PAIR_STATUS } from '@/config/constants';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PairsManagementTable } from '../PairsManagementTable';
@@ -16,7 +17,7 @@ describe('PairsManagementTable', () => {
   const mockPairs = [
     {
       id: 'p1',
-      status: 'active',
+      status: PAIR_STATUS.ACTIVE,
       mentor: { id: 'm1', full_name: 'Mentor One', email: 'm1@test.com' },
       mentee: { id: 'e1', full_name: 'Mentee One', email: 'e1@test.com' },
       created_at: new Date().toISOString(),
@@ -66,7 +67,7 @@ describe('PairsManagementTable', () => {
     // we should see 10 items on page 1.
     const manyPairs = Array.from({ length: 30 }, (_, i) => ({
       id: `p${i}`,
-      status: 'active',
+      status: PAIR_STATUS.ACTIVE,
       mentor: { id: `m${i}`, full_name: `Mentor ${i + 1}`, email: `m${i}@test.com` },
       mentee: { id: `e${i}`, full_name: `Mentee ${i + 1}`, email: `e${i}@test.com` },
       // Ensure deterministic sort order (descending by default in component, so newest first)

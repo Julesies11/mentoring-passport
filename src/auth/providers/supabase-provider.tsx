@@ -1,3 +1,4 @@
+import { ROLES, UserRole } from '@/config/constants';
 import { PropsWithChildren, useEffect, useState, useCallback, useMemo } from 'react';
 import { SupabaseAdapter } from '@/auth/adapters/supabase-adapter';
 import { AuthContext } from '@/auth/context/auth-context';
@@ -14,10 +15,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isMentee, setIsMentee] = useState(false);
 
   const effectiveRole = currentUser?.role;
-  const isSysAdmin = effectiveRole === 'administrator';
-  const isOrgAdmin = effectiveRole === 'org-admin';
-  const isSupervisor = effectiveRole === 'supervisor';
-  const isProgramMember = effectiveRole === 'program-member';
+  const isSysAdmin = effectiveRole === ROLES.ADMINISTRATOR;
+  const isOrgAdmin = effectiveRole === ROLES.ORG_ADMIN;
+  const isSupervisor = effectiveRole === ROLES.SUPERVISOR;
+  const isProgramMember = effectiveRole === ROLES.PROGRAM_MEMBER;
 
   const saveAuth = useCallback((newAuth: AuthModel | undefined) => {
     setAuth(newAuth);
