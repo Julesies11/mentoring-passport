@@ -1,5 +1,17 @@
 import { test, expect } from '@playwright/test';
 
+/**
+ * PRODUCTION SAFETY WARNING:
+ * These tests run against the Production database. 
+ * They MUST remain STRICTLY READ-ONLY.
+ * 
+ * Rules for this file:
+ * 1. ONLY use page.goto() for navigation.
+ * 2. NEVER use page.click() on submit buttons or action items.
+ * 3. NEVER use page.fill() or page.type() on forms.
+ * 4. NEVER log in as a real user or attempt authentication.
+ */
+
 // List of all major routes in the application
 const APP_ROUTES = [
   // Auth
