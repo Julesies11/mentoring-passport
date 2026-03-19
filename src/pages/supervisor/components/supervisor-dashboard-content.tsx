@@ -60,26 +60,6 @@ export function SupervisorDashboardContent() {
     return { active, pending, unpaired, avgProgress };
   }, [activeProgram, programs, pairs, pendingEvidenceList, allParticipants, allStatuses]);
 
-  // Handle No Programs Assigned state
-  if (!isContextLoading && programs.length === 0) {
-    return (
-      <Card className="border-dashed border-2 border-gray-200 shadow-none">
-        <CardContent className="py-20 flex flex-col items-center justify-center text-center px-6">
-          <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mb-6 text-gray-200">
-            <KeenIcon icon=" some-files-icon" className="text-5xl" />
-          </div>
-          <h3 className="text-xl font-black text-gray-900">No Programs Assigned</h3>
-          <p className="text-gray-500 max-w-sm mx-auto mt-2 mb-8">
-            You haven't been assigned to any mentoring programs yet. Please contact your Organisation Administrator to be assigned to a specialty or ward.
-          </p>
-          <Button variant="primary" onClick={() => navigate('/profile/edit')} className="rounded-xl font-bold">
-            View My Profile
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   // Stale Pairings (No activity in 14 days)
   const stalePairings = useMemo(() => {
     return pairs
@@ -99,6 +79,26 @@ export function SupervisorDashboardContent() {
       .sort((a, b) => a.progress.percentage - b.progress.percentage)
       .slice(0, 10);
   }, [pairs, allStatuses]);
+
+  // Handle No Programs Assigned state
+  if (!isContextLoading && programs.length === 0) {
+    return (
+      <Card className="border-dashed border-2 border-gray-200 shadow-none">
+        <CardContent className="py-20 flex flex-col items-center justify-center text-center px-6">
+          <div className="size-20 rounded-full bg-gray-50 flex items-center justify-center mb-6 text-gray-200">
+            <KeenIcon icon=" some-files-icon" className="text-5xl" />
+          </div>
+          <h3 className="text-xl font-black text-gray-900">No Programs Assigned</h3>
+          <p className="text-gray-500 max-w-sm mx-auto mt-2 mb-8">
+            You haven't been assigned to any mentoring programs yet. Please contact your Organisation Administrator to be assigned to a specialty or ward.
+          </p>
+          <Button variant="primary" onClick={() => navigate('/profile/edit')} className="rounded-xl font-bold">
+            View My Profile
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid gap-2 sm:gap-5 lg:gap-7.5">
