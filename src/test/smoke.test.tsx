@@ -3,6 +3,15 @@ import { render } from './utils';
 import { describe, it, expect, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 
+// System Admin Pages
+import { AdminDashboardPage as SysAdminDashboardPage } from '@/pages/admin/dashboard';
+import { OrgSettingsPage as SysAdminSettingsPage } from '@/pages/supervisor/org-settings';
+
+// Org Admin Pages
+import { OrgAdminDashboardPage } from '@/pages/org-admin/dashboard';
+import { OrgAdminProgramsPage } from '@/pages/org-admin/programs';
+import { TaskTemplatesLibraryPage as OrgAdminTaskTemplatesPage } from '@/pages/org-admin/task-templates';
+
 // Supervisor Pages
 import { SupervisorDashboardPage } from '@/pages/supervisor/dashboard-page';
 import { ParticipantsPage } from '@/pages/supervisor/participants-page';
@@ -12,11 +21,6 @@ import { SupervisorChecklistPage } from '@/pages/supervisor/checklist-page';
 import { SupervisorProgramTasksPage } from '@/pages/supervisor/program-tasks-page';
 import { SupervisorCalendarPage } from '@/pages/supervisor/calendar-page';
 import { SupervisorErrorLogsPage } from '@/pages/supervisor/error-logs-page';
-
-// Org Admin Pages
-import { OrgAdminDashboardPage } from '@/pages/org-admin/dashboard';
-import { OrgAdminProgramsPage } from '@/pages/org-admin/programs';
-import { OrgAdminTaskTemplatesPage } from '@/pages/org-admin/task-templates';
 
 // Program Member Pages
 import { ProgramMemberDashboardPage } from '@/pages/dashboards/program-member-dashboard';
@@ -30,44 +34,40 @@ import { EditProfilePage } from '@/pages/profile/edit-profile';
 // Auth Pages
 import { SignUpPage } from '@/auth/pages/signup-page';
 
-// Admin Pages
-import { AdminDashboardPage } from '@/pages/admin/dashboard';
-import { AdminOrganisationsPage } from '@/pages/admin/organisations';
-import { AdminUsersPage } from '@/pages/admin/users';
-
 // Mock complex chart components or heavy libraries that might fail in JSDOM
 vi.mock('react-apexcharts', () => ({
   default: () => <div data-testid="mock-chart" />
 }));
 
 describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
-  
-  describe('Administrator Pages', () => {
-    const adminAuth = { 
+
+  describe('System Administrator Pages', () => {
+    const sysAdminAuth = { 
       role: ROLES.ADMINISTRATOR as any, 
       isSupervisor: true, 
       isOrgAdmin: true, 
+      isSysAdmin: true, 
       isSystemOwner: true, 
       isMentor: false, 
       isMentee: false,
       user: {
-        id: 'admin-id',
-        email: 'admin@test.com',
+        id: 'sys-admin-id',
+        email: 'sysadmin@test.com',
         role: ROLES.ADMINISTRATOR,
         is_admin: true,
         is_system_owner: true
       }
     };
 
-    it('Admin Dashboard renders without crashing', async () => {
-      const { container } = render(<AdminDashboardPage />, { authValue: adminAuth });
+    it('Sys Admin Dashboard renders without crashing', async () => {
+      const { container } = render(<SysAdminDashboardPage />, { authValue: sysAdminAuth });
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
     });
 
-    it('Admin Organisations Page renders without crashing', async () => {
-      const { container } = render(<AdminOrganisationsPage />, { authValue: adminAuth });
+    it('Sys Admin Settings Page renders without crashing', async () => {
+      const { container } = render(<SysAdminSettingsPage />, { authValue: sysAdminAuth });
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
@@ -75,7 +75,15 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
   });
 
   describe('Organisation Admin Pages', () => {
-    const orgAdminAuth = { role: ROLES.ORG_ADMIN as any, isSupervisor: true, isOrgAdmin: true, isSystemOwner: false, isMentor: false, isMentee: false };
+    const orgAdminAuth = { 
+      role: ROLES.ORG_ADMIN as any, 
+      isSupervisor: true, 
+      isOrgAdmin: true, 
+      isSysAdmin: false,
+      isSystemOwner: false, 
+      isMentor: false, 
+      isMentee: false 
+    };
 
     it('Org Admin Dashboard renders without crashing', async () => {
       const { container } = render(<OrgAdminDashboardPage />, { authValue: orgAdminAuth });
@@ -99,13 +107,12 @@ describe('Comprehensive Smoke Test (White Screen Prevention)', () => {
     });
 
     it('Manage Members Page renders without crashing', async () => {
-      const { container } = render(<ParticipantsPage mode="manage" />);
+      const { container } = render(<ParticipantsPage mode="manage" />, { authValue: orgAdminAuth });
       await waitFor(() => {
         expect(container).not.toBeEmptyDOMElement();
       });
     });
-    });
-
+  });
     describe('Supervisor Pages', () => {
     it('Supervisor Hub renders without crashing', async () => {
       const { container } = render(<SupervisorDashboardPage />);

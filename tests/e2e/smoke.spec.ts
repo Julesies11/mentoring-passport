@@ -7,19 +7,18 @@ const APP_ROUTES = [
   '/auth/signup',
   '/auth/reset-password',
   
-  // Admin Pages
+  // System Administrator (Sys Admin)
+  '/sys-admin/dashboard',
+  '/sys-admin/settings',
+  
+  // Organisation Administrator (Org Admin)
   '/admin/dashboard',
-  '/admin/organisations',
-  '/admin/users',
+  '/admin/programs',
+  '/admin/participants',
+  '/admin/task-templates',
   
-  // Org Admin Pages
-  '/org-admin/dashboard',
-  '/org-admin/programs',
-  '/org-admin/participants',
-  '/org-admin/task-templates',
-  '/org-admin/supervisors',
-  
-  // Supervisor Pages
+  // Supervisor
+  '/supervisor/hub',
   '/supervisor/dashboard',
   '/supervisor/participants',
   '/supervisor/pairs',
@@ -29,7 +28,7 @@ const APP_ROUTES = [
   '/supervisor/checklist',
   '/supervisor/error-logs',
   
-  // Program Member Pages
+  // Program Member
   '/program-member/dashboard',
   '/program-member/tasks',
   '/program-member/mentees',
@@ -91,7 +90,7 @@ test.describe('Exhaustive E2E Smoke Test (White Screen Prevention)', () => {
       // Check that standard UI elements (either the login form OR the main layout) are present
       const hasLoginForm = await page.locator('input[type="email"]').count() > 0;
       const hasMainLayout = await page.locator('main').count() > 0;
-      const hasErrorPage = await page.locator('text="404"').count() > 0;
+      const hasErrorPage = await page.getByText('404 Error').count() > 0;
       
       expect(hasLoginForm || hasMainLayout || hasErrorPage).toBeTruthy();
     }
