@@ -20,6 +20,7 @@ import {
 } from '@/layouts/demo1/components/toolbar';
 
 import { getMeetingStatus } from '@/lib/api/meetings';
+import { MeetingCalendarButton } from '@/components/meetings/meeting-calendar-button';
 
 const EMPTY_ARRAY: any[] = [];
 
@@ -446,7 +447,7 @@ export function ProgramMemberDashboardPage() {
                               {meeting.task?.name || meeting.title}
                             </span>
                             <Badge variant="outline" className="text-[8px] sm:text-[9px] uppercase font-black border-gray-100 h-5 px-1.5 sm:px-2 bg-gray-50/50">
-                              {meeting.meeting_type?.replace('_', ' ')}
+                              {meeting.location_type?.replace('-', ' ')}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-3 sm:gap-4 text-[9px] sm:text-[10px] text-muted-foreground font-black uppercase tracking-wider">

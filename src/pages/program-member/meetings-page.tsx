@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
 import { useAllMeetings } from '@/hooks/use-meetings';
 import { Container } from '@/components/common/container';
 import {
@@ -53,6 +54,7 @@ export function ProgramMemberMeetingsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [initialDate, setInitialDate] = useState<string | null>(null);
 
   // Filter meetings for the relationship
   const filteredMeetings = meetings.filter(m => 
@@ -61,24 +63,27 @@ export function ProgramMemberMeetingsPage() {
 
   const handleCreateNew = () => {
     setSelectedMeeting(null);
+    setInitialDate(null);
     setIsDialogOpen(true);
   };
 
   const handleEditMeeting = (meeting: Meeting) => {
     setSelectedMeeting(meeting);
+    setInitialDate(null);
     setIsDialogOpen(true);
   };
 
   const handleMeetingSubmit = async (data: any) => {
     try {
       if (selectedMeeting) {
-        await updateMeeting(selectedMeeting.id, data);
+        const result = await updateMeeting(selectedMeeting.id, data);
         toast.success('Meeting updated successfully');
+        return result;
       } else {
-        await createMeeting(data);
+        const result = await createMeeting(data);
         toast.success('Meeting scheduled successfully');
+        return result;
       }
-      setIsDialogOpen(false);
     } catch (error) {
       console.error('Error saving meeting:', error);
       toast.error('Failed to save meeting');
@@ -100,8 +105,8 @@ export function ProgramMemberMeetingsPage() {
       const { id, ...updates } = meeting;
       await updateMeeting(id, updates);
       toast.success('Meeting updated successfully');
-    } catch (_err) {
-      console.error('Error updating meeting:', err);
+    } catch (error) {
+      console.error('Error updating meeting:', error);
       toast.error('Failed to update meeting');
     }
   };
@@ -187,6 +192,7 @@ export function ProgramMemberMeetingsPage() {
         onOpenChange={setIsDialogOpen}
         pairId={activePair?.id || (selectedMeeting?.pair_id || '')}
         meeting={selectedMeeting}
+        initialDate={initialDate}
         onSubmit={handleMeetingSubmit}
         onDelete={handleDeleteMeeting}
         isSubmitting={selectedMeeting ? isUpdating : isCreating}

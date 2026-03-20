@@ -10,7 +10,7 @@ interface PairingContextType {
   isLoading: boolean;
 }
 
-const PairingContext = createContext<PairingContextType | undefined>(undefined);
+export const PairingContext = createContext<PairingContextType | undefined>(undefined);
 
 export function PairingProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();

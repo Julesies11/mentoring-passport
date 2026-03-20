@@ -34,7 +34,7 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
   } = useQuery({
     queryKey: ['organisation', 'singleton'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('mp_organisations').select('*').limit(1).single();
+      const { data, error } = await supabase.from('mp_organisations').select('*').limit(1).maybeSingle();
       if (error) throw error;
       return data;
     },

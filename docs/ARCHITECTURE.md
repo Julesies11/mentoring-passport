@@ -56,6 +56,15 @@ The system uses a 4-tier security model enforced via Role-Based Access Control (
 3. **Propagation:** Renaming a title in the central registry immediately updates the displayed title for all assigned users.
 4. **Active Status:** Titles can be deactivated. Deactivated titles remain on existing profiles but cannot be selected for new users or updates.
 
+### Meeting Management & Calendar Sync
+1. **Scheduling:** Mentors and Mentees schedule sessions linked to specific tasks for better tracking.
+2. **Calendar Integration:** The app provides a custom Metronic-style calendar sync interface supporting Apple, Google, Outlook, and Yahoo calendars via deep-links and ICS downloads.
+3. **Touchpoints:** "Add to Calendar" buttons are strategically placed in:
+   - **Meeting Dialog:** Available immediately after scheduling or during edits.
+   - **Dashboard Widgets:** Quick-access for upcoming sessions.
+   - **Calendar View:** Integrated into the meeting details popover for holistic planning.
+4. **Data Integrity:** Exported events synchronize the meeting title, duration, location, and agenda notes.
+
 ### Admin Sections
 - **Administrator:** `src/pages/admin/` (User management, Instance settings).
 - **Org Admin:** `src/pages/org-admin/` (Programs, Pairings, Job Titles, Task Templates, Evidence Audit).

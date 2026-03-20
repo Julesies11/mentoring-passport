@@ -19,6 +19,7 @@ vi.mock('@/lib/supabase', () => ({
     select: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     single: vi.fn(),
+    maybeSingle: vi.fn(),
   },
 }));
 
@@ -44,7 +45,7 @@ const createWrapper = () => {
 describe('OrganisationProvider Single-Organisation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(supabase.single).mockResolvedValue({ data: { id: 'singleton-org', name: 'Singleton Org' }, error: null } as any);
+    vi.mocked(supabase.maybeSingle).mockResolvedValue({ data: { id: 'singleton-org', name: 'Singleton Org' }, error: null } as any);
   });
 
   it('fetches singleton organisation and sorts programs correctly', async () => {

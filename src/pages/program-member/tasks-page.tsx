@@ -309,15 +309,14 @@ export function ProgramMemberTasksPage() {
   const handleMeetingSubmit = async (data: any) => {
     try {
       if (selectedMeeting) {
-        await updateMeeting(selectedMeeting.id, data);
+        const result = await updateMeeting(selectedMeeting.id, data);
         toast.success('Meeting updated successfully');
+        return result;
       } else {
-        await createMeeting(data);
+        const result = await createMeeting(data);
         toast.success('Meeting scheduled successfully');
+        return result;
       }
-      setIsMeetingDialogOpen(false);
-      setInitialTaskId(null);
-      setSelectedMeeting(null);
     } catch (_error) {
       toast.error(selectedMeeting ? 'Failed to update meeting' : 'Failed to schedule meeting');
     }

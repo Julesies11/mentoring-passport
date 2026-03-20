@@ -57,13 +57,14 @@ export function SupervisorCalendarPage() {
   const handleMeetingSubmit = async (data: any) => {
     try {
       if (selectedMeeting) {
-        await updateMeeting(selectedMeeting.id, data);
+        const result = await updateMeeting(selectedMeeting.id, data);
         toast.success('Meeting updated');
+        return result;
       } else {
-        await createMeeting(data);
+        const result = await createMeeting(data);
         toast.success('Meeting scheduled');
+        return result;
       }
-      setIsDialogOpen(false);
     } catch (err) {
       console.error('Error saving meeting:', err);
       toast.error('Failed to save meeting');

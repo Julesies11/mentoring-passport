@@ -8,9 +8,11 @@ export interface Meeting {
   pair_task_id: string | null;
   title: string;
   date_time: string;
+  duration_minutes: number;
   notes: string | null;
   location: string | null;
   location_type: LocationType | null;
+  location_details: string | null;
   status: MeetingStatus;
   created_at: string;
   updated_at: string;
@@ -61,18 +63,22 @@ export interface CreateMeetingInput {
   title: string;
   notes?: string;
   date_time: string;
+  duration_minutes?: number;
   location?: string | null;
   location_type?: LocationType | null;
+  location_details?: string | null;
   status?: MeetingStatus;
 }
 
 export interface UpdateMeetingInput {
   title?: string;
   date_time?: string;
+  duration_minutes?: number;
   notes?: string;
   pair_task_id?: string | null;
   location?: string | null;
   location_type?: LocationType | null;
+  location_details?: string | null;
   status?: MeetingStatus;
 }
 
@@ -224,8 +230,10 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       title: input.title,
       notes: input.notes,
       date_time: input.date_time,
+      duration_minutes: input.duration_minutes || 60,
       location: input.location,
       location_type: input.location_type || LOCATION_TYPE.OTHER,
+      location_details: input.location_details,
       status: input.status || MEETING_STATUS.UPCOMING,
     })
     .select(`

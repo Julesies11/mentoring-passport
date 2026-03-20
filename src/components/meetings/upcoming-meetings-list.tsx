@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import type { Meeting } from '@/lib/api/meetings';
+import { MeetingCalendarButton } from './meeting-calendar-button';
 
 interface UpcomingMeetingsListProps {
   meetings: Meeting[];
@@ -73,8 +74,10 @@ export function UpcomingMeetingsList({ meetings, isLoading, onMeetingClick }: Up
                     {format(new Date(meeting.date_time), 'HH:mm')}
                   </span>
                 </div>
-                <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                  <Clock size={16} />
+                <div className="flex items-center gap-2">
+                  <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    <Clock size={16} />
+                  </div>
                 </div>
               </div>
 

@@ -17,15 +17,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus, Trash2, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getMeetingStatus, type Meeting } from '@/lib/api/meetings';
 import type { Pair } from '@/lib/api/pairs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAvatarPublicUrl, getInitials } from '@/lib/utils/avatar';
 import { MeetingDialog } from '../meetings/meeting-dialog';
-import { KeenIcon } from '@/components/keenicons';
 
 interface MeetingCalendarProps {
   meetings: Meeting[];
@@ -41,6 +39,7 @@ interface MeetingCalendarProps {
   onPairFilter?: (pairId: string) => void;
   showFilters?: boolean;
   showAddButton?: boolean;
+  readOnly?: boolean;
 }
 
 type ViewMode = 'month' | 'week';
@@ -51,29 +50,19 @@ export function MeetingCalendar({
   onMeetingDelete,
   onMeetingUpdate,
   onMeetingCreate,
+  onMeetingClick,
   view: initialView = 'month',
   selectedParticipant,
   showFilters = true,
   onPairFilter,
-  showAddButton = true
+  showAddButton = true,
+  readOnly = false
 }: MeetingCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>(initialView);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpened] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
-  // Form State for creating/editing
-  const [formData, setFormData] = useState({
-    title: '',
-    date_time: '',
-    notes: '',
-    pair_id: selectedParticipant === 'all' ? '' : (selectedParticipant || ''),
-    location: '',
-    meeting_type: 'virtual' as 'in_person' | 'virtual' | 'phone',
-  });
 
   const startDate = useMemo(() => {
     if (viewMode === 'month') {
@@ -108,7 +97,6 @@ export function MeetingCalendar({
   const getMeetingsForDay = (day: Date) => {
     return filteredMeetings.filter(meeting => {
       const meetingDate = new Date(meeting.date_time);
-      // Using year, month, day to compare
       return meetingDate.getDate() === day.getDate() &&
              meetingDate.getMonth() === day.getMonth() &&
              meetingDate.getFullYear() === day.getFullYear();
@@ -128,36 +116,27 @@ export function MeetingCalendar({
   };
 
   const handleDayClick = (day: Date) => {
+    if (readOnly) return;
     setSelectedDate(day);
-    setFormData({
-      ...formData,
-      date_time: format(day, "yyyy-MM-dd'T'09:00"),
-      title: '',
-      notes: '',
-      location: '',
-      meeting_type: 'virtual'
-    });
-    setIsCreateDialogOpen(true);
+    setSelectedMeeting(null);
+    setIsDialogOpen(true);
   };
 
   const handleMeetingClick = (meeting: Meeting) => {
-    setSelectedMeeting(meeting);
-    setIsDetailsDialogOpen(true);
-  };
-
-  const handleEditMeeting = () => {
-    if (!selectedMeeting) return;
-    setIsDetailsDialogOpen(false);
-    setIsEditDialogOpened(true);
+    if (onMeetingClick) {
+      onMeetingClick(meeting);
+    } else {
+      setSelectedMeeting(meeting);
+      setSelectedDate(null);
+      setIsDialogOpen(true);
+    }
   };
 
   const handleMeetingSubmit = async (data: any) => {
-    if (isEditDialogOpen && selectedMeeting) {
+    if (selectedMeeting) {
       await onMeetingUpdate?.({ ...data, id: selectedMeeting.id });
-      setIsEditDialogOpened(false);
     } else {
       await onMeetingCreate?.(data);
-      setIsCreateDialogOpen(false);
     }
   };
 
@@ -223,8 +202,12 @@ export function MeetingCalendar({
               </div>
             )}
             
-            {showAddButton && (
-              <Button onClick={() => setIsCreateDialogOpen(true)} className="h-10 rounded-xl font-bold gap-2 px-5 shadow-lg shadow-primary/20">
+            {showAddButton && !readOnly && (
+              <Button onClick={() => {
+                setSelectedMeeting(null);
+                setSelectedDate(null);
+                setIsDialogOpen(true);
+              }} className="h-10 rounded-xl font-bold gap-2 px-5 shadow-lg shadow-primary/20">
                 <Plus size={18} className="stroke-[3]" />
                 New Meeting
               </Button>
@@ -234,7 +217,7 @@ export function MeetingCalendar({
       </Card>
 
       {/* Calendar Grid */}
-      <Card className="border-none shadow-sm overflow-hidden">
+      <Card className="border-none shadow-sm overflow-hidden border-0 sm:border">
         <div className="p-0 border-b border-gray-100">
           <div className="grid grid-cols-7 bg-gray-50/50">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
@@ -334,145 +317,13 @@ export function MeetingCalendar({
         </div>
       </Card>
 
-      {/* Selected Date Drawer/Card (Future Improvement) */}
-
-      {/* Meeting Details Dialog */}
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent 
-          className="max-w-[450px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl"
-          aria-describedby={undefined}
-        >
-          {selectedMeeting && (
-            <div className="flex flex-col">
-              {/* Header with gradient based on status */}
-              <div className={cn(
-                "p-8 pt-10 text-white relative overflow-hidden",
-                getMeetingStatus(selectedMeeting.date_time) === 'past' ? "bg-success" : "bg-primary"
-              )}>
-                <div className="relative z-10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="bg-white/20 text-white border-none font-black uppercase text-[10px] tracking-widest px-3 h-6">
-                      {getMeetingStatus(selectedMeeting.date_time)}
-                    </Badge>
-                    <div className="flex items-center gap-1 opacity-80 text-[10px] font-black uppercase tracking-tighter">
-                      <Clock size={12} className="mr-1" />
-                      Scheduled
-                    </div>
-                  </div>
-                  <DialogTitle className="text-2xl font-black leading-tight tracking-tight">
-                    {selectedMeeting.task?.name || selectedMeeting.title}
-                  </DialogTitle>
-                  <DialogDescription className="sr-only">
-                    Meeting details for {selectedMeeting.task?.name || selectedMeeting.title}
-                  </DialogDescription>
-                </div>
-                {/* Decorative Pattern */}
-                <div className="absolute top-[-20%] right-[-10%] opacity-10 rotate-12">
-                  <CalendarIcon size={200} />
-                </div>
-              </div>
-
-              <div className="p-8 space-y-8">
-                {/* Participants Section */}
-                <div className="space-y-4">
-                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] px-1">Participants</span>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                      <Avatar className="size-10 border-2 border-white shadow-sm">
-                        <AvatarImage src={getAvatarPublicUrl(selectedMeeting.mp_pairs?.mentor?.avatar_url, selectedMeeting.mp_pairs?.mentor?.id)} />
-                        <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">{getInitials(selectedMeeting.mp_pairs?.mentor?.full_name)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[8px] font-black uppercase text-blue-600 leading-none mb-1">Mentor</span>
-                        <span className="text-xs font-bold text-gray-900 truncate">{selectedMeeting.mp_pairs?.mentor?.full_name}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                      <Avatar className="size-10 border-2 border-white shadow-sm">
-                        <AvatarImage src={getAvatarPublicUrl(selectedMeeting.mp_pairs?.mentee?.avatar_url, selectedMeeting.mp_pairs?.mentee?.id)} />
-                        <AvatarFallback className="bg-green-100 text-green-700 font-bold">{getInitials(selectedMeeting.mp_pairs?.mentee?.full_name)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[8px] font-black uppercase text-green-600 leading-none mb-1">Mentee</span>
-                        <span className="text-xs font-bold text-gray-900 truncate">{selectedMeeting.mp_pairs?.mentee?.full_name}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Details Section */}
-                <div className="space-y-5">
-                  <div className="flex items-center gap-4 group">
-                    <div className="size-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
-                      <CalendarIcon size={20} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-gray-400 leading-none mb-1">Date</span>
-                      <span className="text-sm font-bold text-gray-800">{format(new Date(selectedMeeting.date_time), 'EEEE, MMMM do')}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 group">
-                    <div className="size-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
-                      <Clock size={20} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-gray-400 leading-none mb-1">Time</span>
-                      <span className="text-sm font-bold text-gray-800">{format(new Date(selectedMeeting.date_time), 'p')}</span>
-                    </div>
-                  </div>
-
-                  {selectedMeeting.notes && (
-                    <div className="space-y-2 pt-2">
-                      <div className="flex items-center gap-2 px-1 text-gray-400">
-                        <FileText size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Notes / Agenda</span>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 text-sm text-gray-700 italic leading-relaxed">
-                        "{selectedMeeting.notes}"
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="pt-4 flex items-center gap-3">
-                  <Button onClick={handleEditMeeting} className="flex-1 h-12 rounded-xl font-bold gap-2 shadow-lg shadow-primary/10">
-                    <KeenIcon icon="pencil" className="text-primary-foreground/50" />
-                    Update Details
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    mode="icon" 
-                    className="h-12 w-12 rounded-xl text-gray-300 hover:text-danger hover:bg-danger/5 transition-colors"
-                    onClick={() => {
-                      if (confirm('Permanently delete this meeting?')) {
-                        onMeetingDelete?.(selectedMeeting.id);
-                        setIsDetailsDialogOpen(false);
-                      }
-                    }}
-                  >
-                    <Trash2 size={20} />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit/Create Dialog (Uses robust MeetingDialog component) */}
+      {/* Universal Meeting Hub Dialog */}
       <MeetingDialog
-        open={isCreateDialogOpen || isEditDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateDialogOpen(false);
-            setIsEditDialogOpened(false);
-          }
-        }}
-        meeting={isEditDialogOpen ? selectedMeeting : null}
-        pairId={formData.pair_id || (pairs.length === 1 ? pairs[0].id : '')}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        meeting={selectedMeeting}
+        initialDate={selectedDate ? format(selectedDate, "yyyy-MM-dd'T'09:00") : null}
+        pairId={selectedParticipant && selectedParticipant !== 'all' ? selectedParticipant : (pairs.length === 1 ? pairs[0].id : '')}
         onSubmit={handleMeetingSubmit}
         onDelete={onMeetingDelete}
       />
