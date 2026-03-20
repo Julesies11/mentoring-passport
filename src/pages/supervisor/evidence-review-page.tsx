@@ -269,7 +269,9 @@ export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor
                             </div>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
                               <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter truncate">
-                                Submission for: <span className="text-gray-900 font-black">{item.task?.name || 'Assigned Task'}</span>
+                                Submission for: <span className="text-gray-900 font-black">
+                                  {item.subtask?.name ? `${item.task?.name || 'Task'} > ${item.subtask.name}` : (item.task?.name || 'Assigned Task')}
+                                </span>
                               </p>
                               <div className="flex items-center gap-2">
                                 <span className="hidden sm:inline text-gray-300">•</span>
@@ -344,22 +346,35 @@ export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor
                           </div>
                       )}
 
-                      {item.status === 'approved' && (
+                      {item.status !== 'pending' && (
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 pt-2">
-                          <div className="flex items-center gap-2 px-1 text-success">
-                            <CheckCircle size={16} />
-                            <span className="text-xs font-black uppercase tracking-widest">Validated Submission</span>
+                          <div className={cn(
+                            "flex items-center gap-2 px-1",
+                            item.status === 'approved' ? "text-success" : "text-danger"
+                          )}>
+                            {item.status === 'approved' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                            <span className="text-xs font-black uppercase tracking-widest">
+                              {item.status === 'approved' ? 'Validated Submission' : 'Revision Requested'}
+                            </span>
                           </div>
                           
                           <div className="flex flex-wrap items-center gap-4 border-l border-gray-100 sm:pl-6">
                             <div className="flex flex-col">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Submitted</span>
-                              <span className="text-[11px] font-bold text-gray-600">{format(new Date(item.created_at), 'MMM d, yyyy • p')}</span>
+                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Submitted By</span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] font-bold text-gray-900 truncate max-w-[120px]">{item.submitter?.full_name || 'Member'}</span>
+                                <span className="text-[11px] font-bold text-gray-500">• {format(new Date(item.created_at), 'MMM d, p')}</span>
+                              </div>
                             </div>
-                            {item.reviewed_at && (
+                            {(item.reviewed_at || item.reviewer) && (
                               <div className="flex flex-col">
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Reviewed</span>
-                                <span className="text-[11px] font-bold text-gray-600">{format(new Date(item.reviewed_at), 'MMM d, yyyy • p')}</span>
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">
+                                  {item.status === 'approved' ? 'Approved By' : 'Rejected By'}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[11px] font-bold text-gray-900 truncate max-w-[120px]">{item.reviewer?.full_name || 'Supervisor'}</span>
+                                  {item.reviewed_at && <span className="text-[11px] font-bold text-gray-500">• {format(new Date(item.reviewed_at), 'MMM d, p')}</span>}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -447,12 +462,52 @@ export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm text-gray-500">
               {reviewAction === 'approve'
-                ? 'This will validate the evidence and mark the task as 100% completed.'
+                ? 'Review the submission details below before validating this task.'
                 : 'Provide specific feedback so the program member knows how to improve this submission.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto kt-scrollable-y-hover p-4 sm:p-6 pt-2">
+            {/* Full Submission Details Summary */}
+            {selectedEvidence && (
+              <div className="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                  <KeenIcon icon="clipboard" className="text-gray-400" />
+                  <span className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Submission Summary</span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Task / Item</span>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">
+                      {selectedEvidence.subtask?.name ? `${selectedEvidence.task?.name || 'Task'} > ${selectedEvidence.subtask.name}` : (selectedEvidence.task?.name || 'Assigned Task')}
+                    </p>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Mentoring Pair</span>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">
+                      {selectedEvidence.pair?.mentor?.full_name} & {selectedEvidence.pair?.mentee?.full_name}
+                    </p>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Submitted By</span>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">
+                      {selectedEvidence.submitter?.full_name || 'Member'}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{format(new Date(selectedEvidence.created_at), 'MMMM d, yyyy • p')}</p>
+                  </div>
+                  {selectedEvidence.task?.evidence_notes && (
+                    <div className="flex flex-col sm:col-span-2 mt-1">
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Submitter Notes</span>
+                      <p className="text-xs italic text-gray-600 leading-relaxed">
+                        "{selectedEvidence.task.evidence_notes}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {reviewAction === 'reject' && (
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-gray-600 uppercase tracking-widest">Supervisor Feedback *</Label>
@@ -466,14 +521,35 @@ export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor
               </div>
             )}
             
-            {reviewAction === 'approve' && (
-              <div className="p-4 sm:p-6 bg-success/5 border border-success/10 rounded-2xl flex flex-col items-center text-center gap-2 sm:gap-3">
-                <div className="size-12 sm:size-14 rounded-full bg-success/10 flex items-center justify-center text-success">
-                  <CheckCircle size={28} className="sm:size-32" />
+            {reviewAction === 'approve' && selectedEvidence && (
+              <div className="space-y-4">
+                <div className="p-4 sm:p-6 bg-success/5 border border-success/10 rounded-2xl flex flex-col items-center text-center gap-2 sm:gap-3">
+                  <div className="size-12 sm:size-14 rounded-full bg-success/10 flex items-center justify-center text-success">
+                    <CheckCircle size={28} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-gray-900">
+                      Confirm Approval
+                    </p>
+                    <p className="text-xs text-gray-500 max-w-[280px]">
+                      You are about to validate this submission for <span className="font-bold text-gray-700">{selectedEvidence.submitter?.full_name || 'Member'}</span>.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs sm:text-sm font-bold text-gray-700">
-                  Ready to validate this submission?
-                </p>
+
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Status Update</span>
+                    <p className="text-xs font-bold text-success flex items-center gap-1.5">
+                      <div className="size-1.5 rounded-full bg-success animate-pulse" />
+                      Moving to "Completed"
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Reviewed By</span>
+                    <p className="text-xs font-bold text-gray-700">You (Supervisor)</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

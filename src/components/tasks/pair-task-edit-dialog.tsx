@@ -175,6 +175,38 @@ export function PairTaskEditDialog({
             </div>
           )}
 
+          {/* Submission & Review History */}
+          {(task.submitted_at || task.last_reviewed_at) && (
+            <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-4">
+              <div className="flex items-center gap-2 pb-1 border-b border-gray-200">
+                <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <KeenIcon icon="history" className="text-primary text-base" />
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wider">
+                  Audit History
+                </h4>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {task.submitted_at && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Submitted By</span>
+                    <p className="text-sm font-bold text-gray-700 leading-tight">{task.submitted_by?.full_name || 'Member'}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{new Date(task.submitted_at).toLocaleDateString()}</p>
+                  </div>
+                )}
+                
+                {task.last_reviewed_at && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1 capitalize">{task.last_action || (task.status === 'completed' ? 'approved' : 'rejected')} By</span>
+                    <p className="text-sm font-bold text-gray-700 leading-tight">{task.last_reviewed_by?.full_name || 'Supervisor'}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{new Date(task.last_reviewed_at).toLocaleDateString()}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Evidence Section (Show if exists) */}
           {task.evidence && task.evidence.length > 0 && (
             <div className="space-y-4">

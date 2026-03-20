@@ -39,7 +39,13 @@ interface TaskDialogProps {
       name: string;
       requires_submission: boolean;
     } | null;
+    submitted_at?: string | null;
+    submitted_by?: { id: string; full_name: string | null } | null;
     completed_at?: string | null;
+    completed_by?: { id: string; full_name: string | null } | null;
+    last_reviewed_at?: string | null;
+    last_reviewed_by?: { id: string; full_name: string | null } | null;
+    last_action?: string | null;
     evidence?: any[];
   };
   pairId: string;
@@ -167,6 +173,46 @@ export function TaskDialog({
               </section>
             )}
 
+            {/* Submission Details (Awaiting Review) */}
+            {task.status === 'awaiting_review' && task.submitted_at && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <KeenIcon icon="send" className="text-primary" />
+                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Submission Details</span>
+                </div>
+                <div className="p-4 rounded-xl bg-primary/[0.02] border border-primary/10 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Submitted By</span>
+                    <p className="text-sm font-bold text-gray-700 leading-tight">{task.submitted_by?.full_name || 'Member'}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Date</span>
+                    <p className="text-sm font-bold text-gray-700 leading-tight">{format(new Date(task.submitted_at), 'MMM d, yyyy')}</p>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Revision Details */}
+            {task.status === 'revision_required' && task.last_reviewed_at && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <KeenIcon icon="cross-circle" className="text-danger" />
+                  <span className="text-[10px] font-black uppercase text-danger tracking-widest">Review Details</span>
+                </div>
+                <div className="p-4 rounded-xl bg-red-50/50 border border-red-100 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase text-red-400 tracking-widest leading-none mb-1 capitalize">{task.last_action || 'Rejected'} By</span>
+                    <p className="text-sm font-bold text-red-700 leading-tight">{task.last_reviewed_by?.full_name || 'Supervisor'}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-black uppercase text-red-400 tracking-widest leading-none mb-1">Date</span>
+                    <p className="text-sm font-bold text-red-700 leading-tight">{format(new Date(task.last_reviewed_at), 'MMM d, yyyy')}</p>
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* 3. Notes / Reflection */}
             {task.status !== 'completed' && (
               <section className="space-y-4">
@@ -283,9 +329,31 @@ export function TaskDialog({
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-gray-900 tracking-tight">Task Successfully Validated</h3>
-                  <p className="text-sm text-gray-500 max-w-xs mx-auto mt-1 px-4 leading-relaxed">
-                    Completed on {task.completed_at ? format(new Date(task.completed_at), 'MMMM d, yyyy') : 'an unrecorded date'}.
-                  </p>
+                  <div className="mt-3 space-y-2">
+                    {task.submitted_at && (
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1">Submitted By</span>
+                        <p className="text-sm font-bold text-gray-700 leading-tight">
+                          {task.submitted_by?.full_name || 'Member'}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          on {format(new Date(task.submitted_at), 'MMMM d, yyyy')}
+                        </p>
+                      </div>
+                    )}
+                    <div className="h-4 w-px bg-gray-100 mx-auto" />
+                    {task.last_reviewed_at && (
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest leading-none mb-1 capitalize">{task.last_action || 'Approved'} By</span>
+                        <p className="text-sm font-bold text-gray-700 leading-tight">
+                          {task.last_reviewed_by?.full_name || 'Supervisor'}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          on {format(new Date(task.last_reviewed_at), 'MMMM d, yyyy')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </section>
             )}

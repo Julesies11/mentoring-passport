@@ -112,12 +112,24 @@ export interface PairTask {
   evidence_notes?: string | null;
   rejection_reason?: string | null;
   submitted_at: string | null;
+  submitted_by_id: string | null;
+  submitted_by?: {
+    id: string;
+    full_name: string | null;
+  };
   completed_at: string | null;
   completed_by_id: string | null;
   completed_by?: {
     id: string;
     full_name: string | null;
   };
+  last_reviewed_at: string | null;
+  last_reviewed_by_id: string | null;
+  last_reviewed_by?: {
+    id: string;
+    full_name: string | null;
+  };
+  last_action: string | null;
   created_at: string;
   updated_at: string;
   task?: Task;
@@ -504,9 +516,15 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
       evidence_notes,
       rejection_reason,
       submitted_at,
+      submitted_by_id,
+      submitted_by:mp_profiles!submitted_by_id(id, full_name),
       completed_at,
       completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
+      last_reviewed_at,
+      last_reviewed_by_id,
+      last_reviewed_by:mp_profiles!last_reviewed_by_id(id, full_name),
+      last_action,
       created_at,
       updated_at,
       pair:mp_pairs!inner(
@@ -543,6 +561,7 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
         is_completed,
         is_custom,
         completed_by_id,
+        completed_by:mp_profiles!completed_by_id(id, full_name),
         completed_at,
         created_at,
         updated_at,
@@ -560,7 +579,13 @@ export async function fetchPairTasks(pairId: string): Promise<PairTask[]> {
 
   return (data || []).map((t: any) => ({
     ...t,
-    completed_by: Array.isArray(t.completed_by) ? t.completed_by[0] : t.completed_by
+    submitted_by: Array.isArray(t.submitted_by) ? t.submitted_by[0] : t.submitted_by,
+    completed_by: Array.isArray(t.completed_by) ? t.completed_by[0] : t.completed_by,
+    last_reviewed_by: Array.isArray(t.last_reviewed_by) ? t.last_reviewed_by[0] : t.last_reviewed_by,
+    subtasks: t.subtasks?.map((st: any) => ({
+      ...st,
+      completed_by: Array.isArray(st.completed_by) ? st.completed_by[0] : st.completed_by
+    }))
   })) as PairTask[];
 }
 
@@ -609,6 +634,18 @@ export async function updatePairTaskStatus(
   
   if (status === TASK_STATUS.AWAITING_REVIEW) {
     updateData.submitted_at = new Date().toISOString();
+    updateData.last_action = 'submitted';
+    if (userId) {
+      updateData.submitted_by_id = userId;
+    }
+  }
+
+  if (status === TASK_STATUS.COMPLETED || status === 'revision_required') {
+    updateData.last_reviewed_at = new Date().toISOString();
+    updateData.last_action = status === TASK_STATUS.COMPLETED ? 'approved' : 'rejected';
+    if (userId) {
+      updateData.last_reviewed_by_id = userId;
+    }
   }
 
   if (status === TASK_STATUS.COMPLETED) {
@@ -616,9 +653,13 @@ export async function updatePairTaskStatus(
     if (userId) {
       updateData.completed_by_user_id = userId;
     }
-  } else {
+  } else if (status !== TASK_STATUS.AWAITING_REVIEW && status !== 'revision_required') {
+    // If we are moving back to not_submitted, clear metadata
     updateData.completed_at = null;
     updateData.completed_by_user_id = null;
+    updateData.submitted_at = null;
+    updateData.submitted_by_id = null;
+    updateData.last_action = null;
   }
 
   if (status === TASK_STATUS.AWAITING_REVIEW || status === TASK_STATUS.COMPLETED) {
@@ -641,9 +682,15 @@ export async function updatePairTaskStatus(
       evidence_notes,
       rejection_reason,
       submitted_at,
+      submitted_by_id,
+      submitted_by:mp_profiles!submitted_by_id(id, full_name),
       completed_at,
       completed_by_id:completed_by_user_id,
       completed_by:mp_profiles!completed_by_user_id(id, full_name),
+      last_reviewed_at,
+      last_reviewed_by_id,
+      last_reviewed_by:mp_profiles!last_reviewed_by_id(id, full_name),
+      last_action,
       created_at,
       updated_at,
       evidence_type:mp_evidence_types(id, name, requires_submission)
@@ -658,7 +705,9 @@ export async function updatePairTaskStatus(
   const task = data as any;
   return {
     ...task,
-    completed_by: Array.isArray(task.completed_by) ? task.completed_by[0] : task.completed_by
+    submitted_by: Array.isArray(task.submitted_by) ? task.submitted_by[0] : task.submitted_by,
+    completed_by: Array.isArray(task.completed_by) ? task.completed_by[0] : task.completed_by,
+    last_reviewed_by: Array.isArray(task.last_reviewed_by) ? task.last_reviewed_by[0] : task.last_reviewed_by
   } as PairTask;
 }
 
@@ -1001,6 +1050,7 @@ export async function togglePairSubTaskCompletion(
     .eq('id', subtaskId)
     .select(`
       *,
+      completed_by:mp_profiles!completed_by_id(id, full_name),
       evidence_type:mp_evidence_types(id, name, requires_submission)
     `)
     .single();
@@ -1010,7 +1060,11 @@ export async function togglePairSubTaskCompletion(
     throw error;
   }
 
-  return data;
+  const subtask = data as any;
+  return {
+    ...subtask,
+    completed_by: Array.isArray(subtask.completed_by) ? subtask.completed_by[0] : subtask.completed_by
+  } as PairSubTask;
 }
 
 /**
@@ -1021,6 +1075,7 @@ export async function fetchPairSubTasks(pairTaskId: string): Promise<PairSubTask
     .from('mp_pair_subtasks')
     .select(`
       *,
+      completed_by:mp_profiles!completed_by_id(id, full_name),
       evidence_type:mp_evidence_types(id, name, requires_submission)
     `)
     .eq('pair_task_id', pairTaskId)
@@ -1031,5 +1086,8 @@ export async function fetchPairSubTasks(pairTaskId: string): Promise<PairSubTask
     throw error;
   }
 
-  return data || [];
+  return (data || []).map((st: any) => ({
+    ...st,
+    completed_by: Array.isArray(st.completed_by) ? st.completed_by[0] : st.completed_by
+  })) as PairSubTask[];
 }

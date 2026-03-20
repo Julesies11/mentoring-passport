@@ -112,9 +112,11 @@ export function PairSubTasksDisplay({
                       </div>
                     )}
                     {subtask.completed_at && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Completed{' '}
-                        {new Date(subtask.completed_at).toLocaleDateString()}
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 font-medium">
+                        <KeenIcon icon="check-circle" className="text-success text-[12px]" />
+                        <span>
+                          Completed by {subtask.completed_by?.full_name || 'System'} on {new Date(subtask.completed_at).toLocaleDateString()}
+                        </span>
                       </div>
                     )}
                   </div>

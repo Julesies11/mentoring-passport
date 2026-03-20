@@ -73,4 +73,13 @@ describe('Evidence API Single-Organisation Grouping', () => {
     const task1 = results.find(r => r.pair_task_id === 'task1');
     expect(task1?.task?.evidence_notes).toBe('Reflection 1');
   });
+
+  it('handles array responses from Supabase joins using mapEvidence', async () => {
+    const results = await fetchPendingEvidence();
+    
+    const task1 = results.find(r => r.pair_task_id === 'task1');
+    // Even if Supabase returned an array, our mapEvidence should have converted it to a single object
+    expect(Array.isArray(task1?.task)).toBe(false);
+    expect(task1?.task?.name).toBe('Task 1');
+  });
 });

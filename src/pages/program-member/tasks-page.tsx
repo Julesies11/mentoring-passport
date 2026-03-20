@@ -224,6 +224,19 @@ export function ProgramMemberTasksPage() {
             status: submitForReview ? 'pending' : 'approved'
           });
         }
+      } else if (submitForReview && (selectedTask?.evidence_type?.requires_submission || evidence.description.trim())) {
+        // If submitting for review without files, create a "text" evidence record
+        // This ensures the submission appears in the supervisor's review queue
+        await createEvidence({
+          pair_id: selectedPair.id,
+          pair_task_id: taskId,
+          file_url: null,
+          file_name: null,
+          mime_type: 'text/plain',
+          file_size: 0,
+          description: evidence.description || `Text-only submission for task: ${selectedTask?.name || taskId}`,
+          status: 'pending'
+        });
       }
 
       if (submitForReview) {
@@ -564,7 +577,13 @@ export function ProgramMemberTasksPage() {
             rejection_reason: selectedTask.rejection_reason,
             description: selectedTask.task?.description,
             evidence_type: selectedTask.evidence_type,
+            submitted_at: selectedTask.submitted_at,
+            submitted_by: selectedTask.submitted_by,
             completed_at: selectedTask.completed_at,
+            completed_by: selectedTask.completed_by,
+            last_reviewed_at: selectedTask.last_reviewed_at,
+            last_reviewed_by: selectedTask.last_reviewed_by,
+            last_action: selectedTask.last_action,
             evidence: selectedTask.evidence,
           }}
           pairId={selectedPair?.id || ''}

@@ -26,14 +26,26 @@ export interface Evidence {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
-  task?: { id: string; name: string; evidence_notes: string | null; rejection_reason: string | null };
+  task?: { 
+    id: string; 
+    name: string; 
+    status: string;
+    evidence_notes: string | null; 
+    rejection_reason: string | null;
+    submitted_at: string | null;
+    submitted_by_id: string | null;
+    last_reviewed_at: string | null;
+    last_reviewed_by_id: string | null;
+    last_action: string | null;
+  };
   subtask?: { id: string; name: string };
+  submitter?: { id: string; full_name: string | null };
+  reviewer?: { id: string; full_name: string | null };
   pair?: {
     id: string;
     mentor?: { id: string; full_name: string | null; job_title_id: string | null; job_title_name?: string | null; avatar_url?: string | null };
     mentee?: { id: string; full_name: string | null; job_title_id: string | null; job_title_name?: string | null; avatar_url?: string | null };
   };
-  reviewer?: { id: string; full_name: string | null };
   all_files?: { id: string; file_name: string | null; file_url: string | null; mime_type: string | null; created_at: string }[];
 }
 
@@ -76,7 +88,11 @@ function mapEvidence(e: any): Evidence {
 
   return {
     ...e,
-    pair: mapPair(e.pair)
+    pair: mapPair(e.pair),
+    task: Array.isArray(e.task) ? e.task[0] : e.task,
+    subtask: Array.isArray(e.subtask) ? e.subtask[0] : e.subtask,
+    submitter: Array.isArray(e.submitter) ? e.submitter[0] : e.submitter,
+    reviewer: Array.isArray(e.reviewer) ? e.reviewer[0] : e.reviewer
   };
 }
 
@@ -107,14 +123,15 @@ export async function fetchAllEvidence(programId?: string): Promise<Evidence[]> 
     .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
-      subtask:mp_pair_subtasks!pair_subtask_id(id, name),
+      task:mp_pair_tasks(id, name, status, evidence_notes, rejection_reason, submitted_at, submitted_by_id, last_reviewed_at, last_reviewed_by_id, last_action),
+      subtask:mp_pair_subtasks(id, name),
       pair:mp_pairs!inner(
         id,
         program_id,
-        mentor:mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title)),
-        mentee:mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title))
+        mentor:mentor_id(id, full_name, avatar_url, job_title_id, job_title:mp_job_titles(title)),
+        mentee:mentee_id(id, full_name, avatar_url, job_title_id, job_title:mp_job_titles(title))
       ),
+      submitter:mp_profiles!submitted_by(id, full_name),
       reviewer:mp_profiles!reviewed_by(id, full_name)
     `);
 
@@ -135,14 +152,16 @@ export async function fetchPendingEvidence(programId?: string): Promise<Evidence
     .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
-      subtask:mp_pair_subtasks!pair_subtask_id(id, name),
+      task:mp_pair_tasks(id, name, status, evidence_notes, rejection_reason, submitted_at, submitted_by_id, last_reviewed_at, last_reviewed_by_id, last_action),
+      subtask:mp_pair_subtasks(id, name),
       pair:mp_pairs!inner(
         id,
         program_id,
         mentor:mentor_id(id, full_name, avatar_url, job_title_id, job_title:mp_job_titles(title)),
         mentee:mentee_id(id, full_name, avatar_url, job_title_id, job_title:mp_job_titles(title))
-      )
+      ),
+      submitter:mp_profiles!submitted_by(id, full_name),
+      reviewer:mp_profiles!reviewed_by(id, full_name)
     `)
     .in('status', [EVIDENCE_STATUS.PENDING, EVIDENCE_STATUS.REJECTED]);
 
@@ -195,8 +214,8 @@ export async function fetchPairEvidence(pairId: string, taskId?: string): Promis
     .from('mp_evidence_uploads')
     .select(`
       *,
-      task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
-      subtask:mp_pair_subtasks!pair_subtask_id(id, name)
+      task:mp_pair_tasks(id, name, evidence_notes, rejection_reason),
+      subtask:mp_pair_subtasks(id, name)
     `)
     .eq('pair_id', pairId);
 
@@ -252,7 +271,7 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
   }
 
   // 2. Insert the evidence with full isolation context
-  const { data, error } = await supabase
+  const { data: rawData, error } = await supabase
     .from('mp_evidence_uploads')
     .insert({
       pair_id: input.pair_id,
@@ -271,11 +290,14 @@ export async function createEvidence(input: CreateEvidenceInput): Promise<Eviden
     })
     .select(`
       *,
-      task:mp_pair_tasks!pair_task_id(id, name)
+      task:mp_pair_tasks(id, name),
+      submitter:mp_profiles!submitted_by(id, full_name)
     `)
     .single();
 
   if (error) throw error;
+
+  const data = mapEvidence(rawData);
 
   // Pulse notification to partner
   const enrichedPair = pair as any;
@@ -336,13 +358,15 @@ export async function reviewEvidence(
 
   const { data: updatedRecords, error: updateError } = await updateQuery.select(`
     *,
-    task:mp_pair_tasks!pair_task_id(id, name, evidence_notes, rejection_reason),
-    subtask:mp_pair_subtasks!pair_subtask_id(id, name),
-    pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name))
+    task:mp_pair_tasks(id, name, evidence_notes, rejection_reason),
+    subtask:mp_pair_subtasks(id, name),
+    pair:mp_pairs(id, mentor_id, mentee_id, mentor:mentor_id(full_name), mentee:mentee_id(full_name)),
+    submitter:mp_profiles!submitted_by(id, full_name),
+    reviewer:mp_profiles!reviewed_by(id, full_name)
   `);
 
   if (updateError) throw updateError;
-  const data = updatedRecords[0];
+  const data = mapEvidence(updatedRecords[0]);
   if (data.pair_task_id) {
     try {
       if (input.status === EVIDENCE_STATUS.APPROVED) {
@@ -353,10 +377,17 @@ export async function reviewEvidence(
           
         await updatePairTaskStatus(data.pair_task_id, TASK_STATUS.COMPLETED, user.id);
       } else {
+        await updatePairTaskStatus(
+          data.pair_task_id, 
+          TASK_STATUS.REVISION_REQUIRED, 
+          user.id, 
+          input.rejection_reason || 'Changes requested by supervisor.'
+        );
+
+        // Also update rejection_reason explicitly if needed (though updatePairTaskStatus might handle it via evidenceNotes)
         await supabase
           .from('mp_pair_tasks')
           .update({ 
-            status: TASK_STATUS.REVISION_REQUIRED,
             rejection_reason: input.rejection_reason || 'Changes requested by supervisor.',
             last_feedback: input.rejection_reason || 'Changes requested by supervisor.'
           })

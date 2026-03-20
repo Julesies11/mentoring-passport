@@ -91,13 +91,18 @@ export function TaskProgressGrid({
                     {task.submitted_at && (task.status === 'awaiting_review' || task.status === 'completed' || task.status === 'revision_required') && (
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
                         <KeenIcon icon="send" className="text-gray-400 text-[12px]" />
-                        <span>Submitted {format(new Date(task.submitted_at), 'MMM d, yyyy')}</span>
+                        <span>Submitted by {task.submitted_by?.full_name || 'Member'} on {format(new Date(task.submitted_at), 'MMM d, yyyy')}</span>
                       </div>
                     )}
-                    {task.status === 'completed' && task.completed_at && (
+                    {(task.status === 'completed' || task.status === 'revision_required') && task.last_reviewed_at && (
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
-                        <KeenIcon icon="check-circle" className="text-success text-[12px]" />
-                        <span>Completed by {task.completed_by?.full_name || 'System'} on {format(new Date(task.completed_at), 'MMM d, yyyy')}</span>
+                        <KeenIcon 
+                          icon={task.status === 'completed' ? "check-circle" : "cross-circle"} 
+                          className={cn(task.status === 'completed' ? "text-success" : "text-danger", "text-[12px]")} 
+                        />
+                        <span className="capitalize">
+                          {task.last_action || (task.status === 'completed' ? 'approved' : 'rejected')} by {task.last_reviewed_by?.full_name || 'Supervisor'} on {format(new Date(task.last_reviewed_at), 'MMM d, yyyy')}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -221,12 +226,12 @@ export function TaskProgressGrid({
                     <div className="mt-1 flex flex-col gap-0.5">
                       {task.submitted_at && (task.status === 'awaiting_review' || task.status === 'completed' || task.status === 'revision_required') && (
                         <p className="text-[10px] text-muted-foreground font-medium">
-                          Submitted {format(new Date(task.submitted_at), 'MMM d')}
+                          Submitted by {task.submitted_by?.full_name?.split(' ')[0] || 'Member'} {format(new Date(task.submitted_at), 'MMM d')}
                         </p>
                       )}
-                      {task.status === 'completed' && task.completed_at && (
-                        <p className="text-[10px] text-muted-foreground font-medium">
-                          Completed {format(new Date(task.completed_at), 'MMM d')}
+                      {(task.status === 'completed' || task.status === 'revision_required') && task.last_reviewed_at && (
+                        <p className="text-[10px] text-muted-foreground font-medium capitalize">
+                          {task.last_action || (task.status === 'completed' ? 'approved' : 'rejected')} by {task.last_reviewed_by?.full_name?.split(' ')[0] || 'Supervisor'} {format(new Date(task.last_reviewed_at), 'MMM d')}
                         </p>
                       )}
                     </div>
@@ -291,9 +296,9 @@ export function TaskProgressGrid({
                             </span>
                           )}
                           {st.is_completed && st.completed_at && (
-                            <span className="text-[9px] text-muted-foreground font-medium flex items-center gap-1 shrink-0">
+                            <span className="text-[9px] text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
                               <KeenIcon icon="check-circle" className="text-success text-[10px]" />
-                              {format(new Date(st.completed_at), 'MMM d')}
+                              <span>{st.completed_by?.full_name?.split(' ')[0] || 'Member'} {format(new Date(st.completed_at), 'MMM d')}</span>
                             </span>
                           )}
                         </div>

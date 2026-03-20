@@ -5,6 +5,13 @@ import { useAllMeetings } from '@/hooks/use-meetings';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/context/auth-context';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { type PairTask, type PairSubTask } from '@/lib/api/tasks';
 import { fetchPairEvidence } from '@/lib/api/evidence';
 import { createMeeting } from '@/lib/api/meetings';
@@ -90,22 +97,27 @@ export function SupervisorChecklistPage() {
   // Track which pair was last auto-expanded to avoid loops
   const [lastAutoExpandedPairId, setLastAutoExpandedPairId] = useState<string | null>(null);
 
+  const activePairs = useMemo(() => pairs.filter(p => p.status === 'active'), [pairs]);
+
   // Handle URL parameter for pair selection and task deep linking
   useEffect(() => {
-    if (pairsLoading || pairs.length === 0) return;
+    if (pairsLoading) return;
 
     const pairIdFromUrl = searchParams.get('pair');
     const taskIdFromUrl = searchParams.get('taskId');
 
     // 1. Initial or changing pair selection
-    if (!selectedPairId) {
-      if (pairIdFromUrl && pairs.some(p => p.id === pairIdFromUrl)) {
-        setSelectedPairId(pairIdFromUrl);
-      } else {
-        setSelectedPairId(pairs[0].id);
+    if (activePairs.length > 0) {
+      if (pairIdFromUrl && activePairs.some(p => p.id === pairIdFromUrl)) {
+        if (selectedPairId !== pairIdFromUrl) {
+          setSelectedPairId(pairIdFromUrl);
+        }
+      } else if (!selectedPairId || !activePairs.some(p => p.id === selectedPairId)) {
+        // Default to first active pair if current selection is invalid or empty
+        setSelectedPairId(activePairs[0].id);
       }
-    } else if (pairIdFromUrl && pairIdFromUrl !== selectedPairId && pairs.some(p => p.id === pairIdFromUrl)) {
-      setSelectedPairId(pairIdFromUrl);
+    } else {
+      setSelectedPairId('');
     }
 
     // 2. Task deep linking
@@ -126,7 +138,7 @@ export function SupervisorChecklistPage() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [searchParams, pairs, pairsLoading, selectedPairId]);
+  }, [searchParams, activePairs, pairsLoading, selectedPairId]);
 
   // Automatically expand all tasks by default only when the selected pair changes
   useEffect(() => {
@@ -162,33 +174,6 @@ export function SupervisorChecklistPage() {
       };
     });
   }, [tasks, pairEvidence, pairMeetings]);
-
-  const activePairs = pairs.filter(p => p.status === 'active');
-
-  // Handle URL parameter for pair selection and task deep linking
-  useEffect(() => {
-    const pairId = searchParams.get('pair');
-    const taskId = searchParams.get('taskId');
-
-    if (pairId && pairId !== selectedPairId && pairs.some(p => p.id === pairId)) {
-      setSelectedPairId(pairId);
-    }
-
-    if (taskId) {
-      setActiveTab('monitoring');
-      setExpandedTasks(prev => new Set([...Array.from(prev), taskId]));
-      
-      // Small delay to allow tab content to render before scrolling
-      setTimeout(() => {
-        const element = document.getElementById(`task-${taskId}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          element.classList.add('ring-2', 'ring-primary', 'ring-offset-4');
-          setTimeout(() => element.classList.remove('ring-2', 'ring-primary', 'ring-offset-4'), 3000);
-        }
-      }, 500);
-    }
-  }, [searchParams, pairs, selectedPairId]);
 
   const handleAddTask = () => {
     if (!selectedPairId) return;
@@ -393,18 +378,75 @@ export function SupervisorChecklistPage() {
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Select Mentoring Pair</label>
-                    <select 
-                      className="bg-gray-50 border border-gray-200 h-11 rounded-md px-3 outline-none focus:ring-2 focus:ring-primary/20 text-sm font-bold text-gray-900"
-                      value={selectedPairId} 
-                      onChange={(e) => setSelectedPairId(e.target.value)}
-                    >
-                      <option value="">Choose a pair...</option>
-                      {pairs.map((pair) => (
-                        <option key={pair.id} value={pair.id}>
-                          {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={selectedPairId} onValueChange={setSelectedPairId}>
+                      <SelectTrigger className="h-14 bg-gray-50 border-gray-200">
+                        <SelectValue placeholder="Choose a pair...">
+                          {selectedPair && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex -space-x-2 shrink-0">
+                                <Avatar className="size-6 border-2 border-white ring-1 ring-gray-100">
+                                  <AvatarImage src={getAvatarPublicUrl(selectedPair.mentor?.avatar_url, selectedPair.mentor?.id)} />
+                                  <AvatarFallback className="text-[8px] bg-primary text-white">
+                                    {getInitials(selectedPair.mentor?.full_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <Avatar className="size-6 border-2 border-white ring-1 ring-gray-100">
+                                  <AvatarImage src={getAvatarPublicUrl(selectedPair.mentee?.avatar_url, selectedPair.mentee?.id)} />
+                                  <AvatarFallback className="text-[8px] bg-success text-white">
+                                    {getInitials(selectedPair.mentee?.full_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <div className="flex flex-col items-start leading-none gap-1">
+                                <span className="text-xs font-bold text-gray-900 truncate max-w-[180px]">
+                                  {selectedPair.mentor?.full_name} & {selectedPair.mentee?.full_name}
+                                </span>
+                                <span className="text-[9px] text-gray-400 font-medium uppercase tracking-tighter">Active Relationship</span>
+                              </div>
+                            </div>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {activePairs.map((pair) => (
+                          <SelectItem key={pair.id} value={pair.id} className="py-3">
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="flex -space-x-2 shrink-0">
+                                <Avatar className="size-8 border-2 border-white ring-1 ring-gray-100">
+                                  <AvatarImage src={getAvatarPublicUrl(pair.mentor?.avatar_url, pair.mentor?.id)} />
+                                  <AvatarFallback className="text-[10px] bg-primary text-white">
+                                    {getInitials(pair.mentor?.full_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <Avatar className="size-8 border-2 border-white ring-1 ring-gray-100">
+                                  <AvatarImage src={getAvatarPublicUrl(pair.mentee?.avatar_url, pair.mentee?.id)} />
+                                  <AvatarFallback className="text-[10px] bg-success text-white">
+                                    {getInitials(pair.mentee?.full_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-black text-gray-900 leading-none">{pair.mentor?.full_name}</span>
+                                  <span className="text-[10px] text-gray-300 font-bold">/</span>
+                                  <span className="text-xs font-black text-gray-900 leading-none">{pair.mentee?.full_name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] font-bold text-primary uppercase tracking-widest leading-none">Mentor</span>
+                                  <span className="size-1 rounded-full bg-gray-200" />
+                                  <span className="text-[9px] font-bold text-success uppercase tracking-widest leading-none">Mentee</span>
+                                </div>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {activePairs.length === 0 && (
+                          <div className="p-4 text-center text-xs text-muted-foreground">
+                            No active pairs found.
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {selectedPair && (
