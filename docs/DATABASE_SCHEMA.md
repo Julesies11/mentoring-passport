@@ -113,8 +113,13 @@ Snapshot copies of program tasks or custom tasks for a specific pair.
 - `status` (TEXT): 'not_submitted', 'awaiting_review', 'completed'.
 - `rejection_reason` (TEXT)
 - `is_custom` (BOOLEAN): True if added directly by mentor/mentee/supervisor.
-- `completed_at` (TIMESTAMPTZ)
-- `completed_by_user_id` (UUID): References `mp_profiles(id)`.
+- `submitted_at` (TIMESTAMPTZ): When the task was first moved to 'awaiting_review'.
+- `submitted_by_id` (UUID): References `mp_profiles(id)`. The user who submitted for review.
+- `completed_at` (TIMESTAMPTZ): When the task was moved to 'completed'.
+- `completed_by_user_id` (UUID): References `mp_profiles(id)`. The supervisor who approved the task.
+- `last_reviewed_at` (TIMESTAMPTZ): Timestamp of the last approval/rejection.
+- `last_reviewed_by_id` (UUID): References `mp_profiles(id)`. The supervisor who last acted on the task.
+- `last_action` (TEXT): 'submitted', 'approved', or 'rejected'.
 
 ### `mp_pair_subtasks`
 Snapshot copies of sub-tasks for a specific pair task.

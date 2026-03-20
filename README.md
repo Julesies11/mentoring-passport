@@ -46,14 +46,14 @@ All tables use `mp_` prefix:
 - `mp_meetings` - Meeting scheduling and notes.
 - `mp_notifications` - Universal notification system.
 
+#### Task Submission & Review Audit
+- **Full Chain of Custody**: Every task tracks who submitted it, who reviewed it (approved/rejected), and when each action occurred.
+- **Automated Evidence Creation**: Text-only submissions automatically create evidence records to ensure they appear in the supervisor's queue.
+- **Visual Progress Monitoring**: Supervisors can see detailed metadata for every task and subtask in the Progress Monitoring grid.
+- **Rich Pair Selection**: Visual selection of mentoring pairs with avatars and role-based labels.
+
 ### 🚧 To Be Implemented
 
-- Participant management (CRUD)
-- Pair creation and management
-- Task completion workflow
-- Evidence upload and review
-- Meeting scheduling
-- Notes creation and sharing
 - Progress tracking and reporting
 - Archive functionality
 

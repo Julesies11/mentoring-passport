@@ -42,6 +42,14 @@ The system uses a 4-tier security model enforced via Role-Based Access Control (
 4. **Pair Assignment:** When a Pair is created, they are assigned a snapshot of the current `mp_program_tasks` (copied to `mp_pair_tasks`).
 5. **Execution:** Pairs work through their `mp_pair_tasks`. They can add custom tasks (`is_custom = true`) but cannot delete tasks originally assigned by the program.
 
+### Task Submission and Review Lifecycle
+1. **Completion/Submission:** When a pair member finishes a task, they submit it for review. If no file is uploaded, the system automatically generates a text-only evidence record to ensure visibility in the supervisor's queue.
+2. **Metadata Tracking:** The system captures `submitted_at` and `submitted_by_id`. The status moves to `awaiting_review`.
+3. **Supervisor Action:** Supervisors review the evidence via the Evidence Review module.
+4. **Approval:** If approved, the status moves to `completed`. The system records `completed_at`, `completed_by_user_id` (the supervisor), and sets `last_action = 'approved'`.
+5. **Rejection:** If revisions are needed, the status moves to `revision_required`. The system records the `rejection_reason` and sets `last_action = 'rejected'`.
+6. **Audit Trail:** All UI components (Checklist, Task Dialog, Evidence Cards) display this "Chain of Custody" using the recorded metadata.
+
 ### Managed Job Titles
 1. **Central Registry:** Org Admins manage a list of approved job titles in `mp_job_titles`.
 2. **Relational Link:** User profiles reference a job title via `job_title_id`.

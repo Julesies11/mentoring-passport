@@ -39,6 +39,7 @@ RLS policies use the following SQL helpers defined in Migration 091:
 - **`mp_programs`:** Accessible to Admins, Org Admins, and assigned Supervisors. Program members only see the programs they are part of (via `mp_pairs`).
 - **`mp_pair_tasks`:** Accessible to privileged roles or the specific mentor/mentee pair members.
 - **`mp_profiles`:** All authenticated users can view profiles, but only the owner or Admins can edit them.
+- **`mp_error_logs`:** (Diagnostic Exception) ALL authenticated users can `INSERT` logs to report application errors. `SELECT` access is restricted to Sys Admins and Org Admins for security.
 
 ## 4. Frontend Implementation
 

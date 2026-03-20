@@ -98,6 +98,22 @@ This document summarizes all completed work on the Mentoring Passport applicatio
 - Evidence statistics dashboard
 - Auto-notifications on upload and review
 
+### **Phase 13: Task Submission & Review Audit** ✅
+**Files Created/Modified:**
+- `supabase/migrations/20260320_01_fix_error_logs_and_task_metadata.sql` - Database migration
+- `src/lib/api/tasks.ts` - Updated for metadata tracking
+- `src/components/tasks/task-progress-grid.tsx` - Added audit labels
+- `src/components/tasks/task-dialog.tsx` - Added "Chain of Custody" history
+- `src/pages/supervisor/checklist-page.tsx` - Improved pair selection with avatars
+
+**Features:**
+- **Full Chain of Custody**: Every task explicitly tracks `submitted_by`, `last_reviewed_by`, and `last_action` ('approved' or 'rejected').
+- **Automatic Evidence Logic**: Creating "text-only" evidence records when members submit tasks without files, ensuring they appear in the supervisor's queue.
+- **Visual Audit Trail**: Detailed metadata (names and dates) displayed in both the checklist grids and the task details dialogs.
+- **Subtask Traceability**: Granular tracking of who completed every individual subtask within a main task.
+- **Rich Pair Selection**: Supervisor-side selector now shows avatars, mentor/mentee roles, and real-time relationship status.
+- **Robust Error Logging**: Fixed RLS policies for `mp_error_logs` to allow all authenticated users to report diagnostic data.
+
 ### **Phase 11: Meeting Management** ✅
 **Files Created:**
 - `src/lib/api/meetings.ts` - API service
