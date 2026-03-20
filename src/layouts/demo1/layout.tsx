@@ -14,17 +14,7 @@ export function Demo1Layout() {
   const { pathname } = useLocation();
   const { getCurrentItem } = useMenu(pathname);
   const item = getCurrentItem(MENU_SIDEBAR);
-  const { settings, setOption } = useSettings();
-
-  useEffect(() => {
-    const bodyClass = document.body.classList;
-
-    if (settings.layouts.demo1.sidebarCollapse) {
-      bodyClass.add('sidebar-collapse');
-    } else {
-      bodyClass.remove('sidebar-collapse');
-    }
-  }, [settings]); // Runs only on settings update
+  const { setOption } = useSettings();
 
   useEffect(() => {
     // Set current layout
