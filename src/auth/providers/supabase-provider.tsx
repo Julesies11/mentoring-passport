@@ -47,12 +47,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
           });
           
           try {
-             // We pass the user object directly from the session to avoid another network call
+             // Step 1: Try to set user from cache immediately for instant UI boot (SWR)
+             const cachedUser = authHelper.getProfileCache();
+             if (cachedUser && cachedUser.id === session.user.id && mounted) {
+               logDebug('AuthProvider: Setting initial user from cache');
+               setCurrentUser(cachedUser);
+               // We still proceed to fetch to ensure data is fresh
+             }
+
+             // Step 2: Fetch fresh profile data (this is now deduplicated in the adapter)
              const user = await SupabaseAdapter.getUserProfile(session.user);
-             if (mounted) setCurrentUser(user || undefined);
+             if (mounted) {
+               logDebug('AuthProvider: User profile updated from network');
+               setCurrentUser(user || undefined);
+             }
           } catch (err) {
              console.error('AuthProvider: Failed to fetch profile on auth event', err);
-             if (mounted) setCurrentUser(undefined);
+             // Only clear user if we don't even have a cache
+             if (mounted && !currentUser) setCurrentUser(undefined);
           }
         } else if (!session && mounted) {
           saveAuth(undefined);
@@ -86,45 +98,47 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const checkPairings = async () => {
+      if (!currentUser?.id) {
+        setIsMentor(false);
+        setIsMentee(false);
+        return;
+      }
+
       console.log('AuthProvider: checkPairings started');
-      if (currentUser?.id) {
-        try {
-          console.log('AuthProvider: Fetching pairings for user:', currentUser.id);
-          
-          const fetchPromise = Promise.all([
-            supabase
-              .from('mp_pairs')
-              .select('*', { count: 'exact', head: true })
-              .eq('mentor_id', currentUser.id)
-              .eq('status', 'active'),
-            supabase
-              .from('mp_pairs')
-              .select('*', { count: 'exact', head: true })
-              .eq('mentee_id', currentUser.id)
-              .eq('status', 'active')
-          ]);
+      try {
+        console.log('AuthProvider: Fetching pairings for user:', currentUser.id);
+        
+        const fetchPromise = Promise.all([
+          supabase
+            .from('mp_pairs')
+            .select('*', { count: 'exact', head: true })
+            .eq('mentor_id', currentUser.id)
+            .eq('status', 'active'),
+          supabase
+            .from('mp_pairs')
+            .select('*', { count: 'exact', head: true })
+            .eq('mentee_id', currentUser.id)
+            .eq('status', 'active')
+        ]);
 
-          const timeoutPromise = new Promise<any[]>((resolve) => 
-            setTimeout(() => {
-              console.warn('AuthProvider: Pairings fetch timed out after 15s');
-              resolve([{ count: 0 }, { count: 0 }]); // Fallback to 0 counts
-            }, 15000)
-          );
+        let timeoutId: any;
+        const timeoutPromise = new Promise<any[]>((resolve) => {
+          timeoutId = setTimeout(() => {
+            console.warn('AuthProvider: Pairings fetch timed out after 15s');
+            resolve([{ count: 0 }, { count: 0 }]); // Fallback to 0 counts
+          }, 15000);
+        });
 
-          const [mentorRes, menteeRes] = await Promise.race([fetchPromise, timeoutPromise]);
+        const [mentorRes, menteeRes] = await Promise.race([fetchPromise, timeoutPromise]);
+        clearTimeout(timeoutId);
 
-          console.log('AuthProvider: checkPairings completed');
-          setIsMentor((mentorRes.count || 0) > 0);
-          setIsMentee((menteeRes.count || 0) > 0);
-        } catch (error) {
-          console.error('AuthProvider: Error checking pairings:', error);
-          setIsMentor(false);
-          setIsMentee(false);
-        }
-      } else {
-         console.log('AuthProvider: checkPairings skipped (no user)');
-         setIsMentor(false);
-         setIsMentee(false);
+        console.log('AuthProvider: checkPairings completed');
+        setIsMentor((mentorRes.count || 0) > 0);
+        setIsMentee((menteeRes.count || 0) > 0);
+      } catch (error) {
+        console.error('AuthProvider: Error checking pairings:', error);
+        setIsMentor(false);
+        setIsMentee(false);
       }
     };
 

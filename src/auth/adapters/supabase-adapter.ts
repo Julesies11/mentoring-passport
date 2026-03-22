@@ -1,6 +1,10 @@
 import { AuthModel, UserModel } from '@/auth/lib/models';
 import { supabase } from '@/lib/supabase';
 import { logDebug } from '@/lib/logger';
+import { getProfileCache, setProfileCache } from '@/auth/lib/helpers';
+
+// Simple in-memory deduplication for profile requests
+const pendingPromises = new Map<string, Promise<UserModel>>();
 
 /**
  * Supabase adapter that maintains the same interface as the existing auth flow
@@ -231,7 +235,6 @@ export const SupabaseAdapter = {
    * Get user profile from mp_profiles table
    */
   async getUserProfile(preFetchedUser?: any): Promise<UserModel> {
-    console.log('SupabaseAdapter: getUserProfile started');
     let user = preFetchedUser;
 
     if (!user) {
@@ -245,70 +248,116 @@ export const SupabaseAdapter = {
       user = authData.user;
     }
 
-    console.log('SupabaseAdapter: Fetching profile data from mp_profiles for ID:', user.id);
-    
-    // Add a timeout to the database fetch to prevent hanging
-    const fetchPromise = supabase
-      .from('mp_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-      
-    const timeoutPromise = new Promise<any>((resolve) => 
-      setTimeout(() => resolve({ 
-        data: null, 
-        error: { message: 'Profile database fetch timeout', isTimeout: true } 
-      }), 15000)
-    );
-    
-    try {
-      const result = await Promise.race([fetchPromise, timeoutPromise]);
-      const { data: profile, error: profileError } = result;
+    const userId = user.id;
 
-      if (profileError) {
-        if (profileError.isTimeout) {
-          console.error('SupabaseAdapter: Profile database fetch timed out after 15s. Proceeding with basic auth data.');
-        } else {
-          console.warn('SupabaseAdapter: Could not fetch profile from mp_profiles table.', profileError);
-        }
-      } else {
-        console.log('SupabaseAdapter: Profile data fetched successfully');
-      }
-
-      const metadata = user.user_metadata || {};
-      const appMetadata = user.app_metadata || {};
-
-      // The role in app_metadata is our source of truth for RLS
-      const userRole = appMetadata.role || profile?.role || metadata.role || 'program-member';
-
-      // Format data combining auth.users and mp_profiles
-      // We use a stable structure to prevent unnecessary re-renders
-      return {
-        id: user.id,
-        profile_id: user.id,
-        email: user.email || profile?.email || '',
-        email_verified: user.email_confirmed_at !== null,
-        username: metadata.username || user.email?.split('@')[0] || '',
-        first_name: metadata.first_name || '',
-        last_name: metadata.last_name || '',
-        fullname: profile?.full_name || metadata.full_name || '',
-        full_name: profile?.full_name || metadata.full_name || '',
-        phone: profile?.phone || '',
-        pic: profile?.avatar_url || metadata.avatar_url || '',
-        avatar_url: profile?.avatar_url || metadata.avatar_url || '',
-        language: metadata.language || 'en',
-
-        // Instance specific fields
-        role: userRole as any,
-        job_title_id: profile?.job_title_id || '',
-        status: profile?.status || 'active',
-        must_change_password: profile?.must_change_password ?? false,
-        bio: profile?.bio || '',
-      };
-    } catch (e) {
-      console.error('SupabaseAdapter: Fatal error in getUserProfile:', e);
-      throw e;
+    // Check for an in-flight request for this user ID to prevent redundant calls
+    if (pendingPromises.has(userId)) {
+      logDebug('SupabaseAdapter: Returning existing pending promise for user:', userId);
+      return pendingPromises.get(userId)!;
     }
+
+    // Use a fresh promise if none is in-flight
+    const profilePromise = (async () => {
+      try {
+        // Step 1: Check cache immediately (SWR - Stale-While-Revalidate)
+        const cached = getProfileCache();
+        const hasValidCache = cached && cached.id === userId;
+        
+        if (hasValidCache) {
+          logDebug('SupabaseAdapter: Found cached profile for user:', userId);
+        }
+
+        console.log('SupabaseAdapter: Fetching profile data from mp_profiles for ID:', userId);
+        
+        // Step 2: Set a timeout for the network request
+        // If we have a cache, we can afford a shorter timeout (5s) for a better UX
+        const timeoutDuration = hasValidCache ? 5000 : 15000;
+        
+        const fetchPromise = supabase
+          .from('mp_profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        let timeoutId: any;
+        const timeoutPromise = new Promise<any>((resolve) => {
+          timeoutId = setTimeout(() => resolve({ 
+            data: null, 
+            error: { message: 'Profile database fetch timeout', isTimeout: true } 
+          }), timeoutDuration);
+        });
+        
+        const result = await Promise.race([fetchPromise, timeoutPromise]);
+        clearTimeout(timeoutId);
+        
+        const { data: profile, error: profileError } = result;
+
+        let usedFallback = false;
+        if (profileError) {
+          if (profileError.isTimeout) {
+            console.error(`SupabaseAdapter: Profile database fetch timed out after ${timeoutDuration/1000}s.`);
+            usedFallback = true;
+          } else {
+            console.warn('SupabaseAdapter: Could not fetch profile from mp_profiles table.', profileError);
+            usedFallback = true;
+          }
+        } else if (profile) {
+          logDebug('SupabaseAdapter: Profile data fetched successfully');
+        } else {
+          logDebug('SupabaseAdapter: No profile record found in mp_profiles');
+          usedFallback = true;
+        }
+
+        // If we failed to get fresh data, but we have a cache, USE THE CACHE
+        if (usedFallback && hasValidCache) {
+          logDebug('SupabaseAdapter: Using cached profile as fallback');
+          return cached;
+        }
+
+        const metadata = user.user_metadata || {};
+        const appMetadata = user.app_metadata || {};
+
+        // The role in app_metadata is our source of truth for RLS
+        const userRole = appMetadata.role || profile?.role || metadata.role || 'program-member';
+
+        // Format final user model
+        const userModel: UserModel = {
+          id: user.id,
+          profile_id: user.id,
+          email: user.email || profile?.email || '',
+          email_verified: user.email_confirmed_at !== null,
+          username: metadata.username || user.email?.split('@')[0] || '',
+          first_name: metadata.first_name || '',
+          last_name: metadata.last_name || '',
+          fullname: profile?.full_name || metadata.full_name || '',
+          full_name: profile?.full_name || metadata.full_name || '',
+          phone: profile?.phone || '',
+          pic: profile?.avatar_url || metadata.avatar_url || '',
+          avatar_url: profile?.avatar_url || metadata.avatar_url || '',
+          language: metadata.language || 'en',
+
+          // Instance specific fields
+          role: userRole as any,
+          job_title_id: profile?.job_title_id || '',
+          status: profile?.status || 'active',
+          must_change_password: profile?.must_change_password ?? false,
+          bio: profile?.bio || '',
+        };
+
+        // Update cache for next time
+        if (profile) {
+          setProfileCache(userModel);
+        }
+
+        return userModel;
+      } finally {
+        // Clean up pending promise map when finished
+        pendingPromises.delete(userId);
+      }
+    })();
+
+    pendingPromises.set(userId, profilePromise);
+    return profilePromise;
   },
 
   /**
@@ -350,6 +399,9 @@ export const SupabaseAdapter = {
 
       if (error) throw new Error(error.message);
 
+      // Invalidate cache since we updated the data
+      // (This will force a refresh on the next getUserProfile call)
+      
       // Return refreshed complete profile
       return await this.getUserProfile(user);
     } catch (e) {
