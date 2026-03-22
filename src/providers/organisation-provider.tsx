@@ -68,19 +68,14 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
   }, [rawPrograms]);
 
   const activeProgram = useMemo(() => {
-    if (selectedProgramId === 'all') return null;
     if (selectedProgramId) {
-      return sortedPrograms.find(p => p.id === selectedProgramId) || null;
+      const found = sortedPrograms.find(p => p.id === selectedProgramId);
+      if (found) return found;
     }
     
-    // For supervisors, default to the first program if one exists
-    if (isSupervisor && !isOrgAdmin && !isSysAdmin) {
-      return sortedPrograms[0] || null;
-    }
-    
-    // For admins, default to 'all' (null) context for a global overview
-    return null;
-  }, [selectedProgramId, sortedPrograms, isSupervisor, isOrgAdmin, isSysAdmin]);
+    // Default to the first program in the sorted list (which prioritizes active ones)
+    return sortedPrograms[0] || null;
+  }, [selectedProgramId, sortedPrograms]);
 
   const value = useMemo(() => ({
     activeOrganisation: organisation || null,

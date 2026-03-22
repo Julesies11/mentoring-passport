@@ -27,9 +27,9 @@ export function ProgramSelector() {
   return (
     <div className="flex items-center gap-2">
       <Select
-        value={activeProgram?.id || 'all'}
+        value={activeProgram?.id || ''}
         onValueChange={(id) => setActiveProgram(id)}
-        disabled={!hasPrograms && !isPrivileged}
+        disabled={!hasPrograms}
       >
         <SelectTrigger 
           className="h-9 w-[220px] sm:w-[400px] px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100 shadow-sm focus:ring-0 hover:bg-gray-100 transition-colors"
@@ -37,7 +37,7 @@ export function ProgramSelector() {
           <div className="flex items-center justify-start text-left min-w-0 flex-1">
             <div className="flex-1 min-w-0 overflow-hidden leading-tight text-left">
               <span className="text-[10px] sm:text-xs font-black text-primary uppercase tracking-tight truncate block">
-                {!hasPrograms && !isPrivileged ? 'No Programs Assigned' : (activeProgram?.name || 'All Programs')}
+                {!hasPrograms ? 'No Programs Assigned' : (activeProgram?.name || 'Select Program')}
               </span>
             </div>
           </div>
@@ -46,12 +46,6 @@ export function ProgramSelector() {
           <div className="px-3 py-2 border-b border-gray-50 mb-1">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Switch View Context</span>
           </div>
-          
-          {isPrivileged && (
-            <SelectItem value="all" className="text-xs font-black py-2 px-3 text-primary">
-              ALL PROGRAMS OVERVIEW
-            </SelectItem>
-          )}
 
           {programs.map((program) => (
             <SelectItem 
