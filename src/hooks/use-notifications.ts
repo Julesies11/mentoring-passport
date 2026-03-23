@@ -2,18 +2,19 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/auth/context/auth-context';
 import {
   fetchNotifications,
-  fetchUnreadCount,
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  subscribeToNotifications,
+  clearAllNotifications,
   type Notification,
 } from '@/lib/api/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNotificationContext } from '@/providers/notification-provider';
 
 export function useNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { unreadCount } = useNotificationContext();
   const [limit, setLimit] = useState(20);
 
   // Fetch notifications
@@ -25,17 +26,10 @@ export function useNotifications() {
   } = useQuery({
     queryKey: ['notifications', limit],
     queryFn: () => fetchNotifications(limit),
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   const loadMore = () => setLimit(prev => prev + 20);
-
-  // Fetch unread count
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['notifications', 'unread-count'],
-    queryFn: () => fetchUnreadCount(),
-    enabled: !!user,
-  });
 
   // Mark as read mutation
   const markAsReadMutation = useMutation({
@@ -64,40 +58,14 @@ export function useNotifications() {
     },
   });
 
-  // Real-time subscription
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const unsubscribe = subscribeToNotifications(
-      user.id,
-      (notification) => {
-        // Add new notification to cache
-        queryClient.setQueryData<Notification[]>(['notifications'], (old = []) => {
-          // Check if notification already exists
-          if (old.some((n) => n.id === notification.id)) {
-            // Update existing notification
-            return old.map((n) => (n.id === notification.id ? notification : n));
-          }
-          // Add new notification at the beginning
-          return [notification, ...old];
-        });
-
-        // Update unread count
-        queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-      },
-      (notificationId) => {
-        // Remove deleted notification from cache
-        queryClient.setQueryData<Notification[]>(['notifications'], (old = []) =>
-          old.filter((n) => n.id !== notificationId),
-        );
-
-        // Update unread count
-        queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-      },
-    );
-
-    return unsubscribe;
-  }, [user?.id, queryClient]);
+  // Clear all notifications mutation
+  const clearAllNotificationsMutation = useMutation({
+    mutationFn: clearAllNotifications,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+    },
+  });
 
   return {
     notifications,
@@ -110,5 +78,6 @@ export function useNotifications() {
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
     deleteNotification: deleteNotificationMutation.mutate,
+    clearAllNotifications: clearAllNotificationsMutation.mutate,
   };
 }

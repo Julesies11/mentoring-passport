@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/context/auth-context';
 import { Organisation } from '@/lib/api/organisations';
 import { fetchAssignedPrograms, Program } from '@/lib/api/programs';
@@ -22,7 +23,11 @@ const OrganisationContext = createContext<OrganisationContextType | undefined>(u
 
 export function OrganisationProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, isSupervisor, isOrgAdmin, isSysAdmin } = useAuth();
-  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(() => {
+    return localStorage.getItem('mp_selected_program_id');
+  });
+
+  const { search } = useLocation();
 
   const isPrivileged = isSupervisor || isOrgAdmin || isSysAdmin;
 
@@ -67,6 +72,22 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     });
   }, [rawPrograms]);
 
+  // Global Context Synchronization: Listen for ?program= in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const programIdFromUrl = params.get('program');
+    
+    if (programIdFromUrl && programIdFromUrl !== selectedProgramId) {
+      // Verify the user actually has access to this program before switching
+      const exists = sortedPrograms.find(p => p.id === programIdFromUrl);
+      if (exists) {
+        console.log('OrganisationProvider: Syncing program context from URL:', programIdFromUrl);
+        setSelectedProgramId(programIdFromUrl);
+        localStorage.setItem('mp_selected_program_id', programIdFromUrl);
+      }
+    }
+  }, [search, sortedPrograms, selectedProgramId]);
+
   const activeProgram = useMemo(() => {
     if (selectedProgramId) {
       const found = sortedPrograms.find(p => p.id === selectedProgramId);
@@ -87,7 +108,10 @@ export function OrganisationProvider({ children }: { children: React.ReactNode }
     membershipRole: user?.role || null,
     refreshOrganisation: refetchOrg,
     refreshPrograms: refetchPrograms,
-    setActiveProgram: setSelectedProgramId
+    setActiveProgram: (id: string) => {
+      setSelectedProgramId(id);
+      localStorage.setItem('mp_selected_program_id', id);
+    }
   }), [
     organisation, 
     activeProgram, 

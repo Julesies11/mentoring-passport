@@ -137,7 +137,8 @@ describe('MeetingDialog V3', () => {
         open={true} 
         onOpenChange={onOpenChange} 
         pairId="pair1" 
-        onSubmit={onSubmit} 
+        onSubmit={onSubmit}
+        initialDate="2026-03-22T10:00"
       />,
       { authValue: { user: mockUser as any, isSupervisor: false } }
     );
@@ -147,21 +148,12 @@ describe('MeetingDialog V3', () => {
       expect(screen.getByDisplayValue('Task 1')).toBeInTheDocument();
     });
 
-    // Simulate typing a date and time (simplest for testing)
-    // Note: Since we switched to a custom Date Picker and Select, testing the interaction directly
-    // is complex in Vitest without full DOM rendering. We'll update the form data state indirectly
-    // or simulate the exact triggers if needed. For this test, verifying the submit handles it is enough.
-    
-    // As a workaround for the test, we'll assume the initialDate logic or form pre-fill sets it, 
-    // or we can just mock the submit payload if the form isn't fully intractable in JSDOM.
-    // For now, we click schedule. It might fail validation if empty, so we'll just mock the submit.
+    // Provide a title to ensure form is valid
+    const titleInput = screen.getByPlaceholderText(/e.g., Monthly Progress Sync/i);
+    fireEvent.change(titleInput, { target: { value: 'New Mentoring Session' } });
+
     const submitBtn = screen.getByRole('button', { name: /Schedule/i });
-    
-    // To bypass HTML5 validation in JSDOM on the hidden/custom fields, we just call the submit handler directly if possible,
-    // or ensure our mock form is valid. Let's force a valid state via fireEvent if we can, or just mock the form event.
-    
-    const form = screen.getByRole('dialog').querySelector('form');
-    fireEvent.submit(form!);
+    fireEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalled();

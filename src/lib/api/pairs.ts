@@ -1,5 +1,6 @@
 import { PAIR_STATUS, PairStatus, TASK_STATUS } from '@/config/constants';
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/lib/logger';
 
 export interface Pair {
   id: string;
@@ -92,7 +93,11 @@ export async function fetchPairs(programId?: string): Promise<Pair[]> {
     .limit(1000);
 
   if (error) {
-    console.error('Error fetching pairs:', error);
+    await logError({
+      message: 'Error fetching pairs',
+      componentName: 'pairs-api',
+      metadata: { error, programId }
+    });
     throw error;
   }
 
@@ -114,7 +119,11 @@ export async function fetchPair(id: string): Promise<Pair | null> {
     .single();
 
   if (error) {
-    console.error('Error fetching pair:', error);
+    await logError({
+      message: 'Error fetching pair',
+      componentName: 'pairs-api',
+      metadata: { error, id }
+    });
     throw error;
   }
 
@@ -128,7 +137,11 @@ export async function fetchPair(id: string): Promise<Pair | null> {
 export async function createPair(input: CreatePairInput): Promise<Pair> {
   // Defensive check for program_id
   if (!input.program_id || input.program_id === 'undefined' || typeof input.program_id !== 'string') {
-    console.error('createPair called with invalid program_id:', input.program_id);
+    await logError({
+      message: 'createPair called with invalid program_id',
+      componentName: 'pairs-api',
+      metadata: { program_id: input.program_id }
+    });
     throw new Error('Invalid program selection. Please ensure a program is selected.');
   }
 
@@ -156,7 +169,11 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     .single();
 
   if (pairError) {
-    console.error('Error creating pair:', pairError);
+    await logError({
+      message: 'Error creating pair',
+      componentName: 'pairs-api',
+      metadata: { error: pairError, input }
+    });
     throw pairError;
   }
 
@@ -169,7 +186,11 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
     .order('sort_order', { ascending: true });
 
   if (tasksError) {
-    console.error('Error fetching program tasks:', tasksError);
+    await logError({
+      message: 'Error fetching program tasks during pair creation',
+      componentName: 'pairs-api',
+      metadata: { error: tasksError, program_id: input.program_id }
+    });
     throw tasksError;
   }
 
@@ -193,7 +214,11 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
         .select('id, program_task_id');
 
       if (pairTasksError) {
-        console.error('Error creating pair tasks:', pairTasksError);
+        await logError({
+          message: 'Error creating pair tasks',
+          componentName: 'pairs-api',
+          metadata: { error: pairTasksError, pair_id: pair.id }
+        });
       } else if (createdPairTasks && createdPairTasks.length > 0) {
         // Step 5: Fetch ALL program subtasks for these program tasks in one go
         const programTaskIds = programTasks.map(t => t.id);
@@ -204,7 +229,11 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
           .order('sort_order', { ascending: true });
 
         if (subtasksError) {
-          console.error('Error fetching program subtasks:', subtasksError);
+          await logError({
+            message: 'Error fetching program subtasks during pair creation',
+            componentName: 'pairs-api',
+            metadata: { error: subtasksError, programTaskIds }
+          });
         } else if (allProgramSubtasks && allProgramSubtasks.length > 0) {
           // Step 6: Map program subtasks to their new pair_task_id and batch insert
           const pairSubtasksToInsert = allProgramSubtasks.map(subtask => {
@@ -228,7 +257,11 @@ export async function createPair(input: CreatePairInput): Promise<Pair> {
               .insert(pairSubtasksToInsert);
 
             if (pairSubtasksError) {
-              console.error('Error creating pair subtasks:', pairSubtasksError);
+              await logError({
+                message: 'Error creating pair subtasks',
+                componentName: 'pairs-api',
+                metadata: { error: pairSubtasksError, pair_id: pair.id }
+              });
             }
           }
         }
@@ -255,7 +288,11 @@ export async function updatePair(id: string, input: UpdatePairInput): Promise<Pa
     .single();
 
   if (error) {
-    console.error('Error updating pair:', error);
+    await logError({
+      message: 'Error updating pair',
+      componentName: 'pairs-api',
+      metadata: { error, id, input }
+    });
     throw error;
   }
 
@@ -272,7 +309,11 @@ export async function archivePair(id: string): Promise<void> {
     .eq('id', id);
 
   if (error) {
-    console.error('Error archiving pair:', error);
+    await logError({
+      message: 'Error archiving pair',
+      componentName: 'pairs-api',
+      metadata: { error, id }
+    });
     throw error;
   }
 }
@@ -287,7 +328,11 @@ export async function restorePair(id: string): Promise<void> {
     .eq('id', id);
 
   if (error) {
-    console.error('Error restoring pair:', error);
+    await logError({
+      message: 'Error restoring pair',
+      componentName: 'pairs-api',
+      metadata: { error, id }
+    });
     throw error;
   }
 }
@@ -309,7 +354,11 @@ export async function fetchUserPairs(userId: string): Promise<Pair[]> {
     .limit(1000);
 
   if (error) {
-    console.error('Error fetching user pairs:', error);
+    await logError({
+      message: 'Error fetching user pairs',
+      componentName: 'pairs-api',
+      metadata: { error, userId }
+    });
     throw error;
   }
 

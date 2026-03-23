@@ -19,14 +19,19 @@ const EMPTY_ARRAY: any[] = [];
 
 export function useAllMeetings() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isSupervisor, isAdmin, isSysAdmin, isOrgAdmin } = useAuth();
   const { activeProgram } = useOrganisation();
-  const programId = activeProgram?.id;
+  
+  // High Signal Filtering:
+  // 1. Privileged users (Supervisors/Admins) should see meetings for the ACTIVE program context.
+  // 2. Regular members should see ALL their meetings across all programs they might be part of.
+  const isPrivileged = isSupervisor || isAdmin || isSysAdmin || isOrgAdmin;
+  const programId = isPrivileged ? activeProgram?.id : undefined;
 
   const query = useQuery({
-    queryKey: ['meetings', 'all', programId],
+    queryKey: ['meetings', 'all', programId || 'everything', user?.id],
     queryFn: () => fetchAllMeetings(programId),
-    enabled: true,
+    enabled: !!user,
   });
 
   const meetings = query.data || EMPTY_ARRAY;
@@ -46,20 +51,27 @@ export function useAllMeetings() {
       
       const meetingData = newMeeting as any;
       const pair = meetingData.mp_pairs;
+      
+      console.log('Meeting Creation Success:', { meetingId: meetingData.id, hasPair: !!pair });
+
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
+        
+        console.log('Notification Check:', { mentorId, menteeId, actorId: user.id });
 
         if (mentorId && menteeId) {
-          await NotificationService.notifyMeetingChange(
-            meetingData.id,
-            meetingData.title,
-            meetingData.date_time,
+          console.log('Triggering Meeting Notification (Created)...');
+          await NotificationService.notifyMeetingCreated({
+            meetingId: meetingData.id,
+            title: meetingData.title,
+            dateTime: meetingData.date_time,
             mentorId,
             menteeId,
-            user.id,
-            true
-          );
+            mentorName: pair.mentor?.full_name || 'Mentor',
+            menteeName: pair.mentee?.full_name || 'Mentee',
+            actorId: user.id
+          });
         }
       }
     },
@@ -73,20 +85,27 @@ export function useAllMeetings() {
       
       const meetingData = updatedMeeting as any;
       const pair = meetingData.mp_pairs;
+
+      console.log('Meeting Update Success:', { meetingId: meetingData.id, hasPair: !!pair });
+
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
 
+        console.log('Notification Check (Update):', { mentorId, menteeId, actorId: user.id });
+
         if (mentorId && menteeId) {
-          await NotificationService.notifyMeetingChange(
-            meetingData.id,
-            meetingData.title,
-            meetingData.date_time,
+          console.log('Triggering Meeting Notification (Updated)...');
+          await NotificationService.notifyMeetingUpdated({
+            meetingId: meetingData.id,
+            title: meetingData.title,
+            dateTime: meetingData.date_time,
             mentorId,
             menteeId,
-            user.id,
-            false
-          );
+            mentorName: pair.mentor?.full_name || 'Mentor',
+            menteeName: pair.mentee?.full_name || 'Mentee',
+            actorId: user.id
+          });
         }
       }
     },
@@ -99,18 +118,24 @@ export function useAllMeetings() {
 
       const meetingData = deletedMeeting as any;
       const pair = meetingData.mp_pairs;
+
+      console.log('Meeting Deletion Success:', { meetingId: meetingData.id, hasPair: !!pair });
+
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
 
+        console.log('Notification Check (Delete):', { mentorId, menteeId, actorId: user.id });
+
         if (mentorId && menteeId) {
-          await NotificationService.notifyMeetingCancelled(
-            meetingData.title,
-            meetingData.date_time,
+          console.log('Triggering Meeting Notification...');
+          await NotificationService.notifyMeetingCancelled({
+            title: meetingData.title,
+            dateTime: meetingData.date_time,
             mentorId,
             menteeId,
-            user.id
-          );
+            actorId: user.id
+          });
         }
       }
     },
@@ -149,20 +174,27 @@ export function usePairMeetings(pairId: string) {
       
       const meetingData = newMeeting as any;
       const pair = meetingData.mp_pairs;
+      
+      console.log('Meeting Creation Success:', { meetingId: meetingData.id, hasPair: !!pair });
+
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
+        
+        console.log('Notification Check:', { mentorId, menteeId, actorId: user.id });
 
         if (mentorId && menteeId) {
-          await NotificationService.notifyMeetingChange(
-            meetingData.id,
-            meetingData.title,
-            meetingData.date_time,
+          console.log('Triggering Meeting Notification (Created)...');
+          await NotificationService.notifyMeetingCreated({
+            meetingId: meetingData.id,
+            title: meetingData.title,
+            dateTime: meetingData.date_time,
             mentorId,
             menteeId,
-            user.id,
-            true
-          );
+            mentorName: pair.mentor?.full_name || 'Mentor',
+            menteeName: pair.mentee?.full_name || 'Mentee',
+            actorId: user.id
+          });
         }
       }
     },
@@ -177,20 +209,27 @@ export function usePairMeetings(pairId: string) {
       
       const meetingData = updatedMeeting as any;
       const pair = meetingData.mp_pairs;
+
+      console.log('Meeting Update Success:', { meetingId: meetingData.id, hasPair: !!pair });
+
       if (pair && user?.id) {
         const mentorId = pair.mentor_id || pair.mentor?.id;
         const menteeId = pair.mentee_id || pair.mentee?.id;
 
+        console.log('Notification Check (Update):', { mentorId, menteeId, actorId: user.id });
+
         if (mentorId && menteeId) {
-          await NotificationService.notifyMeetingChange(
-            meetingData.id,
-            meetingData.title,
-            meetingData.date_time,
+          console.log('Triggering Meeting Notification (Updated)...');
+          await NotificationService.notifyMeetingUpdated({
+            meetingId: meetingData.id,
+            title: meetingData.title,
+            dateTime: meetingData.date_time,
             mentorId,
             menteeId,
-            user.id,
-            false
-          );
+            mentorName: pair.mentor?.full_name || 'Mentor',
+            menteeName: pair.mentee?.full_name || 'Mentee',
+            actorId: user.id
+          });
         }
       }
     },

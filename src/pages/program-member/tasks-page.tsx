@@ -149,7 +149,11 @@ export function ProgramMemberTasksPage() {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           element.classList.add('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
-          
+
+          // AUTO-OPEN: Set the selected task and open the dialog
+          setSelectedTaskId(scrollId);
+          setIsTaskDialogOpen(true);
+
           setTimeout(() => {
             element.classList.remove('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
           }, 3000);
@@ -181,6 +185,16 @@ export function ProgramMemberTasksPage() {
   const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
   const [initialTaskId, setInitialTaskId] = useState<string | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
+
+  // Clear state when dialog closes
+  const handleMeetingOpenChange = (open: boolean) => {
+    setIsMeetingDialogOpen(open);
+    if (!open) {
+      setSelectedMeeting(null);
+      setInitialTaskId(null);
+    }
+  };
+
   const [isEvidenceSubmitting, setIsEvidenceSubmitting] = useState(false);
 
   const handleToggleExpand = (taskId: string) => {
@@ -299,8 +313,8 @@ export function ProgramMemberTasksPage() {
   const handleDeleteMeeting = async (meetingId: string) => {
     try {
       await deleteMeeting(meetingId);
-      setIsMeetingDialogOpen(false);
-      toast.success('Meeting deleted successfully');
+      handleMeetingOpenChange(false);
+      toast.success('Meeting removed');
     } catch (_error) {
       console.error('Failed to delete meeting');
     }
@@ -310,11 +324,11 @@ export function ProgramMemberTasksPage() {
     try {
       if (selectedMeeting) {
         const result = await updateMeeting(selectedMeeting.id, data);
-        toast.success('Meeting updated successfully');
+        toast.success('Meeting updated');
         return result;
       } else {
         const result = await createMeeting(data);
-        toast.success('Meeting scheduled successfully');
+        toast.success('Meeting scheduled');
         return result;
       }
     } catch (_error) {
@@ -344,14 +358,27 @@ export function ProgramMemberTasksPage() {
         const menteeName = task?.pair?.mentee?.full_name || 'Mentee';
         const actorName = user.full_name || user.email || 'Participant';
         
-        await NotificationService.notifyTaskReopened(
-          task?.name || 'Task',
-          selectedPair?.id || '',
+        // 1. Notify Supervisor
+        await NotificationService.notifyTaskReopened({
+          taskName: task?.name || 'Task',
+          pairId: selectedPair?.id || '',
+          programId: selectedPair?.program_id || '',
           mentorName,
           menteeName,
-          user.id,
+          actorId: user.id,
           actorName
-        );
+        });
+
+        // 2. Notify Peer Partner (New)
+        await NotificationService.notifyTaskReopenedByPeer({
+          taskId: task?.id || '',
+          taskName: task?.name || 'Task',
+          pairId: selectedPair?.id || '', // Added pairId
+          mentorId: selectedPair?.mentor_id || '',
+          menteeId: selectedPair?.mentee_id || '',
+          actorId: user.id,
+          actorName
+        });
       }
 
       toast.success(`Task ${newStatus === 'completed' ? 'completed' : 're-opened'}`);
@@ -595,7 +622,7 @@ export function ProgramMemberTasksPage() {
 
       <MeetingDialog
         open={isMeetingDialogOpen}
-        onOpenChange={setIsMeetingDialogOpen}
+        onOpenChange={handleMeetingOpenChange}
         pairId={selectedPair?.id || ''}
         meeting={selectedMeeting}
         initialTaskId={initialTaskId}

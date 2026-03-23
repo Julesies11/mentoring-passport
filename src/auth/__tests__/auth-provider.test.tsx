@@ -14,11 +14,16 @@ vi.mock('../adapters/supabase-adapter', () => ({
     getUserProfile: vi.fn(),
     logout: vi.fn(),
     login: vi.fn(),
+    register: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    resetPassword: vi.fn(),
+    resendVerificationEmail: vi.fn(),
+    updateUserProfile: vi.fn(),
   },
 }));
 
 // Mock Supabase client
-let authStateCallback: (event: string, session: any) => void;
+let authStateCallback: (event: string, session: any) => Promise<void>;
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
@@ -45,6 +50,8 @@ vi.mock('../lib/helpers', () => ({
   getAuth: vi.fn(() => ({ access_token: 'fake', refresh_token: 'fake' })),
   setAuth: vi.fn(),
   removeAuth: vi.fn(),
+  getProfileCache: vi.fn(() => null),
+  setProfileCache: vi.fn(),
 }));
 
 const wrapper = ({ children }: PropsWithChildren) => (
@@ -54,10 +61,9 @@ const wrapper = ({ children }: PropsWithChildren) => (
 describe('AuthProvider Single-Organisation Role Derivation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock for getCurrentUser
+    // Default mocks
     vi.mocked(SupabaseAdapter.getCurrentUser).mockResolvedValue(null);
-    vi.mocked(SupabaseAdapter.getUserProfile).mockResolvedValue(null);
-    // Default mock for getSession
+    vi.mocked(SupabaseAdapter.getUserProfile).mockResolvedValue(null as any);
     vi.mocked(supabase.auth.getSession).mockResolvedValue({ 
       data: { session: null }, 
       error: null 
@@ -75,15 +81,19 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
 
     await act(async () => {
       if (authStateCallback) {
-        authStateCallback('SIGNED_IN', { user: { id: 'admin-1' }, access_token: 'fake', refresh_token: 'fake' });
+        await authStateCallback('SIGNED_IN', { 
+          user: { id: 'admin-1' }, 
+          access_token: 'fake', 
+          refresh_token: 'fake' 
+        });
       }
     });
 
     await waitFor(() => {
-      expect(result.current.isAdmin).toBe(true);
-      expect(result.current.isOrgAdmin).toBe(true); // administrator is also an org admin
-      expect(result.current.isSupervisor).toBe(true);
       expect(result.current.role).toBe(ROLES.ADMINISTRATOR);
+      expect(result.current.isAdmin).toBe(true);
+      expect(result.current.isOrgAdmin).toBe(true);
+      expect(result.current.isSupervisor).toBe(true);
     });
   });
 
@@ -98,14 +108,18 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
 
     await act(async () => {
       if (authStateCallback) {
-        authStateCallback('SIGNED_IN', { user: { id: 'supervisor-1' }, access_token: 'fake', refresh_token: 'fake' });
+        await authStateCallback('SIGNED_IN', { 
+          user: { id: 'supervisor-1' }, 
+          access_token: 'fake', 
+          refresh_token: 'fake' 
+        });
       }
     });
 
     await waitFor(() => {
+      expect(result.current.role).toBe(ROLES.SUPERVISOR);
       expect(result.current.isSupervisor).toBe(true);
       expect(result.current.isAdmin).toBe(false);
-      expect(result.current.role).toBe(ROLES.SUPERVISOR);
     });
   });
 
@@ -120,7 +134,11 @@ describe('AuthProvider Single-Organisation Role Derivation', () => {
 
     await act(async () => {
       if (authStateCallback) {
-        authStateCallback('SIGNED_IN', { user: { id: 'member-1' }, access_token: 'fake', refresh_token: 'fake' });
+        await authStateCallback('SIGNED_IN', { 
+          user: { id: 'member-1' }, 
+          access_token: 'fake', 
+          refresh_token: 'fake' 
+        });
       }
     });
 

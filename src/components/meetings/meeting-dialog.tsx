@@ -66,6 +66,8 @@ export function MeetingDialog({
     if (open) {
       setCreatedMeeting(null);
       setIsEditing(false); // Default to Hub view if meeting exists
+      
+      // Set initial pair ID only when opening
       if (pairId) {
         setInternalPairId(pairId);
       } else if (selectedPairingId) {
@@ -74,7 +76,7 @@ export function MeetingDialog({
         setInternalPairId(pairings[0].id);
       }
     }
-  }, [open, pairId, selectedPairingId, pairings, isSupervisor, internalPairId]);
+  }, [open, pairId, selectedPairingId, pairings, isSupervisor]); // Removed internalPairId from dependencies to allow manual selection
 
   const { data: allPairs = [] } = useQuery({
     queryKey: ['pairs', 'active'],
@@ -195,6 +197,21 @@ export function MeetingDialog({
       });
     }
   }, [open, meeting, initialTaskId, initialDate, tasks]); 
+
+  // Auto-select first pending task when tasks change for a new meeting
+  useEffect(() => {
+    if (open && !meeting && tasks.length > 0) {
+      const firstPending = tasks.find(t => t.status !== 'completed') || tasks[0];
+      if (firstPending && (!formData.pair_task_id || !tasks.find(t => t.id === formData.pair_task_id))) {
+        setFormData(prev => ({
+          ...prev,
+          pair_task_id: firstPending.id,
+          // Only update title if it's currently empty or was set from a previous task
+          title: (prev.title === '' || tasks.some(t => t.name === prev.title)) ? firstPending.name : prev.title
+        }));
+      }
+    }
+  }, [tasks, open, meeting]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

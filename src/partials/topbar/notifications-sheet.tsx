@@ -26,6 +26,7 @@ export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    clearAllNotifications,
   } = useNotifications();
 
   return (
@@ -114,19 +115,14 @@ export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
           </Button>
           <Button 
             variant="outline" 
-            size="sm"
+            size="sm" 
             disabled={notifications.length === 0}
             className="flex-1 font-bold text-xs"
-            onClick={() => {
-              // Note: We could implement a deleteAll mutation in useNotifications
-              // For now, let's just show it's possible
-              notifications.forEach(n => deleteNotification(n.id));
-            }}
+            onClick={() => clearAllNotifications()}
           >
             <KeenIcon icon="trash" className="text-xs mr-1.5" />
             Clear all
-          </Button>
-        </SheetFooter>
+          </Button>        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

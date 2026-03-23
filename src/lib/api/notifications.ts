@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/lib/logger';
 
 export interface Notification {
   id: string;
@@ -16,49 +17,87 @@ export interface Notification {
  * Fetch notifications for the current user
  */
 export async function fetchNotifications(limit = 50): Promise<Notification[]> {
-  const { data, error } = await supabase
-    .from('mp_notifications')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return [];
 
-  if (error) {
-    console.error('Error fetching notifications:', error);
-    throw error;
+    const { data, error } = await supabase
+      .from('mp_notifications')
+      .select('*')
+      .eq('recipient_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      await logError({
+        message: `Error fetching notifications: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { error }
+      });
+      throw error;
+    }
+
+    return data || [];
+  } catch (err: any) {
+    console.error('Error fetching notifications:', err);
+    throw err;
   }
-
-  return data || [];
 }
 
 /**
  * Fetch unread notification count
  */
 export async function fetchUnreadCount(): Promise<number> {
-  const { count, error } = await supabase
-    .from('mp_notifications')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_read', false);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return 0;
 
-  if (error) {
-    console.error('Error fetching unread count:', error);
-    throw error;
+    const { count, error } = await supabase
+      .from('mp_notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', session.user.id)
+      .eq('is_read', false);
+
+    if (error) {
+      await logError({
+        message: `Error fetching unread count: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { error }
+      });
+      throw error;
+    }
+
+    return count || 0;
+  } catch (err: any) {
+    console.error('Error fetching unread count:', err);
+    throw err;
   }
-
-  return count || 0;
 }
 
 /**
  * Mark a notification as read
  */
 export async function markAsRead(notificationId: string): Promise<void> {
-  const { error } = await supabase
-    .from('mp_notifications')
-    .update({ is_read: true })
-    .eq('id', notificationId);
+  try {
+    const { error } = await supabase
+      .from('mp_notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId);
 
-  if (error) {
-    console.error('Error marking notification as read:', error);
-    throw error;
+    if (error) {
+      await logError({
+        message: `Error marking notification as read: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { notificationId, error }
+      });
+      throw error;
+    }
+  } catch (err: any) {
+    console.error('Error marking notification as read:', err);
+    throw err;
   }
 }
 
@@ -66,14 +105,28 @@ export async function markAsRead(notificationId: string): Promise<void> {
  * Mark all notifications as read
  */
 export async function markAllAsRead(): Promise<void> {
-  const { error } = await supabase
-    .from('mp_notifications')
-    .update({ is_read: true })
-    .eq('is_read', false);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
 
-  if (error) {
-    console.error('Error marking all notifications as read:', error);
-    throw error;
+    const { error } = await supabase
+      .from('mp_notifications')
+      .update({ is_read: true })
+      .eq('recipient_id', session.user.id)
+      .eq('is_read', false);
+
+    if (error) {
+      await logError({
+        message: `Error marking all notifications as read: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { error }
+      });
+      throw error;
+    }
+  } catch (err: any) {
+    console.error('Error marking all notifications as read:', err);
+    throw err;
   }
 }
 
@@ -81,14 +134,52 @@ export async function markAllAsRead(): Promise<void> {
  * Delete a notification
  */
 export async function deleteNotification(notificationId: string): Promise<void> {
-  const { error } = await supabase
-    .from('mp_notifications')
-    .delete()
-    .eq('id', notificationId);
+  try {
+    const { error } = await supabase
+      .from('mp_notifications')
+      .delete()
+      .eq('id', notificationId);
 
-  if (error) {
-    console.error('Error deleting notification:', error);
-    throw error;
+    if (error) {
+      await logError({
+        message: `Error deleting notification: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { notificationId, error }
+      });
+      throw error;
+    }
+  } catch (err: any) {
+    console.error('Error deleting notification:', err);
+    throw err;
+  }
+}
+
+/**
+ * Clear all notifications for the current user
+ */
+export async function clearAllNotifications(): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+
+    const { error } = await supabase
+      .from('mp_notifications')
+      .delete()
+      .eq('recipient_id', session.user.id);
+
+    if (error) {
+      await logError({
+        message: `Error clearing notifications: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { error }
+      });
+      throw error;
+    }
+  } catch (err: any) {
+    console.error('Error clearing notifications:', err);
+    throw err;
   }
 }
 
@@ -103,21 +194,31 @@ export async function createNotification(
   actionUrl: string | null = null,
   relatedId: string | null = null
 ): Promise<void> {
-  const { error } = await supabase
-    .from('mp_notifications')
-    .insert({
-      recipient_id: recipientId,
-      type,
-      title,
-      description,
-      action_url: actionUrl,
-      related_id: relatedId,
-      is_read: false,
-    });
+  try {
+    const { error } = await supabase
+      .from('mp_notifications')
+      .insert({
+        recipient_id: recipientId,
+        type,
+        title,
+        description,
+        action_url: actionUrl,
+        related_id: relatedId,
+        is_read: false,
+      });
 
-  if (error) {
-    console.error('Error creating notification:', error);
-    throw error;
+    if (error) {
+      await logError({
+        message: `Error creating notification: ${error.message}`,
+        componentName: 'notifications-api',
+        severity: 'error',
+        metadata: { recipientId, type, title, error }
+      });
+      throw error;
+    }
+  } catch (err: any) {
+    console.error('Error creating notification:', err);
+    throw err;
   }
 }
 

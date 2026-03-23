@@ -69,6 +69,7 @@ describe('MeetingDialog Success State', () => {
               onOpenChange={() => {}}
               pairId="pair-1"
               onSubmit={mockOnSubmit}
+              initialDate="2026-03-25T10:00"
             />
           </PairingContext.Provider>
         </AuthContext.Provider>
@@ -81,11 +82,11 @@ describe('MeetingDialog Success State', () => {
     });
 
     // Fill out minimum required fields
-    fireEvent.change(screen.getByLabelText(/Meeting Title/i), { target: { value: 'New Mentoring Session' } });
-    fireEvent.change(screen.getByLabelText(/Date & Time/i), { target: { value: '2026-03-25T10:00' } });
+    const titleInput = screen.getByPlaceholderText(/e.g., Monthly Progress Sync/i);
+    fireEvent.change(titleInput, { target: { value: 'New Mentoring Session' } });
     
-    // We need to ensure pair_task_id is set. 
-    // In our component, if there's only one task, it might be auto-selected in useEffect.
+    // We assume the Date and Time are set by default or we can leave them as is for this success test
+    // if the component provides defaults. Actually, the form has required fields.
     
     const submitButton = screen.getByRole('button', { name: /Schedule/i });
     fireEvent.click(submitButton);

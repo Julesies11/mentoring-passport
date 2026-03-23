@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/lib/logger';
 
 export interface ErrorLog {
   id: string;
@@ -32,7 +33,11 @@ export async function fetchErrorLogs(): Promise<ErrorLog[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching logs:', error);
+    await logError({
+      message: 'Error fetching error logs',
+      componentName: 'error-logs-api',
+      metadata: { error }
+    });
     throw error;
   }
 
@@ -48,7 +53,14 @@ export async function deleteErrorLog(id: string): Promise<void> {
     .delete()
     .eq('id', id);
 
-  if (error) throw error;
+  if (error) {
+    await logError({
+      message: 'Error deleting error log',
+      componentName: 'error-logs-api',
+      metadata: { error, id }
+    });
+    throw error;
+  }
 }
 
 /**
@@ -60,5 +72,12 @@ export async function clearAllErrorLogs(): Promise<void> {
     .delete()
     .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
 
-  if (error) throw error;
+  if (error) {
+    await logError({
+      message: 'Error clearing all error logs',
+      componentName: 'error-logs-api',
+      metadata: { error }
+    });
+    throw error;
+  }
 }

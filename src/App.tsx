@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/providers/theme-provider';
 import { TooltipsProvider } from '@/providers/tooltips-provider';
 import { PairingProvider } from '@/providers/pairing-provider';
 import { OrganisationProvider } from '@/providers/organisation-provider';
+import { NotificationProvider } from '@/providers/notification-provider';
 import { ConnectivityListener } from '@/components/common/connectivity-listener';
 
 const { BASE_URL } = import.meta.env;
@@ -23,19 +24,21 @@ export function App() {
           <I18nProvider>
             <TooltipsProvider>
               <QueryProvider>
-                <OrganisationProvider>
-                  <LoadingBarContainer>
-                    <BrowserRouter basename={BASE_URL}>
-                      <Toaster />
-                      <ConnectivityListener />
-                      <ModulesProvider>
-                        <PairingProvider>
-                          <AppRouting />
-                        </PairingProvider>
-                      </ModulesProvider>
-                    </BrowserRouter>
-                  </LoadingBarContainer>
-                </OrganisationProvider>
+                <BrowserRouter basename={BASE_URL}>
+                  <OrganisationProvider>
+                    <NotificationProvider>
+                      <LoadingBarContainer>
+                        <Toaster />
+                        <ConnectivityListener />
+                        <ModulesProvider>
+                          <PairingProvider>
+                            <AppRouting />
+                          </PairingProvider>
+                        </ModulesProvider>
+                      </LoadingBarContainer>
+                    </NotificationProvider>
+                  </OrganisationProvider>
+                </BrowserRouter>
               </QueryProvider>
             </TooltipsProvider>
           </I18nProvider>

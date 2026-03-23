@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/lib/logger';
 import { PROGRAM_STATUS, ProgramStatus, ROLES } from '@/config/constants';
 
 export interface Program {
@@ -42,13 +43,23 @@ export async function fetchPrograms(): Promise<Program[]> {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching programs:', error);
+      await logError({
+        message: 'Error fetching programs',
+        componentName: 'programs-api',
+        metadata: { error }
+      });
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Error in fetchPrograms:', error);
+    if (!(error as any).message?.includes('logError')) {
+      await logError({
+        message: 'Unhandled error in fetchPrograms',
+        componentName: 'programs-api',
+        metadata: { error }
+      });
+    }
     throw error;
   }
 }
@@ -79,7 +90,11 @@ export async function fetchAssignedPrograms(): Promise<Program[]> {
     .order('name', { ascending: true });
 
   if (error) {
-    console.error('Error fetching assigned programs:', error);
+    await logError({
+      message: 'Error fetching assigned programs',
+      componentName: 'programs-api',
+      metadata: { error, userId: user.id }
+    });
     throw error;
   }
 
@@ -102,6 +117,11 @@ export async function fetchProgram(id: string): Promise<Program | null> {
 
   if (error) {
     if (error.code === 'PGRST116') return null;
+    await logError({
+      message: 'Error fetching program',
+      componentName: 'programs-api',
+      metadata: { error, id }
+    });
     throw error;
   }
 
@@ -121,7 +141,11 @@ export async function createProgram(input: CreateProgramInput): Promise<Program>
     .single();
 
   if (programError) {
-    console.error('Error creating program:', programError);
+    await logError({
+      message: 'Error creating program',
+      componentName: 'programs-api',
+      metadata: { error: programError, input }
+    });
     throw programError;
   }
 
@@ -138,11 +162,19 @@ export async function createProgram(input: CreateProgramInput): Promise<Program>
  */
 export async function updateProgram(id: string, input: UpdateProgramInput): Promise<Program> {
   // 1. Fetch current program to see if task_list_id is changing
-  const { data: currentProgram } = await supabase
+  const { data: currentProgram, error: fetchError } = await supabase
     .from('mp_programs')
     .select('task_list_id, status')
     .eq('id', id)
     .single();
+
+  if (fetchError) {
+    await logError({
+      message: 'Error fetching program before update',
+      componentName: 'programs-api',
+      metadata: { error: fetchError, id }
+    });
+  }
 
   // 2. Validate: Cannot change task list for inactive programs
   if (
@@ -165,7 +197,11 @@ export async function updateProgram(id: string, input: UpdateProgramInput): Prom
     .single();
 
   if (error) {
-    console.error('Error updating program:', error);
+    await logError({
+      message: 'Error updating program',
+      componentName: 'programs-api',
+      metadata: { error, id, input }
+    });
     throw error;
   }
 
@@ -189,7 +225,11 @@ async function syncProgramTasks(programId: string, taskListId: string | null): P
     .eq('program_id', programId);
 
   if (deleteError) {
-    console.error('Error deleting old program tasks during sync:', deleteError);
+    await logError({
+      message: 'Error deleting old program tasks during sync',
+      componentName: 'programs-api',
+      metadata: { error: deleteError, programId }
+    });
   }
 
   // 2. If no new list, we're done
@@ -203,7 +243,11 @@ async function syncProgramTasks(programId: string, taskListId: string | null): P
     .eq('is_active', true);
 
   if (tasksError) {
-    console.error('Error fetching master tasks for sync:', tasksError);
+    await logError({
+      message: 'Error fetching master tasks for sync',
+      componentName: 'programs-api',
+      metadata: { error: tasksError, taskListId }
+    });
     return;
   }
 
@@ -224,7 +268,11 @@ async function syncProgramTasks(programId: string, taskListId: string | null): P
         .single();
 
       if (ptError) {
-        console.error('Error creating program task during sync:', ptError);
+        await logError({
+          message: 'Error creating program task during sync',
+          componentName: 'programs-api',
+          metadata: { error: ptError, programId, masterTask }
+        });
         continue;
       }
 
@@ -235,7 +283,11 @@ async function syncProgramTasks(programId: string, taskListId: string | null): P
         .eq('task_id', masterTask.id);
 
       if (stError) {
-        console.error('Error fetching master subtasks during sync:', stError);
+        await logError({
+          message: 'Error fetching master subtasks during sync',
+          componentName: 'programs-api',
+          metadata: { error: stError, masterTaskId: masterTask.id }
+        });
         continue;
       }
 
@@ -252,7 +304,11 @@ async function syncProgramTasks(programId: string, taskListId: string | null): P
           .insert(programSubtasks);
 
         if (pstError) {
-          console.error('Error creating program subtasks during sync:', pstError);
+          await logError({
+            message: 'Error creating program subtasks during sync',
+            componentName: 'programs-api',
+            metadata: { error: pstError, programTaskId: programTask.id }
+          });
         }
       }
     }
@@ -271,7 +327,11 @@ export async function archiveProgram(id: string): Promise<void> {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error archiving program:', error);
+    await logError({
+      message: 'Error archiving program',
+      componentName: 'programs-api',
+      metadata: { error, id }
+    });
     throw error;
   }
 }
@@ -280,19 +340,28 @@ export async function archiveProgram(id: string): Promise<void> {
  * Duplicate a program (creates a new program with same template and settings, but no pairs)
  */
 export async function duplicateProgram(sourceId: string, newName: string): Promise<Program> {
-  const { data: source, error: fetchError } = await supabase
-    .from('mp_programs')
-    .select('*')
-    .eq('id', sourceId)
-    .single();
+  try {
+    const { data: source, error: fetchError } = await supabase
+      .from('mp_programs')
+      .select('*')
+      .eq('id', sourceId)
+      .single();
 
-  if (fetchError) throw fetchError;
+    if (fetchError) throw fetchError;
 
-  const { id: _id, created_at: _ca, updated_at: _ua, ...sourceData } = source;
+    const { id: _id, created_at: _ca, updated_at: _ua, ...sourceData } = source;
 
-  return createProgram({
-    ...sourceData,
-    name: newName,
-    status: PROGRAM_STATUS.INACTIVE // Start as inactive
-  });
+    return createProgram({
+      ...sourceData,
+      name: newName,
+      status: PROGRAM_STATUS.INACTIVE // Start as inactive
+    });
+  } catch (error) {
+    await logError({
+      message: 'Error duplicating program',
+      componentName: 'programs-api',
+      metadata: { error, sourceId, newName }
+    });
+    throw error;
+  }
 }

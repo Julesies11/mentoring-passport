@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllEvidence, usePendingEvidence } from '@/hooks/use-evidence';
 import { useAuth } from '@/auth/context/auth-context';
@@ -90,6 +90,32 @@ export function EvidenceReviewPage({ mode = 'supervisor' }: { mode?: 'supervisor
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Deep-linking effect for specific evidence
+  useEffect(() => {
+    const evidenceId = searchParams.get('id');
+    if (evidenceId && !isLoading && allEvidence.length > 0) {
+      const target = allEvidence.find(e => e.id === evidenceId);
+      if (target) {
+        // 1. Scroll and Highlight
+        const timer = setTimeout(() => {
+          const element = document.getElementById(`evidence-${evidenceId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+            
+            // 2. Auto-open the review dialog (default to approve view)
+            handleOpenReview(target, 'approve');
+
+            setTimeout(() => {
+              element.classList.remove('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+            }, 3000);
+          }
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchParams, isLoading, allEvidence]);
 
   const handleOpenReview = (item: Evidence, action: 'approve' | 'reject') => {
     setSelectedEvidence(item);

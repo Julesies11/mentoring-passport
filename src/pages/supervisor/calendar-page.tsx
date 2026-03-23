@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/context/auth-context';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAllMeetings } from '@/hooks/use-meetings';
@@ -27,6 +28,47 @@ export function SupervisorCalendarPage() {
   const { data: pairs = [] } = useAllPairs();
   const [selectedPairId, setSelectedPairId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [searchParams] = useSearchParams();
+  const highlightMeetingId = searchParams.get('id');
+
+  // Unified Dialog State
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+
+  // Clear state when dialog closes
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedMeeting(null);
+    }
+  };
+
+  // Deep-link effect
+  useEffect(() => {
+    if (highlightMeetingId && !isLoading && meetings.length > 0) {
+      const targetMeeting = meetings.find(m => m.id === highlightMeetingId);
+      
+      // 1. Open the dialog
+      if (targetMeeting) {
+        setSelectedMeeting(targetMeeting);
+        setIsDialogOpen(true);
+      }
+
+      // 2. Visual scroll and pulse
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`meeting-${highlightMeetingId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary/20', 'bg-primary/[0.02]');
+          }, 3000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightMeetingId, isLoading, meetings]);
 
   // Calculate stats on the fly
   const stats = useMemo(() => {
@@ -35,10 +77,6 @@ export function SupervisorCalendarPage() {
       past: meetings.filter(m => getMeetingStatus(m.date_time) === 'past').length,
     };
   }, [meetings]);
-
-  // Unified Dialog State
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
   const handlePairFilter = (pairId: string) => {
     setSelectedPairId(pairId);
@@ -85,7 +123,7 @@ export function SupervisorCalendarPage() {
     try {
       const { id, ...updates } = meeting;
       await updateMeeting(id, updates);
-      toast.success('Meeting moved');
+      toast.success('Meeting rescheduled');
     } catch (err) {
       console.error('Error moving meeting:', err);
       toast.error('Failed to move meeting');
@@ -208,7 +246,7 @@ export function SupervisorCalendarPage() {
       {/* Shared Meeting Dialog */}
       <MeetingDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleOpenChange}
         pairId={selectedMeeting?.pair_id || (selectedPairId !== 'all' ? selectedPairId : '')}
         meeting={selectedMeeting}
         onSubmit={handleMeetingSubmit}

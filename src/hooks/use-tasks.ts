@@ -225,31 +225,94 @@ export function usePairTasks(pairId: string) {
     onSuccess: async (updatedTask) => {
       await queryClient.invalidateQueries({ queryKey: ['pair-tasks', pairId] });
 
-      const currentTask = tasks.find(t => t.id === updatedTask.id);
+      const currentTask = tasks.find(t => t.id === updatedTask.id) as any;
       const mentorId = currentTask?.pair?.mentor_id;
       const menteeId = currentTask?.pair?.mentee_id;
+      const programId = currentTask?.pair?.program_id;
       const mentorName = currentTask?.pair?.mentor?.full_name || 'Mentor';
       const menteeName = currentTask?.pair?.mentee?.full_name || 'Mentee';
+const actorName = user.full_name || user.email || 'Participant';
 
-      if (updatedTask.status === TASK_STATUS.AWAITING_REVIEW && user?.id && mentorId && menteeId) {
-        const actorName = user.full_name || user.email || 'Participant';
-        await NotificationService.notifyTaskSubmitted(
-          updatedTask.name, 
+// 1. Logic for Supervisor review submissions
+if (updatedTask.status === TASK_STATUS.AWAITING_REVIEW && user?.id && mentorId && menteeId && programId) {
+  await NotificationService.notifyTaskSubmitted({
+    taskId: updatedTask.id, // Added taskId
+    taskName: updatedTask.name, 
+    pairId, 
+    programId,
+    mentorId, 
+    menteeId, 
+    mentorName, 
+    menteeName, 
+    actorId: user.id,
+    actorName
+  });
+}
+// 2. Logic for Peer-to-Peer notifications (Status changes)
+if (user?.id && mentorId && menteeId) {
+  const oldTask = tasks.find(t => t.id === updatedTask.id);
+
+  // Peer Re-opened Task
+  if (oldTask?.status === TASK_STATUS.COMPLETED && updatedTask.status !== TASK_STATUS.COMPLETED) {
+    await NotificationService.notifyTaskReopenedByPeer({
+      taskId: updatedTask.id,
+      taskName: updatedTask.name,
+      pairId, // Added pairId
+      mentorId,
+      menteeId,
+      actorId: user.id,
+      actorName
+    });
+  }
+
+  // Peer Self-Completed Task (for tasks not needing review)
+  if (oldTask?.status !== TASK_STATUS.COMPLETED && updatedTask.status === TASK_STATUS.COMPLETED) {
+    await NotificationService.notifyTaskCompleted({
+      taskId: updatedTask.id,
+      taskName: updatedTask.name,
+      pairId, // Added pairId
+      mentorId,
+      menteeId,
+      actorId: user.id,
+      actorName
+    });
+  }
+
+  // Peer Added/Updated Note
+  if (updates.evidence_notes && updates.evidence_notes !== oldTask?.evidence_notes) {
+    await NotificationService.notifyTaskNoteAdded({
+      taskId: updatedTask.id,
+      taskName: updatedTask.name,
+      pairId, // Added pairId
+      mentorId,
+      menteeId,
+      actorId: user.id,
+      actorName,
+      noteSnippet: updates.evidence_notes
+    });
+  }}
+
+// 3. Logic for milestones (Supervisors)
+if (stats.completed === stats.total && programId) {
+        await NotificationService.notifyMilestone({
+          type: 'pair_completed', 
           pairId, 
-          mentorId, 
-          menteeId, 
+          programId,
           mentorName, 
           menteeName, 
-          user.id,
+          actorId: user.id, 
           actorName
-        );
-      }
-
-      const actorName = user.full_name || user.email || 'Participant';
-      if (stats.completed === stats.total) {
-        await NotificationService.notifyMilestone('pair_completed', pairId, mentorName, menteeName, user.id, actorName);
-      } else if (stats.completed >= stats.total / 2 && (stats.completed - 1) < stats.total / 2) {
-        await NotificationService.notifyMilestone('milestone_50', pairId, mentorName, menteeName, user.id, actorName);
+        });
+      } else if (stats.completed >= stats.total / 2 && (stats.completed - 1) < stats.total / 2 && programId) {
+        await NotificationService.notifyMilestone({
+          type: 'milestone_50', 
+          pairId, 
+          programId,
+          mentorName, 
+          menteeName, 
+          actorId: user.id, 
+          actorName
+        });
       }
     },
   });
@@ -263,11 +326,17 @@ export function usePairTasks(pairId: string) {
       const hasStarted = currentTasks.some(t => t.status !== TASK_STATUS.NOT_SUBMITTED);
       
       if (hasStarted) {
-        const firstTask = currentTasks[0];
+        const firstTask = currentTasks[0] as any;
         const mentorId = firstTask?.pair?.mentor_id;
         const menteeId = firstTask?.pair?.mentee_id;
         if (mentorId && menteeId && user?.id) {
-          await NotificationService.notifyTaskAdded(newTask.id, newTask.name, mentorId, menteeId, user.id);
+          await NotificationService.notifyTaskAdded({
+            taskId: newTask.id, 
+            taskName: newTask.name, 
+            mentorId, 
+            menteeId, 
+            actorId: user.id
+          });
         }
       }
     },

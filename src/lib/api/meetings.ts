@@ -1,5 +1,6 @@
 import { LOCATION_TYPE, LocationType, MEETING_STATUS, MeetingStatus } from '@/config/constants';
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/lib/logger';
 import { isFuture } from 'date-fns';
 
 export interface Meeting {
@@ -93,25 +94,36 @@ export function getMeetingStatus(dateTime: string): 'upcoming' | 'past' {
  * Helper to map database response to Meeting interface
  */
 function mapMeeting(m: any): Meeting {
-  const mapPair = (pair: any) => {
+  const mapPair = (rawPair: any) => {
+    if (!rawPair) return undefined;
+    
+    // Handle array case if Supabase returns relationships as arrays
+    const pair = Array.isArray(rawPair) ? rawPair[0] : rawPair;
     if (!pair) return undefined;
+
     return {
       ...pair,
-      mentor: pair.mentor ? {
-        ...pair.mentor,
-        job_title_name: pair.mentor.job_title?.title || 'No Job Title'
-      } : undefined,
-      mentee: pair.mentee ? {
-        ...pair.mentee,
-        job_title_name: pair.mentee.job_title?.title || 'No Job Title'
-      } : undefined
+      mentor: pair.mentor ? (Array.isArray(pair.mentor) ? pair.mentor[0] : pair.mentor) : undefined,
+      mentee: pair.mentee ? (Array.isArray(pair.mentee) ? pair.mentee[0] : pair.mentee) : undefined
     };
   };
 
+  const mappedPair = mapPair(m.mp_pairs);
+
+  // After mapping, ensure mentor/mentee have their job titles flattened
+  if (mappedPair) {
+    if (mappedPair.mentor) {
+      mappedPair.mentor.job_title_name = mappedPair.mentor.job_title?.title || 'No Job Title';
+    }
+    if (mappedPair.mentee) {
+      mappedPair.mentee.job_title_name = mappedPair.mentee.job_title?.title || 'No Job Title';
+    }
+  }
+
   return {
     ...m,
-    pair: mapPair(m.mp_pairs),
-    mp_pairs: mapPair(m.mp_pairs)
+    pair: mappedPair,
+    mp_pairs: mappedPair
   };
 }
 
@@ -125,6 +137,8 @@ export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
       *,
       mp_pairs!inner(
         id,
+        mentor_id,
+        mentee_id,
         program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
@@ -139,7 +153,11 @@ export async function fetchAllMeetings(programId?: string): Promise<Meeting[]> {
   const { data, error } = await query.order('date_time', { ascending: false });
 
   if (error) {
-    console.error('Error fetching meetings:', error);
+    await logError({
+      message: 'Error fetching meetings',
+      componentName: 'meetings-api',
+      metadata: { error, programId }
+    });
     throw error;
   }
 
@@ -156,6 +174,9 @@ export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
       *,
       mp_pairs(
         id,
+        mentor_id,
+        mentee_id,
+        program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
@@ -165,7 +186,11 @@ export async function fetchPairMeetings(pairId: string): Promise<Meeting[]> {
     .order('date_time', { ascending: false });
 
   if (error) {
-    console.error('Error fetching pair meetings:', error);
+    await logError({
+      message: 'Error fetching pair meetings',
+      componentName: 'meetings-api',
+      metadata: { error, pairId }
+    });
     throw error;
   }
 
@@ -182,6 +207,9 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
       *,
       mp_pairs(
         id,
+        mentor_id,
+        mentee_id,
+        program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
@@ -193,7 +221,11 @@ export async function fetchUserUpcomingMeetings(userId: string): Promise<Meeting
     .limit(10);
 
   if (error) {
-    console.error('Error fetching user meetings:', error);
+    await logError({
+      message: 'Error fetching user upcoming meetings',
+      componentName: 'meetings-api',
+      metadata: { error, userId }
+    });
     throw error;
   }
 
@@ -215,6 +247,11 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       .single();
 
     if (pairError || !pair) {
+      await logError({
+        message: 'Could not verify pairing context for meeting creation',
+        componentName: 'meetings-api',
+        metadata: { error: pairError, pairId: input.pair_id }
+      });
       throw new Error('Could not verify pairing context for meeting creation.');
     }
     finalProgramId = pair.program_id;
@@ -240,6 +277,9 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
       *,
       mp_pairs(
         id,
+        mentor_id,
+        mentee_id,
+        program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
@@ -248,7 +288,11 @@ export async function createMeeting(input: CreateMeetingInput): Promise<Meeting>
     .single();
 
   if (error) {
-    console.error('Error creating meeting:', error);
+    await logError({
+      message: 'Error creating meeting',
+      componentName: 'meetings-api',
+      metadata: { error, input }
+    });
     throw error;
   }
 
@@ -270,6 +314,9 @@ export async function updateMeeting(
       *,
       mp_pairs(
         id,
+        mentor_id,
+        mentee_id,
+        program_id,
         mentor:mp_profiles!mentor_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url),
         mentee:mp_profiles!mentee_id(id, full_name, job_title_id, job_title:mp_job_titles(title), avatar_url)
       ),
@@ -278,7 +325,11 @@ export async function updateMeeting(
     .single();
 
   if (error) {
-    console.error('Error updating meeting:', error);
+    await logError({
+      message: 'Error updating meeting',
+      componentName: 'meetings-api',
+      metadata: { error, meetingId, input }
+    });
     throw error;
   }
 
@@ -306,7 +357,11 @@ export async function deleteMeeting(meetingId: string): Promise<Meeting> {
     .single();
 
   if (error) {
-    console.error('Error deleting meeting:', error);
+    await logError({
+      message: 'Error deleting meeting',
+      componentName: 'meetings-api',
+      metadata: { error, meetingId }
+    });
     throw error;
   }
 

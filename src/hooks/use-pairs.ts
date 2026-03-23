@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganisation } from '@/providers/organisation-provider';
 import { useAuth } from '@/auth/context/auth-context';
+import { NotificationService } from '@/lib/api/notifications-service';
 import {
   fetchPairs,
   fetchPair,
@@ -19,6 +20,7 @@ const EMPTY_ARRAY: any[] = [];
 export function usePairs() {
   const queryClient = useQueryClient();
   const { activeProgram } = useOrganisation();
+  const { user } = useAuth();
   const programId = activeProgram?.id;
 
   const { data: pairs = EMPTY_ARRAY, isLoading, error } = useQuery({
@@ -43,8 +45,31 @@ export function usePairs() {
       }
       return createPair(input);
     },
-    onSuccess: async () => {
+    onSuccess: async (newPair) => {
       queryClient.invalidateQueries({ queryKey: ['pairs'] });
+      
+      if (newPair && user?.id) {
+        // 1. Notify Supervisors about the new pair
+        await NotificationService.notifyPairCreated({
+          pairId: newPair.id,
+          programId: newPair.program_id,
+          programName: newPair.program?.name || 'Program',
+          mentorName: newPair.mentor?.full_name || 'Mentor',
+          menteeName: newPair.mentee?.full_name || 'Mentee',
+          actorId: user.id
+        });
+
+        // 2. Notify the Mentor and Mentee (Informational)
+        await NotificationService.notifyRelationshipMatched({
+          mentorId: newPair.mentor_id,
+          menteeId: newPair.mentee_id,
+          mentorName: newPair.mentor?.full_name || 'Mentor',
+          menteeName: newPair.mentee?.full_name || 'Mentee',
+          programName: newPair.program?.name || 'Program',
+          programId: newPair.program_id,
+          actorId: user.id
+        });
+      }
     },
   });
 

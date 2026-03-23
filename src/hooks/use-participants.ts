@@ -98,8 +98,36 @@ export function useParticipants(programId?: string) {
         (updatedParticipant.full_name && updatedParticipant.job_title_id)
       );
 
-      if (isNewlyCompleted && user?.id) {
-        await NotificationService.notifyProfileCompleted(updatedParticipant.id, updatedParticipant.full_name, user.id);
+      if (user?.id) {
+        const actorName = user.full_name || user.email || 'Admin';
+
+        // 1. Alert on Role Escalation
+        if (oldParticipant && updatedParticipant.role !== oldParticipant.role) {
+          await NotificationService.notifyRoleUpdated({
+            userId: updatedParticipant.id,
+            userName: updatedParticipant.full_name || updatedParticipant.email,
+            newRole: updatedParticipant.role,
+            actorId: user.id,
+            actorName
+          });
+        }
+
+        // 2. Alert on Completion (Supervisor vs Participant)
+        if (isNewlyCompleted) {
+          if (updatedParticipant.role === 'supervisor') {
+            await NotificationService.notifySupervisorOnboarded({
+              supervisorId: updatedParticipant.id,
+              supervisorName: updatedParticipant.full_name,
+              actorId: user.id
+            });
+          } else {
+            await NotificationService.notifyParticipantProfileReady({
+              profileId: updatedParticipant.id, 
+              fullName: updatedParticipant.full_name, 
+              actorId: user.id
+            });
+          }
+        }
       }
     },
   });

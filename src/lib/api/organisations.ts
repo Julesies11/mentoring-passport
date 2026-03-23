@@ -104,9 +104,27 @@ export async function fetchInstanceStats() {
       supabase.from('mp_pairs').select('*', { count: 'exact', head: true })
     ]);
 
-    if (users.error) console.error('Error fetching user count:', users.error);
-    if (programs.error) console.error('Error fetching program count:', programs.error);
-    if (pairs.error) console.error('Error fetching pair count:', pairs.error);
+    if (users.error) {
+      await logError({
+        message: 'Error fetching user count',
+        componentName: 'organisations-api',
+        metadata: { error: users.error }
+      });
+    }
+    if (programs.error) {
+      await logError({
+        message: 'Error fetching program count',
+        componentName: 'organisations-api',
+        metadata: { error: programs.error }
+      });
+    }
+    if (pairs.error) {
+      await logError({
+        message: 'Error fetching pair count',
+        componentName: 'organisations-api',
+        metadata: { error: pairs.error }
+      });
+    }
 
     return {
       users: users.count || 0,
@@ -114,7 +132,11 @@ export async function fetchInstanceStats() {
       pairs: pairs.count || 0
     };
   } catch (err) {
-    console.error('Unexpected error in fetchInstanceStats:', err);
+    await logError({
+      message: 'Unexpected error in fetchInstanceStats',
+      componentName: 'organisations-api',
+      metadata: { error: err }
+    });
     return { users: 0, programs: 0, pairs: 0 };
   }
 }

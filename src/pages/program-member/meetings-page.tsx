@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useAllMeetings } from '@/hooks/use-meetings';
@@ -9,6 +9,7 @@ import {
   ToolbarHeading,
 } from '@/layouts/demo1/components/toolbar';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KeenIcon } from '@/components/keenicons';
 import { MeetingCalendar } from '@/components/calendar/meeting-calendar';
 import { MeetingDialog } from '@/components/meetings/meeting-dialog';
@@ -32,10 +33,18 @@ export function ProgramMemberMeetingsPage() {
     isUpdating
   } = useAllMeetings();
 
-  // Effect for scrolling to deep-linked meeting
+  // Effect for scrolling to deep-linked meeting and opening dialog
   useEffect(() => {
-    if (highlightMeetingId && !isLoading) {
-      // Small delay to ensure list is rendered
+    if (highlightMeetingId && !isLoading && meetings.length > 0) {
+      const targetMeeting = meetings.find(m => m.id === highlightMeetingId);
+      
+      // 1. Open the dialog immediately if meeting is found
+      if (targetMeeting) {
+        setSelectedMeeting(targetMeeting);
+        setIsDialogOpen(true);
+      }
+
+      // 2. Visual scroll and pulse
       const timer = setTimeout(() => {
         const element = document.getElementById(`meeting-${highlightMeetingId}`);
         if (element) {
@@ -55,16 +64,40 @@ export function ProgramMemberMeetingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [initialDate, setInitialDate] = useState<string | null>(null);
+  const [selectedPairId, setSelectedPairId] = useState<string>('all');
+
+  // Clear state when dialog closes
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedMeeting(null);
+      setInitialDate(null);
+    }
+  };
 
   // Filter meetings for the relationship
-  const filteredMeetings = meetings.filter(m => 
-    pairs.some(p => p.id === m.pair_id)
-  );
+  const filteredMeetings = useMemo(() => {
+    // 1. First, only show meetings where the user is actually part of the pair
+    const myMeetings = meetings.filter(m => 
+      pairs.some(p => p.id === m.pair_id)
+    );
+
+    // 2. Then, apply the local pair filter if one is selected
+    if (!selectedPairId || selectedPairId === 'all') {
+      return myMeetings;
+    }
+
+    return myMeetings.filter(m => m.pair_id === selectedPairId);
+  }, [meetings, pairs, selectedPairId]);
 
   const handleCreateNew = () => {
     setSelectedMeeting(null);
     setInitialDate(null);
     setIsDialogOpen(true);
+  };
+
+  const handlePairFilter = (pairId: string) => {
+    setSelectedPairId(pairId);
   };
 
   const handleEditMeeting = (meeting: Meeting) => {
@@ -77,11 +110,11 @@ export function ProgramMemberMeetingsPage() {
     try {
       if (selectedMeeting) {
         const result = await updateMeeting(selectedMeeting.id, data);
-        toast.success('Meeting updated successfully');
+        toast.success('Meeting updated');
         return result;
       } else {
         const result = await createMeeting(data);
-        toast.success('Meeting scheduled successfully');
+        toast.success('Meeting scheduled');
         return result;
       }
     } catch (error) {
@@ -104,7 +137,7 @@ export function ProgramMemberMeetingsPage() {
     try {
       const { id, ...updates } = meeting;
       await updateMeeting(id, updates);
-      toast.success('Meeting updated successfully');
+      toast.success('Meeting rescheduled');
     } catch (error) {
       console.error('Error updating meeting:', error);
       toast.error('Failed to update meeting');
@@ -160,23 +193,44 @@ export function ProgramMemberMeetingsPage() {
 
               {/* Calendar Section */}
               <div className="space-y-4 pt-4">
-                <div className="flex items-center gap-4 px-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
                   <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
                     <KeenIcon icon="calendar" className="text-primary text-base" />
                     Full Calendar
                   </h3>
-                  <div className="h-px bg-gray-100 flex-1 ml-4" />
+                  
+                  {pairs.length > 1 && (
+                    <div className="flex items-center gap-2 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-tight px-2">Filter:</span>
+                      <Select value={selectedPairId} onValueChange={handlePairFilter}>
+                        <SelectTrigger className="h-8 min-w-[180px] rounded-md border-none bg-white font-bold text-[11px] shadow-sm">
+                          <SelectValue placeholder="All Relationships" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl shadow-xl">
+                          <SelectItem value="all">All Relationships</SelectItem>
+                          {pairs.map(pair => (
+                            <SelectItem key={pair.id} value={pair.id}>
+                              {pair.mentor?.full_name} ↔ {pair.mentee?.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
+
                 <div className="bg-white rounded-xl border-0 sm:border border-gray-200 overflow-hidden shadow-none sm:shadow-sm">
                   <MeetingCalendar 
                     meetings={filteredMeetings}
                     pairs={pairs}
-                    selectedParticipant={activePair?.id || ''}
+                    selectedParticipant={selectedPairId}
+                    onPairFilter={handlePairFilter}
                     onMeetingCreate={handleMeetingSubmit}
                     onMeetingUpdate={handleCalendarUpdate}
                     onMeetingDelete={handleDeleteMeeting}
                     onMeetingClick={handleEditMeeting}
                     showAddButton={false}
+                    showFilters={false}
                     readOnly={isArchived}
                   />
                 </div>
@@ -189,8 +243,8 @@ export function ProgramMemberMeetingsPage() {
       {/* Shared Meeting Dialog */}
       <MeetingDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        pairId={activePair?.id || (selectedMeeting?.pair_id || '')}
+        onOpenChange={handleOpenChange}
+        pairId={selectedMeeting?.pair_id || (selectedPairId !== 'all' ? selectedPairId : (activePair?.id || (pairs.length > 0 ? pairs[0].id : '')))}
         meeting={selectedMeeting}
         initialDate={initialDate}
         onSubmit={handleMeetingSubmit}

@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as programsApi from '@/lib/api/programs';
 import { AuthContext } from '@/auth/context/auth-context';
 import { supabase } from '@/lib/supabase';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('@/lib/api/programs', () => ({
   fetchPrograms: vi.fn(),
@@ -15,28 +16,29 @@ vi.mock('@/lib/api/programs', () => ({
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
-    from: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    single: vi.fn(),
-    maybeSingle: vi.fn(),
+    from: vi.fn((table) => ({
+      select: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'singleton-org', name: 'Singleton Org' }, error: null }),
+    })),
   },
 }));
 
 const mockUser = {
   id: 'u1',
   role: ROLES.SUPERVISOR
-
 };
 
-const createWrapper = () => {
+const createWrapper = (initialEntries = ['/']) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return ({ children }: { children: React.ReactNode }) => (
     <AuthContext.Provider value={{ user: mockUser, loading: false, isSupervisor: true } as any}>
       <QueryClientProvider client={queryClient}>
-        <OrganisationProvider>{children}</OrganisationProvider>
+        <MemoryRouter initialEntries={initialEntries}>
+          <OrganisationProvider>{children}</OrganisationProvider>
+        </MemoryRouter>
       </QueryClientProvider>
     </AuthContext.Provider>
   );
@@ -45,14 +47,13 @@ const createWrapper = () => {
 describe('OrganisationProvider Single-Organisation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(supabase.maybeSingle).mockResolvedValue({ data: { id: 'singleton-org', name: 'Singleton Org' }, error: null } as any);
   });
 
   it('fetches singleton organisation and sorts programs correctly', async () => {
     const mockPrograms = [
-      { id: 'p1', status: PROGRAM_STATUS.INACTIVE, start_date: '2025-01-01', name: 'Old Inactive', created_at: '2025-01-01' },
-      { id: 'p2', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-02-01', name: 'Newer Active', created_at: '2025-02-01' },
-      { id: 'p3', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-01-15', name: 'Older Active', created_at: '2025-01-15' },
+      { id: 'p1', status: PROGRAM_STATUS.INACTIVE, start_date: '2025-01-01', name: 'Old Inactive' },
+      { id: 'p2', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-02-01', name: 'Newer Active' },
+      { id: 'p3', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-01-15', name: 'Older Active' },
     ];
 
     vi.mocked(programsApi.fetchAssignedPrograms).mockResolvedValue(mockPrograms as any);
@@ -94,6 +95,27 @@ describe('OrganisationProvider Single-Organisation', () => {
       result.current.setActiveProgram('p2');
     });
 
+    expect(result.current.activeProgram?.id).toBe('p2');
+  });
+
+  it('synchronizes active program from URL query parameters', async () => {
+    const mockPrograms = [
+      { id: 'p1', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-01-01', name: 'P1' },
+      { id: 'p2', status: PROGRAM_STATUS.ACTIVE, start_date: '2025-02-01', name: 'P2' },
+    ];
+
+    vi.mocked(programsApi.fetchAssignedPrograms).mockResolvedValue(mockPrograms as any);
+
+    // Render with ?program=p2 in the URL
+    const { result } = renderHook(() => useOrganisation(), { 
+      wrapper: createWrapper(['/supervisor/dashboard?program=p2']) 
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Should have switched to p2 automatically
     expect(result.current.activeProgram?.id).toBe('p2');
   });
 });

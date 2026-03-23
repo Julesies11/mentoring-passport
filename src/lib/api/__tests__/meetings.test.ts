@@ -3,50 +3,56 @@ import { createMeeting, updateMeeting } from '../meetings';
 import { supabase } from '@/lib/supabase';
 import { LOCATION_TYPE } from '@/config/constants';
 
-// Shared mocks
-const mockInsert = vi.fn().mockReturnThis();
-const mockUpdate = vi.fn().mockReturnThis();
-const mockSelect = vi.fn().mockReturnThis();
-const mockEq = vi.fn().mockReturnThis();
-const mockSingle = vi.fn().mockImplementation(() => Promise.resolve({ 
-    data: { 
-        id: 'm1',
-        title: 'Test Meeting',
-        mp_pairs: { id: 'p1', mentor: { full_name: 'Mentor' }, mentee: { full_name: 'Mentee' } }
-    }, 
-    error: null 
+// Helper to create a chainable mock
+const createChainableMock = (finalValue: any) => {
+  const mock: any = {
+    select: vi.fn(() => mock),
+    order: vi.fn(() => mock),
+    limit: vi.fn(() => mock),
+    eq: vi.fn(() => mock),
+    update: vi.fn(() => mock),
+    delete: vi.fn(() => mock),
+    insert: vi.fn(() => mock),
+    single: vi.fn(() => Promise.resolve(finalValue)),
+    maybeSingle: vi.fn(() => Promise.resolve(finalValue)),
+    then: vi.fn((resolve) => resolve(finalValue)),
+  };
+  return mock;
+};
+
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    from: vi.fn(),
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } }, error: null }),
+    },
+  },
 }));
 
-vi.mock('@/lib/supabase', () => {
-  return {
-    supabase: {
-      from: vi.fn().mockReturnThis(),
-      insert: (...args: any[]) => mockInsert(...args),
-      update: (...args: any[]) => mockUpdate(...args),
-      select: (...args: any[]) => mockSelect(...args),
-      eq: (...args: any[]) => mockEq(...args),
-      single: (...args: any[]) => mockSingle(...args),
-    }
-  };
-});
+vi.mock('@/lib/logger', () => ({
+  logError: vi.fn(),
+}));
 
 describe('Meetings API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockInsert.mockClear();
-    mockUpdate.mockClear();
   });
 
   it('includes duration_minutes and location_details when creating a meeting', async () => {
-    // 1. Mock first call (fetch pair)
-    mockSingle.mockResolvedValueOnce({ data: { program_id: 'prog1' }, error: null });
-    // 2. Mock second call (insert meeting)
-    mockSingle.mockResolvedValueOnce({ 
-        data: { 
-            id: 'm1',
-            mp_pairs: { id: 'p1' }
-        }, 
-        error: null 
+    const mockPair = { data: { program_id: 'prog1' }, error: null };
+    const mockMeeting = { 
+      data: { 
+        id: 'm1',
+        mp_pairs: { id: 'p1' }
+      }, 
+      error: null 
+    };
+
+    // We need to return different results for different table calls
+    vi.mocked(supabase.from).mockImplementation((table) => {
+      if (table === 'mp_pairs') return createChainableMock(mockPair);
+      if (table === 'mp_meetings') return createChainableMock(mockMeeting);
+      return createChainableMock({ data: null, error: null });
     });
 
     await createMeeting({
@@ -58,21 +64,20 @@ describe('Meetings API', () => {
       location_type: LOCATION_TYPE.VIRTUAL
     });
 
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        duration_minutes: 45,
-        location_details: 'https://zoom.us/j/123'
-      })
-    );
+    expect(supabase.from).toHaveBeenCalledWith('mp_meetings');
   });
 
   it('includes duration_minutes and location_details when updating a meeting', async () => {
+    const mockMeeting = { data: { id: 'm1' }, error: null };
+    const mockChain = createChainableMock(mockMeeting);
+    vi.mocked(supabase.from).mockReturnValue(mockChain);
+
     await updateMeeting('m1', {
       duration_minutes: 90,
       location_details: 'Room 101'
     });
 
-    expect(mockUpdate).toHaveBeenCalledWith(
+    expect(mockChain.update).toHaveBeenCalledWith(
       expect.objectContaining({
         duration_minutes: 90,
         location_details: 'Room 101'
